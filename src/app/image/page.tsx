@@ -122,12 +122,12 @@ export default function ImageGeneration() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.logoSection}>
-          <Link href="/dashboard" className={styles.backButton}>
-            <i className="fa-solid fa-arrow-left"></i>
-          </Link>
-          <span className={styles.divider}>|</span>
-          <span className={styles.title}>Image Generation</span>
+          <span className={styles.logoText}>Arch Studios</span>
+          <span className={styles.beta}>BETA</span>
         </div>
+        <Link href="/dashboard" className={styles.backButton}>
+          <i className="fa-solid fa-arrow-left"></i>
+        </Link>
       </div>
 
       <div className={styles.mainContent}>
