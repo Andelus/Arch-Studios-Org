@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -321,6 +323,70 @@ function ThreeDModelingContent() {
 }
 
 export default function ThreeDModeling() {
+  const router = useRouter();
+  const { isSignedIn } = useAuth();
+  const [prompt, setPrompt] = useState<string>('');
+  const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [modelUrl, setModelUrl] = useState<string | null>(null);
+  const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!isSignedIn) {
+      router.push('/');
+    }
+  }, [isSignedIn, router]);
+
+  const generate3DModel = async () => {
+    if (!isSignedIn) {
+      setError('Please sign in to generate 3D models');
+      return;
+    }
+
+    if (!sourceImage && !prompt.trim()) {
+      setError('Please provide either an image or a prompt');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/generate-3d', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          imageUrl: sourceImage,
+        }),
+      });
+      
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Please sign in to generate 3D models');
+          router.push('/');
+        } else {
+          setError(data.error || 'Failed to generate 3D model');
+        }
+        return;
+      }
+      
+      if (data.modelUrl) {
+        setModelUrl(data.modelUrl);
+      }
+    } catch (error) {
+      setError('Failed to generate 3D model. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <Suspense fallback={
       <div className={styles.container}>

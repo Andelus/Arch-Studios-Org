@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import styles from './Image.module.css';
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
+import styles from "./Image.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 const ARCHITECTURAL_STYLES = [
@@ -35,6 +37,8 @@ type ArchitecturalStyle = typeof ARCHITECTURAL_STYLES[number];
 type Material = typeof MATERIALS[number];
 
 export default function ImageGeneration() {
+  const router = useRouter();
+  const { isSignedIn } = useAuth();
   const [prompt, setPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
@@ -43,6 +47,14 @@ export default function ImageGeneration() {
   const [selectedMaterial, setSelectedMaterial] = useState<Material | ''>('');
   const [showStyleDropdown, setShowStyleDropdown] = useState<boolean>(false);
   const [showMaterialDropdown, setShowMaterialDropdown] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!isSignedIn) {
+      router.push('/');
+    }
+  }, [isSignedIn, router]);
 
   const handleStyleSelect = (style: ArchitecturalStyle) => {
     setSelectedStyle(style);
@@ -55,9 +67,18 @@ export default function ImageGeneration() {
   };
 
   const generateImages = async () => {
-    if (!prompt.trim() && (!selectedStyle || !selectedMaterial)) return;
+    if (!isSignedIn) {
+      setError('Please sign in to generate images');
+      return;
+    }
+
+    if (!prompt.trim() && (!selectedStyle || !selectedMaterial)) {
+      setError('Please select both style and material');
+      return;
+    }
     
     setIsGenerating(true);
+    setError(null);
     
     try {
       const response = await fetch('/api/generate-image', {
@@ -76,12 +97,22 @@ export default function ImageGeneration() {
       
       const data = await response.json();
       
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Please sign in to generate images');
+          router.push('/');
+        } else {
+          setError(data.error || 'Failed to generate images');
+        }
+        return;
+      }
+      
       if (data.images && data.images.length > 0) {
         setGeneratedImages(data.images);
         setCurrentImageIndex(0);
       }
     } catch (error) {
-      console.error('Error generating images:', error);
+      setError('Failed to generate images. Please try again.');
     } finally {
       setIsGenerating(false);
     }
