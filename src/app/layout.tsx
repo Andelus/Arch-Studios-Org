@@ -12,6 +12,12 @@ export const metadata: Metadata = {
     shortcut: '/new-favicon.jpg',
     apple: '/new-favicon.jpg',
   },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
@@ -23,10 +29,12 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body
-          className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
+          className={`${GeistSans.variable} ${GeistMono.variable} antialiased min-h-screen flex flex-col`}
         >
           <Navigation />
-          {children}
+          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            {children}
+          </main>
         </body>
       </html>
     </ClerkProvider>

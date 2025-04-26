@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import Link from "next/link";
 import styles from "./Dashboard.module.css";
@@ -8,7 +8,23 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 
 export default function DashboardPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
+  // Close dropdown when clicking outside
+  const handleClickOutside = (event: MouseEvent) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      setIsDropdownOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !canvasRef.current) return;
     
@@ -127,9 +143,14 @@ export default function DashboardPage() {
       <div className={styles.main}>
         <div className={styles.dashboard}>
           <h2>Arch Tools</h2>
-          <div className={styles.dropdown}>
-            <button className={styles.dropbtn}>Select Tool</button>
-            <div className={styles.dropdownContent}>
+          <div className={styles.dropdown} ref={dropdownRef}>
+            <button 
+              className={`${styles.dropbtn} ${isDropdownOpen ? styles.active : ''}`}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              Select Tool
+            </button>
+            <div className={`${styles.dropdownContent} ${isDropdownOpen ? styles.show : ''}`}>
               <Link href="/image">Image Generation</Link>
               <Link href="/coming-soon">Render Images</Link>
               <Link href="/3d">3D Modeling</Link>
