@@ -7,6 +7,11 @@ import { ClerkProvider } from '@clerk/nextjs';
 export const metadata: Metadata = {
   title: "Chateaux AI",
   description: "Create at the speed of imagination.",
+  icons: {
+    icon: '/new-favicon.jpg',
+    shortcut: '/new-favicon.jpg',
+    apple: '/new-favicon.jpg',
+  },
 };
 
 export default function RootLayout({

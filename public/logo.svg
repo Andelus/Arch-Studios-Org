@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black fill inside the hexagon -->
+  <polygon points="16,2 4,9 4,23 16,30 28,23 28,9" fill="black"/>
+  <!-- White hexagon outline and lines -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M16 2L4 9V23L16 30L28 23V9L16 2ZM16 6.5L10 10V19L16 22.5L22 19V10L16 6.5Z" fill="white"/>
+  <path d="M16 6.5L10 10V19L16 22.5L22 19V10L16 6.5Z" fill="white"/>
+</svg> 
