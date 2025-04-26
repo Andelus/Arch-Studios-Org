@@ -97,6 +97,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
 }
 
 .tabs {
@@ -208,6 +209,7 @@
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+  overflow: hidden;
 }
 
 .canvas3d {
@@ -215,21 +217,78 @@
   height: 100%;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 0.5rem;
+  min-height: 300px;
 }
 
 .modelControls {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
 }
 
 .downloadBtn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.5rem;
   background: rgba(0, 0, 0, 0.8);
   border: none;
   border-radius: 0.5rem;
   color: #ffffff;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .header {
+    padding: 15px 20px;
+  }
+
+  .logoText {
+    font-size: 20px;
+  }
+
+  .mainContent {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 4rem);
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    max-height: 50vh;
+  }
+
+  .canvasArea {
+    padding: 1rem;
+    min-height: 50vh;
+  }
+
+  .canvas3d {
+    min-height: 300px;
+  }
+
+  .modelControls {
+    position: relative;
+    margin-top: 1rem;
+  }
+
+  .downloadBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .promptInput {
+    height: 80px;
+  }
+
+  .dropArea {
+    min-height: 200px;
+  }
 } 
