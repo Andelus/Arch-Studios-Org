@@ -1,0 +1,240 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.mainContainer {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  padding: 30px 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: white;
+}
+
+.logoText {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 80px 0;
+  gap: 40px;
+}
+
+.textContent {
+  flex: 1;
+}
+
+.mainHeading {
+  font-size: 56px;
+  font-weight: bold;
+  line-height: 1.1;
+  margin-bottom: 20px;
+  color: white;
+}
+
+.loginBtn {
+  display: inline-block;
+  background-color: #2E86FF;
+  color: white;
+  text-decoration: none;
+  padding: 16px 30px;
+  border-radius: 100px;
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 40px;
+  transition: background-color 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.loginBtn:hover {
+  background-color: #1A75FF;
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  gap: 30px;
+  position: relative;
+  z-index: 2;
+}
+
+.footer a {
+  color: white;
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.footer a:hover {
+  opacity: 1;
+}
+
+/* Enhanced 3D Grid Background with Larger Movement */
+.gridContainer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  perspective: 1000px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.gridPlane {
+  position: absolute;
+  width: 500%;
+  height: 500%;
+  top: -200%;
+  left: -200%;
+  background-image: 
+      linear-gradient(rgba(50, 50, 50, 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(50, 50, 50, 0.3) 1px, transparent 1px);
+  background-size: 60px 60px;
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  transform: rotateX(60deg) rotateZ(0deg);
+  animation: gridMove 15s linear infinite;
+}
+
+@keyframes gridMove {
+  0% {
+      transform: rotateX(60deg) rotateZ(0deg) translateY(0);
+  }
+  100% {
+      transform: rotateX(60deg) rotateZ(0deg) translateY(300px);
+  }
+}
+
+/* Vignette effect */
+.vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(10,10,10,0) 0%, rgba(10,10,10,0.8) 80%, rgba(10,10,10,1) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Modal styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.modalContent {
+  position: relative;
+  background: #111111;
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.closeButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px 12px;
+  line-height: 1;
+  border-radius: 8px;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+  z-index: 1001;
+}
+
+.closeButton:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .content {
+      flex-direction: column;
+      margin: 40px 0;
+  }
+  
+  .mainHeading {
+      font-size: 40px;
+  }
+}
+
+.authButtons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.signInBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signInBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.signUpBtn {
+  background: white;
+  color: black;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.signUpBtn:hover {
+  background: rgba(255, 255, 255, 0.9);
+} 
