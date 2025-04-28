@@ -27,12 +27,12 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" className="w-full">
         <body
-          className={`${GeistSans.variable} ${GeistMono.variable} antialiased min-h-screen flex flex-col`}
+          className={`${GeistSans.variable} ${GeistMono.variable} antialiased min-h-screen w-full flex flex-col`}
         >
           <Navigation />
-          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <main className="flex-1 w-full mx-auto px-0">
             {children}
           </main>
         </body>
