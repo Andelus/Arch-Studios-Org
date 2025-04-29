@@ -97,47 +97,56 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
 
     const fetchUserProfile = async () => {
       console.log('Starting fetchUserProfile, userId:', userId);
-      
+    
       if (!userId) {
         console.log('No userId found');
         setIsLoading(false);
         return;
       }
-
+    
       try {
         console.log('Getting JWT token from Clerk');
         const token = await getToken({ template: 'supabase' });
         console.log('Token received:', token ? 'Yes' : 'No');
-        
+    
         if (!token) {
           console.error('Failed to get token from Clerk');
           throw new Error('Failed to get authentication token');
         }
-
+    
         console.log('Setting Supabase session with token');
         const { error: authError } = await supabase.auth.setSession({
           access_token: token,
           refresh_token: '',
         });
-
+    
         if (authError) {
-          console.error('Supabase auth error:', authError);
+          console.error('Supabase auth error:', {
+            message: authError.message,
+            // hint: authError.hint, // Removed as 'hint' does not exist on 'AuthError'
+            code: authError.code,
+          });
           throw authError;
         }
-
+    
         console.log('Fetching profile for userId:', userId);
         const { data, error: profileError } = await supabase
           .from('profiles')
           .select('credits, subscription_plan')
           .eq('id', userId.toString())
           .single();
-
+    
         if (profileError) {
-          console.error('Profile fetch error:', profileError);
+          console.error('Profile fetch error:', {
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint,
+            code: profileError.code,
+          });
           setError('Failed to load profile data');
           return;
         }
-
+    
         console.log('Profile data received:', data);
         if (data) {
           setCredits(data.credits);
