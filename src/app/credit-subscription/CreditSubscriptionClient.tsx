@@ -5,15 +5,8 @@ import styles from './CreditSubscription.module.css';
 import { Inter } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { createClient } from '@supabase/supabase-js';
 
 const inter = Inter({ subsets: ['latin'] });
-
-// Initialize Supabase client with anon key
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface FeatureItem {
   highlight?: string;
@@ -78,87 +71,42 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   const [credits, setCredits] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { userId, getToken, isLoaded, isSignedIn } = useAuth();
+  const { userId, isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('Auth state:', { isLoaded, isSignedIn, userId });
-    
     if (!isLoaded) {
-      console.log('Auth is still loading');
       return;
     }
 
     if (!isSignedIn) {
-      console.log('User is not signed in, redirecting to home');
       router.push('/');
       return;
     }
 
     const fetchUserProfile = async () => {
-      console.log('Starting fetchUserProfile, userId:', userId);
-  
       if (!userId) {
-        console.log('No userId found');
         setIsLoading(false);
         return;
       }
-  
+
       try {
-        console.log('Getting JWT token from Clerk');
-        const token = await getToken({ template: 'supabase' });
-        console.log('Token received:', token ? 'Yes' : 'No');
-  
-        if (!token) {
-          console.error('Failed to get token from Clerk');
-          throw new Error('Failed to get authentication token');
-        }
-  
-        console.log('Setting Supabase session with token');
-        const { error: authError } = await supabase.auth.setSession({
-          access_token: token,
-          refresh_token: '',
-        });
-  
-        if (authError) {
-          console.error('Supabase auth error:', {
-            message: authError.message,
-            code: authError.code,
-          });
-          throw authError;
-        }
-  
-        console.log('Fetching profile for userId:', userId);
-        const { data, error: profileError } = await supabase
-          .from('profiles')
-          .select(`
-            credits_balance,
-            subscription_status,
-            subscription_plans (
-              name
-            )
-          `)
-          .eq('id', userId)
-          .single();
-
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
-          setError('Failed to load profile data');
-          return;
+        const response = await fetch('/api/profile');
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
         }
 
-        console.log('Profile data received:', data);
+        const data = await response.json();
         if (data) {
           setCredits(data.credits_balance || 0);
-          const activePlan = data.subscription_plans && Array.isArray(data.subscription_plans) && data.subscription_plans[0];
           setCurrentPlan(
-            data.subscription_status === 'ACTIVE' && activePlan
-              ? activePlan.name
+            data.subscription_status === 'ACTIVE' && data.subscription_plans
+              ? data.subscription_plans.name
               : null
           );
         }
       } catch (error) {
-        console.error('Error in fetchUserProfile:', error);
+        console.error('Error fetching profile:', error);
         setError('An error occurred while loading your profile');
       } finally {
         setIsLoading(false);
@@ -166,7 +114,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
     };
 
     fetchUserProfile();
-  }, [userId, getToken]);
+  }, [userId, isLoaded, isSignedIn, router]);
 
   const selectPlan = async (planName: string) => {
     const selectedPlan = initialPlans.find(plan => plan.name === planName);
