@@ -83,30 +83,36 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
 
   useEffect(() => {
     const fetchUserProfile = async () => {
+      console.log('Starting fetchUserProfile, userId:', userId);
+      
       if (!userId) {
+        console.log('No userId found');
         setIsLoading(false);
         return;
       }
 
       try {
-        // Get the JWT token from Clerk
+        console.log('Getting JWT token from Clerk');
         const token = await getToken({ template: 'supabase' });
+        console.log('Token received:', token ? 'Yes' : 'No');
         
         if (!token) {
+          console.error('Failed to get token from Clerk');
           throw new Error('Failed to get authentication token');
         }
 
-        // Set the session with the JWT token
+        console.log('Setting Supabase session with token');
         const { error: authError } = await supabase.auth.setSession({
           access_token: token,
           refresh_token: '',
         });
 
         if (authError) {
+          console.error('Supabase auth error:', authError);
           throw authError;
         }
 
-        // Now fetch the profile
+        console.log('Fetching profile for userId:', userId);
         const { data, error: profileError } = await supabase
           .from('profiles')
           .select('credits, subscription_plan')
@@ -114,11 +120,12 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           .single();
 
         if (profileError) {
-          console.error('Error fetching profile:', profileError);
+          console.error('Profile fetch error:', profileError);
           setError('Failed to load profile data');
           return;
         }
 
+        console.log('Profile data received:', data);
         if (data) {
           setCredits(data.credits);
           setCurrentPlan(data.subscription_plan);
