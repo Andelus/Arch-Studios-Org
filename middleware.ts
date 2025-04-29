@@ -11,6 +11,16 @@ const isPublicRoute = createRouteMatcher([
   '/contact',
   '/sign-in',
   '/sign-up',
+  // Add these static paths
+  '/_next/static/(.*)',
+  '/favicon.ico',
+  '/new-favicon.jpg',
+  '/logo.svg',
+  '/next.svg',
+  '/vercel.svg',
+  '/file.svg',
+  '/globe.svg',
+  '/window.svg'
 ]);
 
 export default clerkMiddleware((auth, req) => {
@@ -22,9 +32,9 @@ export default clerkMiddleware((auth, req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files
-    '/((?!_next|.*\\..*).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    // Match all paths except static files and api routes
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    // Match all api routes except webhooks
+    "/api/((?!webhooks).*)"
   ],
-}; 
+};
