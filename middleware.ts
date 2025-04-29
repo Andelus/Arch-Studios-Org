@@ -32,9 +32,7 @@ export default clerkMiddleware((auth, req) => {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and api routes
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
-    // Match all api routes except webhooks
-    "/api/((?!webhooks).*)"
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/api/:path*"
   ],
 };
