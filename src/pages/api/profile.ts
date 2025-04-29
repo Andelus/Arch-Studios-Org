@@ -2,9 +2,15 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { getAuth } from '@clerk/nextjs/server';
 
+// Initialize Supabase client with service role key
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false
+    }
+  }
 );
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,6 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    // Using service role to bypass RLS (since we're verifying the user through Clerk)
     const { data, error } = await supabase
       .from('profiles')
       .select(`
