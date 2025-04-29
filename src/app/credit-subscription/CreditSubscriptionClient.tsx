@@ -78,10 +78,23 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   const [credits, setCredits] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { userId, getToken } = useAuth();
+  const { userId, getToken, isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    console.log('Auth state:', { isLoaded, isSignedIn, userId });
+    
+    if (!isLoaded) {
+      console.log('Auth is still loading');
+      return;
+    }
+
+    if (!isSignedIn) {
+      console.log('User is not signed in, redirecting to home');
+      router.push('/');
+      return;
+    }
+
     const fetchUserProfile = async () => {
       console.log('Starting fetchUserProfile, userId:', userId);
       

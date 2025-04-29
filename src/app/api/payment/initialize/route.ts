@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { planId, autoBuy } = await req.json();
-    
+
     // Fetch plan details from database
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
         },
         meta: {
           planId,
-          userId,
-          autoBuy,
+      userId,
+      autoBuy,
         },
       }),
     });
