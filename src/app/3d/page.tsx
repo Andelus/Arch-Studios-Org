@@ -28,7 +28,7 @@ interface GLTFResult {
 
 function ThreeDModelingContent() {
   const searchParams = useSearchParams();
-  const imageUrl = searchParams.get('imageUrl');
+  const imageUrl = searchParams?.get('imageUrl') ?? null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [prompt, setPrompt] = useState<string>('');
