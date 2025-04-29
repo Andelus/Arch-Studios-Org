@@ -1,0 +1,69 @@
+import axios from 'axios';
+
+const FLUTTERWAVE_PUBLIC_KEY = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
+const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
+const FLUTTERWAVE_ENCRYPTION_KEY = process.env.FLUTTERWAVE_ENCRYPTION_KEY;
+
+interface PaymentData {
+  amount: number;
+  email: string;
+  plan: string;
+  userId: string;
+  autoBuy: boolean;
+}
+
+export const initializePayment = async (data: PaymentData) => {
+  try {
+    const response = await axios.post(
+      'https://api.flutterwave.com/v3/payments',
+      {
+        tx_ref: `chateaux-${Date.now()}`,
+        amount: data.amount,
+        currency: 'USD',
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription?success=true`,
+        customer: {
+          email: data.email,
+        },
+        customizations: {
+          title: 'Chateaux AI',
+          description: `Purchase ${data.plan} plan`,
+          logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`,
+        },
+        meta: {
+          plan: data.plan,
+          userId: data.userId,
+          autoBuy: data.autoBuy,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error initializing payment:', error);
+    throw error;
+  }
+};
+
+export const verifyPayment = async (transactionId: string) => {
+  try {
+    const response = await axios.get(
+      `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
+      {
+        headers: {
+          Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    throw error;
+  }
+}; 
