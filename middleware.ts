@@ -11,8 +11,10 @@ const isPublicRoute = createRouteMatcher([
   '/contact',
   '/sign-in',
   '/sign-up',
-  // Add these static paths
+  '/coming-soon',
+  // Static paths
   '/_next/static/(.*)',
+  '/_next/image/(.*)',
   '/favicon.ico',
   '/new-favicon.jpg',
   '/logo.svg',
@@ -32,7 +34,16 @@ export default clerkMiddleware((auth, req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-    "/api/:path*"
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     * - webhooks
+     * Note: This is a catch-all matcher, so it needs to be last
+     */
+    "/((?!_next/static|_next/image|favicon\\.ico|api/webhooks).*)",
+    "/api/((?!webhooks).)*"
   ],
 };
