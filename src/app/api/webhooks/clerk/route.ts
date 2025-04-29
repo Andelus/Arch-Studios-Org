@@ -1,19 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+// Explicitly set to Node.js runtime
+export const runtime = 'nodejs';
+
+// Verify environment variables
+console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
+console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
 export async function POST(req: Request) {
   console.log('Webhook received');
   
   try {
-    // Verify the request method
-    if (req.method !== 'POST') {
-      console.log('Invalid method:', req.method);
-      return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+    // Verify environment variables are available
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing required environment variables');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
     }
 
     const supabaseClient = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
     const body = await req.json();
