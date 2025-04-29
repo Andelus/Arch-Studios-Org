@@ -2,17 +2,31 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
+  console.log('Webhook received');
+  
   try {
+    // Verify the request method
+    if (req.method !== 'POST') {
+      console.log('Invalid method:', req.method);
+      return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+    }
+
     const supabaseClient = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { type, data } = await req.json();
+    const body = await req.json();
+    console.log('Webhook body:', body);
+
+    const { type, data } = body;
 
     if (type === 'user.created') {
+      console.log('Processing user.created event');
       const { id, email_addresses } = data;
       const email = email_addresses[0]?.email_address;
+
+      console.log('Creating profile for user:', { id, email });
 
       const { error } = await supabaseClient
         .from('profiles')
@@ -31,9 +45,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
+      console.log('Profile created successfully');
       return NextResponse.json({ message: 'Profile created successfully' });
     }
 
+    console.log('Event type not processed:', type);
     return NextResponse.json({ message: 'Event received but not processed' });
   } catch (error) {
     console.error('Webhook Handler Error:', error);
@@ -42,5 +58,6 @@ export async function POST(req: Request) {
 }
 
 export async function OPTIONS() {
+  console.log('OPTIONS request received');
   return NextResponse.json({ message: 'ok' });
 } 
