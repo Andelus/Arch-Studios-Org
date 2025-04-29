@@ -134,30 +134,28 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           .select(`
             credits_balance,
             subscription_status,
-            current_plan_id,
             subscription_plans (
-              name,
-              total_credits
+              name
             )
           `)
           .eq('id', userId)
           .single();
-  
+
         if (profileError) {
-          console.error('Profile fetch error:', {
-            message: profileError.message,
-            details: profileError.details,
-            hint: profileError.hint,
-            code: profileError.code,
-          });
+          console.error('Profile fetch error:', profileError);
           setError('Failed to load profile data');
           return;
         }
-  
+
         console.log('Profile data received:', data);
         if (data) {
-          setCredits(data.credits_balance);
-          setCurrentPlan(data.subscription_status);
+          setCredits(data.credits_balance || 0);
+          const activePlan = data.subscription_plans && Array.isArray(data.subscription_plans) && data.subscription_plans[0];
+          setCurrentPlan(
+            data.subscription_status === 'ACTIVE' && activePlan
+              ? activePlan.name
+              : null
+          );
         }
       } catch (error) {
         console.error('Error in fetchUserProfile:', error);
