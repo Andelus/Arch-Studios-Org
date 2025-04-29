@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -7,20 +6,43 @@ export async function POST(req: Request) {
   console.log('Webhook received');
   
   try {
-    // TEMPORARY: Hard-coded values for testing only
-    // REMOVE THIS IN PRODUCTION!
-    const supabaseUrl = 'https://qexhjdhtypjmfdrmmsql.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFleGhqZGh0eXBqbWZkcm1tc3FsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTg4MDkzNCwiZXhwIjoyMDYxNDU2OTM0fQ._lK5FBrwDQvRciTG45W8TRdoYuB9wqoFjItL1FjaC5c';
-    
-    console.log('Using hard-coded credentials for testing');
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
-    
-    // Rest of your code...
-    // ...
+    const payload = await req.json();
+    console.log('Webhook payload:', payload);
 
-    return NextResponse.json({ message: 'Test successful' });
+    // Process the webhook payload
+    const { type, data } = payload;
+    console.log('Webhook type:', type);
+
+    if (type === 'user.created') {
+      console.log('Processing user.created event');
+      const { id, email_addresses } = data;
+      const email = email_addresses[0]?.email_address;
+
+      console.log('User created:', { id, email });
+      
+      // Here you can add your own user creation logic
+      // For example, store in your own database or send welcome email
+      
+      return NextResponse.json({ 
+        message: 'User processed successfully',
+        userId: id,
+        email: email
+      });
+    }
+
+    return NextResponse.json({ 
+      message: 'Event received but not processed',
+      type: type
+    });
   } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    console.error('Webhook Handler Error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: (error as Error).message 
+    }, { status: 500 });
   }
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({ message: 'ok' });
 }
