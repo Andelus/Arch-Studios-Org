@@ -97,45 +97,52 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
 
     const fetchUserProfile = async () => {
       console.log('Starting fetchUserProfile, userId:', userId);
-    
+  
       if (!userId) {
         console.log('No userId found');
         setIsLoading(false);
         return;
       }
-    
+  
       try {
         console.log('Getting JWT token from Clerk');
         const token = await getToken({ template: 'supabase' });
         console.log('Token received:', token ? 'Yes' : 'No');
-    
+  
         if (!token) {
           console.error('Failed to get token from Clerk');
           throw new Error('Failed to get authentication token');
         }
-    
+  
         console.log('Setting Supabase session with token');
         const { error: authError } = await supabase.auth.setSession({
           access_token: token,
           refresh_token: '',
         });
-    
+  
         if (authError) {
           console.error('Supabase auth error:', {
             message: authError.message,
-            // hint: authError.hint, // Removed as 'hint' does not exist on 'AuthError'
             code: authError.code,
           });
           throw authError;
         }
-    
+  
         console.log('Fetching profile for userId:', userId);
         const { data, error: profileError } = await supabase
           .from('profiles')
-          .select('credits, subscription_plan')
-          .eq('id', userId.toString())
+          .select(`
+            credits_balance,
+            subscription_status,
+            current_plan_id,
+            subscription_plans (
+              name,
+              total_credits
+            )
+          `)
+          .eq('id', userId)
           .single();
-    
+  
         if (profileError) {
           console.error('Profile fetch error:', {
             message: profileError.message,
@@ -146,11 +153,11 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           setError('Failed to load profile data');
           return;
         }
-    
+  
         console.log('Profile data received:', data);
         if (data) {
-          setCredits(data.credits);
-          setCurrentPlan(data.subscription_plan);
+          setCredits(data.credits_balance);
+          setCurrentPlan(data.subscription_status);
         }
       } catch (error) {
         console.error('Error in fetchUserProfile:', error);
@@ -163,9 +170,15 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
     fetchUserProfile();
   }, [userId, getToken]);
 
-  const selectPlan = async (planName: string, planCredits: number) => {
+  const selectPlan = async (planName: string) => {
+    const selectedPlan = initialPlans.find(plan => plan.name === planName);
+    if (!selectedPlan) {
+      setError('Selected plan not found');
+      return;
+    }
+
     setCurrentPlan(planName);
-    setCredits(planCredits);
+    setCredits(selectedPlan.total_credits);
 
     try {
       const response = await fetch('/api/payment/initialize', {
@@ -174,7 +187,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          planId: planName === 'STANDARD' ? 'standard-plan-id' : 'pro-plan-id',
+          planId: selectedPlan.id,
           autoBuy: false,
         }),
       });
@@ -267,7 +280,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               title="STANDARD"
               titleColor="#ffffff"
               price="$5"
-              onSelect={() => selectPlan('STANDARD', 2000)}
+              onSelect={() => selectPlan('STANDARD')}
               features={[
                 { highlight: '250', text: 'free trial credits' },
                 { highlight: '2,000', text: 'monthly credits' },
@@ -282,7 +295,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               title="PRO"
               titleColor="#ffc107"
               price="$15"
-              onSelect={() => selectPlan('PRO', 5000)}
+              onSelect={() => selectPlan('PRO')}
               features={[
                 { highlight: '250', text: 'free trial credits' },
                 { highlight: '5,000', text: 'monthly credits' },
@@ -352,4 +365,4 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
       </div>
     </div>
   );
-} 
+}

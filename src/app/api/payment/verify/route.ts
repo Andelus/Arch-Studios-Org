@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
 
     // Extract relevant data from the verification response
     const { amount, meta } = verificationResponse.data;
-    const { plan, autoBuy } = meta;
+    const { planId, autoBuy } = meta;
 
     // Get plan details from database
     const { data: planData, error: planError } = await supabase
       .from('subscription_plans')
       .select('*')
-      .eq('name', plan)
+      .eq('id', planId)
       .single();
 
     if (planError || !planData) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       p_user_id: userId,
       p_transaction_id: transactionId,
       p_amount: amount,
-      p_plan_id: planData.id,
+      p_plan_id: planId,
       p_auto_buy: autoBuy,
       p_credits: planData.total_credits
     });
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       data: {
         amount,
         credits: planData.total_credits,
-        plan,
+        plan: planData.name,
         autoBuy,
         userId
       }
@@ -96,4 +96,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

@@ -16,7 +16,15 @@ const supabase = createClient(
 export async function getSubscriptionPlans() {
   const { data, error } = await supabase
     .from('subscription_plans')
-    .select('*')
+    .select(`
+      id,
+      name,
+      total_credits,
+      price,
+      image_credit_cost,
+      model_credit_cost,
+      features
+    `)
     .order('price');
 
   if (error) {
@@ -25,4 +33,4 @@ export async function getSubscriptionPlans() {
   }
 
   return data;
-} 
+}

@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         currency: 'USD',
         redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/verify`,
         customer: {
-          email: userId, // You might want to fetch the user's email from Clerk
+          email: userId,
         },
         customizations: {
           title: 'Chateaux AI Subscription',
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
         },
         meta: {
           planId,
-      userId,
-      autoBuy,
+          userId,
+          autoBuy,
         },
       }),
     });
@@ -74,4 +74,4 @@ export async function POST(req: NextRequest) {
     console.error('Payment initialization error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}
