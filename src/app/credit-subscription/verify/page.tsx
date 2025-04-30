@@ -9,8 +9,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-type Props = {
-  params: { [key: string]: string | string[] | undefined };
+interface Props {
+  params: Record<string, string>;
   searchParams: { [key: string]: string | string[] | undefined };
 }
 

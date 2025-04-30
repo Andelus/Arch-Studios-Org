@@ -312,7 +312,6 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               <div className={styles.sectionLabel}>Credits</div>
               <div className={styles.creditsDisplay}>
                 <svg
-                  className={styles.creditIcon}
                   width="24"
                   height="24"
                   viewBox="0 0 24 24"
@@ -320,7 +319,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
                 >
                   <path d="M10 2L3 14h9l-1 8 8-12h-9l1-8z" />
                 </svg>
-                {credits}
+                <span>{credits}</span>
               </div>
             </div>
           </div>
