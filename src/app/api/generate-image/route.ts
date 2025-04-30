@@ -139,7 +139,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: userId,
           amount: -creditCost,
-          transaction_type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
+          type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
           generation_type: 'IMAGE',
           description: 'Image generation',
           created_at: new Date().toISOString()

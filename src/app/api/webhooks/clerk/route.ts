@@ -90,7 +90,7 @@ export async function POST(req: Request) {
         .insert({
           user_id: id,
           amount: 250,
-          transaction_type: 'INITIAL_TRIAL_CREDIT',
+          type: 'INITIAL_TRIAL_CREDIT',
           description: 'Initial trial credits',
           created_at: new Date().toISOString()
         });
