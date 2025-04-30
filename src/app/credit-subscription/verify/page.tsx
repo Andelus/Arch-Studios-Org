@@ -8,9 +8,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+type SearchParams = { [key: string]: string | string[] | undefined };
+
 interface PageProps {
-  params: { [key: string]: undefined };
-  searchParams: { [key: string]: string | undefined };
+  params: { [key: string]: string };
+  searchParams: SearchParams;
 }
 
 export default async function VerifyPayment({
