@@ -32,7 +32,7 @@ interface SubscriptionPlan {
 
 interface UserProfile {
   credits_balance: number;
-  subscription_plan_id: string | null;
+  current_plan_id: string | null;
   subscription_plan?: SubscriptionPlan;
 }
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       .from('profiles')
       .select(`
         credits_balance,
-        subscription_plan_id,
+        current_plan_id,
         subscription_plan:subscription_plans (
           model_credit_cost
         )

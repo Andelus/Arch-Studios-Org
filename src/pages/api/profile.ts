@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         credits_balance,
         subscription_status,
         current_plan_id,
-        subscription_plans!current_plan_id (
+        subscription_plans (
           name,
           total_credits
         )
