@@ -226,7 +226,8 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
       setError('Selected plan not found. Please try again.');
       return;
     }
-
+    
+    // Set UI state immediately - don't wait for backend confirmation
     setCurrentPlan(planName);
     setCredits(selectedPlan.total_credits);
 

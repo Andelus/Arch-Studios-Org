@@ -159,18 +159,23 @@ export default function ImageGeneration() {
 
   const downloadImage = () => {
     if (generatedImages[currentImageIndex]) {
-      fetch(generatedImages[currentImageIndex])
-        .then(response => response.blob())
-        .then(blob => {
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `architectural_design_${Date.now()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        });
+      // Create a new anchor element
+      const link = document.createElement('a');
+      
+      // Set the href to the image URL directly
+      link.href = generatedImages[currentImageIndex];
+      
+      // Set download attribute with a filename
+      link.download = `architectural_design_${Date.now()}.png`;
+      
+      // Append to the document body
+      document.body.appendChild(link);
+      
+      // Trigger the download
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
     }
   };
 
