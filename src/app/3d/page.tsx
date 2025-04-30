@@ -36,6 +36,7 @@ function ThreeDModelingContent() {
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -43,14 +44,23 @@ function ThreeDModelingContent() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
 
+  // Handle incoming image URL
+  useEffect(() => {
+    if (imageUrl) {
+      setSourceImage(decodeURIComponent(imageUrl));
+    }
+  }, [imageUrl]);
+
   const handleFileSelect = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setSourceImage(e.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setSourceImage(e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -71,137 +81,16 @@ function ThreeDModelingContent() {
       handleFileSelect(file);
     }
   };
-  
-  useEffect(() => {
-    if (imageUrl) {
-      setSourceImage(imageUrl);
-    }
-  }, [imageUrl]);
-  
-  useEffect(() => {
-    if (canvasRef.current && !rendererRef.current) {
-      // Initialize Three.js scene
-      const scene = new THREE.Scene();
-      sceneRef.current = scene;
-      
-      // Set up background gradient
-      scene.background = new THREE.Color(0x1a1a2e);
-      
-      // Create camera
-      const camera = new THREE.PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-      );
-      camera.position.z = 5;
-      cameraRef.current = camera;
-      
-      // Set up renderer
-      const renderer = new THREE.WebGLRenderer({
-        canvas: canvasRef.current,
-        antialias: true
-      });
-      renderer.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
-      rendererRef.current = renderer;
-      
-      // Add lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-      scene.add(ambientLight);
-      
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-      directionalLight.position.set(5, 5, 5);
-      directionalLight.castShadow = true;
-      scene.add(directionalLight);
-      
-      // Add grid helper for reference
-      const gridHelper = new THREE.GridHelper(10, 10);
-      scene.add(gridHelper);
-      
-      // Add orbit controls
-      const controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controlsRef.current = controls;
-      
-      // Animation loop
-      const animate = () => {
-        requestAnimationFrame(animate);
-        
-        if (controlsRef.current) {
-          controlsRef.current.update();
-        }
-        
-        if (rendererRef.current && cameraRef.current && sceneRef.current) {
-          rendererRef.current.render(sceneRef.current, cameraRef.current);
-        }
-      };
-      
-      animate();
-      
-      // Handle window resize
-      const handleResize = () => {
-        if (cameraRef.current && rendererRef.current) {
-          cameraRef.current.aspect = window.innerWidth / window.innerHeight;
-          cameraRef.current.updateProjectionMatrix();
-          rendererRef.current.setSize(window.innerWidth * 0.7, window.innerHeight * 0.7);
-        }
-      };
-      
-      window.addEventListener('resize', handleResize);
-      
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        rendererRef.current?.dispose();
-      };
-    }
-  }, []);
-  
-  // Load 3D model when modelUrl is available
-  useEffect(() => {
-    if (modelUrl && sceneRef.current) {
-      setIsModelLoaded(false);
-      // Clear existing model if any
-      const existingModel = sceneRef.current.getObjectByName('generatedModel');
-      if (existingModel) {
-        sceneRef.current.remove(existingModel);
-      }
-      
-      const loader = new GLTFLoader();
-      
-      loader.load(
-        modelUrl,
-        (gltf: GLTFResult) => {
-          const model = gltf.scene;
-          model.name = 'generatedModel';
-          model.position.set(0, 0, 0);
-          model.scale.set(1, 1, 1);
-          
-          // Center model
-          const box = new THREE.Box3().setFromObject(model);
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.sub(center);
-          
-          sceneRef.current?.add(model);
-          setIsModelLoaded(true);
-        },
-        (xhr: ProgressEvent) => {
-          console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-        },
-        (error: unknown) => {
-          console.error('Error loading model:', error);
-          setIsModelLoaded(false);
-        }
-      );
-    }
-  }, [modelUrl]);
-  
+
   const generate3DModel = async () => {
-    if (!sourceImage && !prompt.trim()) return;
+    if (!sourceImage && !prompt.trim()) {
+      setError('Please provide either an image or a prompt');
+      return;
+    }
     
     setIsGenerating(true);
     setIsModelLoaded(false);
+    setError(null);
     
     try {
       const response = await fetch('/api/generate-3d', {
@@ -216,17 +105,42 @@ function ThreeDModelingContent() {
       });
       
       const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to generate 3D model');
+        return;
+      }
       
       if (data.modelUrl) {
         setModelUrl(data.modelUrl);
       }
     } catch (error) {
-      console.error('Error generating 3D model:', error);
+      setError('Failed to generate 3D model. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
-  
+
+  const downloadModel = async () => {
+    if (modelUrl) {
+      try {
+        const response = await fetch(modelUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `architectural_model_${Date.now()}.glb`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error downloading model:', error);
+        setError('Failed to download model. Please try again.');
+      }
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -300,16 +214,7 @@ function ThreeDModelingContent() {
             <div className={styles.modelControls}>
               <button 
                 className={styles.downloadBtn}
-                onClick={() => {
-                  if (modelUrl) {
-                    const link = document.createElement('a');
-                    link.href = modelUrl;
-                    link.download = 'architecture_model.glb';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }
-                }}
+                onClick={downloadModel}
               >
                 <i className="fa-solid fa-download"></i>
                 <span>Download 3D Model</span>
@@ -399,4 +304,4 @@ export default function ThreeDModeling() {
       <ThreeDModelingContent />
     </Suspense>
   );
-} 
+}

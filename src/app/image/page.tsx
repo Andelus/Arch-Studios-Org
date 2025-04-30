@@ -91,7 +91,7 @@ export default function ImageGeneration() {
           style: selectedStyle,
           material: selectedMaterial,
           size: '1024x1024',
-          n: 4,
+          n: 1,
         }),
       });
       
@@ -108,8 +108,19 @@ export default function ImageGeneration() {
       }
       
       if (data.images && data.images.length > 0) {
-        setGeneratedImages(data.images);
-        setCurrentImageIndex(0);
+        // Add new image while maintaining 3-tile limit
+        setGeneratedImages(prevImages => {
+          const newImages = [...prevImages];
+          if (newImages.length >= 3) {
+            // Remove the oldest image when limit is reached
+            newImages.shift();
+          }
+          // Add the new image
+          newImages.push(data.images[0]);
+          return newImages;
+        });
+        // Show the newly added image
+        setCurrentImageIndex(prev => Math.min(2, prev + 1));
       }
     } catch (error) {
       setError('Failed to generate images. Please try again.');
@@ -140,13 +151,29 @@ export default function ImageGeneration() {
 
   const downloadImage = () => {
     if (generatedImages[currentImageIndex]) {
-      const link = document.createElement('a');
-      link.href = generatedImages[currentImageIndex];
-      link.download = `generated_image_${currentImageIndex + 1}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      fetch(generatedImages[currentImageIndex])
+        .then(response => response.blob())
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `architectural_design_${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        });
     }
+  };
+
+  const handle3DGeneration = () => {
+    if (generatedImages[currentImageIndex]) {
+      router.push(`/3d?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`);
+    }
+  };
+
+  const handleEdit = () => {
+    router.push(`/image/edit?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`);
   };
 
   return (
@@ -255,16 +282,14 @@ export default function ImageGeneration() {
               <div className={styles.canvasButtons}>
                 <button 
                   className={`${styles.canvasBtn} ${styles.editBtn}`}
-                  onClick={() => window.location.href = '/coming-soon'}
+                  onClick={handleEdit}
                 >
                   <i className="fa-solid fa-pen"></i>
                   <span>Edit</span>
                 </button>
                 <button 
                   className={`${styles.canvasBtn} ${styles.make3dBtn}`}
-                  onClick={() => {
-                    window.location.href = `/3d?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`;
-                  }}
+                  onClick={handle3DGeneration}
                 >
                   <i className="fa-solid fa-cube"></i>
                   <span>Make 3D</span>
@@ -279,25 +304,8 @@ export default function ImageGeneration() {
               </div>
             )}
           </div>
-
-          {generatedImages.length > 0 && (
-            <div className={styles.pagination}>
-              <button className={styles.pageBtn} onClick={handleFirstImage}>
-                <i className="fa-solid fa-angle-double-left"></i>
-              </button>
-              <button className={styles.pageBtn} onClick={handlePrevImage}>
-                <i className="fa-solid fa-angle-left"></i>
-              </button>
-              <button className={styles.pageBtn} onClick={handleNextImage}>
-                <i className="fa-solid fa-angle-right"></i>
-              </button>
-              <button className={styles.pageBtn} onClick={handleLastImage}>
-                <i className="fa-solid fa-angle-double-right"></i>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
-} 
+}

@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
+import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 
 // Initialize Fal AI client
 fal.config({
   credentials: process.env.FAL_AI_API_KEY,
 });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface TrellisResponse {
   model_url: string;
@@ -12,6 +19,33 @@ interface TrellisResponse {
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check user's subscription and 3D generation count
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('subscription_status, model_generations_count')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      return NextResponse.json(
+        { error: 'Failed to fetch user profile' },
+        { status: 500 }
+      );
+    }
+
+    // If user has no subscription and has already used their free generation
+    if (!profile.subscription_status && profile.model_generations_count >= 1) {
+      return NextResponse.json(
+        { error: 'Free plan limit reached. Please subscribe to generate more 3D models.' },
+        { status: 403 }
+      );
+    }
+
     const { prompt, imageUrl } = await req.json();
 
     if (!imageUrl && !prompt) {
@@ -35,6 +69,18 @@ export async function POST(req: Request) {
 
     if (!response.model_url) {
       throw new Error('Failed to generate 3D model');
+    }
+
+    // Increment the user's 3D model generation count
+    if (!profile.subscription_status) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ model_generations_count: (profile.model_generations_count || 0) + 1 })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Failed to update generation count:', updateError);
+      }
     }
 
     return NextResponse.json({ modelUrl: response.model_url });
@@ -81,4 +127,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}
