@@ -170,6 +170,15 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
 
     try {
       const response = await fetch('/api/profile');
+      
+      if (response.status === 404) {
+        // This is expected for new users - they won't have a profile yet
+        setCurrentPlan(null);
+        setCredits(0);
+        setIsLoading(false);
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to fetch profile');
       }

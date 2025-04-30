@@ -40,8 +40,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        // Profile not found - this is expected for new users
+        return res.status(404).json({ error: 'Profile not found' });
+      }
       console.error('Profile fetch error:', error);
       return res.status(500).json({ error: 'Failed to fetch profile' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Profile not found' });
     }
 
     return res.status(200).json(data);
