@@ -3,14 +3,25 @@ import OpenAI from 'openai';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
-// Validate environment variables
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not set in environment variables');
-}
+// Initialize OpenAI client if API key is available
+const openaiApiKey = process.env.OPENAI_API_KEY;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI;
+if (openaiApiKey) {
+  openai = new OpenAI({
+    apiKey: openaiApiKey,
+  });
+} else {
+  console.warn('OPENAI_API_KEY is not set in environment variables');
+  // Create a mock client to prevent build errors
+  openai = {
+    images: {
+      generate: () => {
+        throw new Error('OPENAI_API_KEY is not set in environment variables');
+      }
+    }
+  } as unknown as OpenAI;
+}
 
 const generatePrompt = (style: string, material: string) => {
   return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio. The image should be suitable for a 3D rendering.`;

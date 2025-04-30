@@ -3,15 +3,18 @@ import { fal } from '@fal-ai/client';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
-// Validate environment variables
-if (!process.env.FAL_AI_API_KEY) {
-  throw new Error('FAL_AI_API_KEY is not set in environment variables');
-}
+// Initialize Fal AI client if API key is available
+const falApiKey = process.env.FAL_AI_API_KEY;
 
-// Initialize Fal AI client
-fal.config({
-  credentials: process.env.FAL_AI_API_KEY,
-});
+if (falApiKey) {
+  fal.config({
+    credentials: falApiKey,
+  });
+} else {
+  console.warn('FAL_AI_API_KEY is not set in environment variables');
+  // The API calls will fail at runtime with appropriate errors
+  // This prevents build-time errors
+}
 
 interface TrellisResponse {
   model_url: string;
