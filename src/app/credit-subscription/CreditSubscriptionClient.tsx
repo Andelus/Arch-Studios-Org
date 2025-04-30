@@ -212,9 +212,18 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   };
 
   const selectPlan = async (planName: string) => {
+    console.log('Available plans:', initialPlans);
+    console.log('Selecting plan:', planName);
+    
+    if (!initialPlans || initialPlans.length === 0) {
+      setError('No subscription plans available. Please try again later.');
+      return;
+    }
+
     const selectedPlan = initialPlans.find(plan => plan.name === planName);
     if (!selectedPlan) {
-      setError('Selected plan not found');
+      console.error('Plan not found:', planName, 'Available plans:', initialPlans);
+      setError('Selected plan not found. Please try again.');
       return;
     }
 

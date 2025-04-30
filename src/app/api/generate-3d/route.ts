@@ -84,17 +84,10 @@ export async function POST(req: Request) {
 
     // Check if user has enough credits
     if (profile.credits_balance < creditCost) {
-      if (profile.subscription_status === 'TRIAL') {
-        return NextResponse.json(
-          { error: 'You have used all your trial credits. Please subscribe to continue generating 3D models.' },
-          { status: 403 }
-        );
-      } else {
-        return NextResponse.json(
-          { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
-          { status: 403 }
-        );
-      }
+      return NextResponse.json(
+        { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
+        { status: 403 }
+      );
     }
 
     const { prompt, imageUrl } = await req.json();
