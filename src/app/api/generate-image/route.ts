@@ -80,15 +80,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if subscription plan exists
-    if (!profile.subscription_plan) {
-      return NextResponse.json(
-        { error: 'No subscription plans available. Please try again later.' },
-        { status: 400 }
-      );
-    }
-
-    // Default credit cost for trial users is 10 (same as STANDARD plan)
+    // For users without a subscription plan (trial or new users)
+    // Use default credit costs
     const creditCost = profile.subscription_plan?.image_credit_cost || 10;
 
     // Check if user has enough credits
