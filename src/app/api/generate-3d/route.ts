@@ -1,26 +1,17 @@
 import { NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
-import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
+import { supabase } from '@/lib/supabase';
 
 // Validate environment variables
 if (!process.env.FAL_AI_API_KEY) {
   throw new Error('FAL_AI_API_KEY is not set in environment variables');
 }
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Supabase configuration is missing in environment variables');
-}
-
 // Initialize Fal AI client
 fal.config({
   credentials: process.env.FAL_AI_API_KEY,
 });
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 interface TrellisResponse {
   model_url: string;
@@ -76,6 +67,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
+      );
+    }
+
+    // Check if subscription plan exists
+    if (!profile.subscription_plan) {
+      return NextResponse.json(
+        { error: 'No subscription plans available. Please try again later.' },
+        { status: 400 }
       );
     }
 

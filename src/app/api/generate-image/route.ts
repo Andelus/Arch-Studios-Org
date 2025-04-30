@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
+import { supabase } from '@/lib/supabase';
 
 // Validate environment variables
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is not set in environment variables');
 }
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Supabase configuration is missing in environment variables');
-}
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const generatePrompt = (style: string, material: string) => {
   return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio. The image should be suitable for a 3D rendering.`;
@@ -75,6 +66,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'Profile not found' },
         { status: 404 }
+      );
+    }
+
+    // Check if subscription plan exists
+    if (!profile.subscription_plan) {
+      return NextResponse.json(
+        { error: 'No subscription plans available. Please try again later.' },
+        { status: 400 }
       );
     }
 
