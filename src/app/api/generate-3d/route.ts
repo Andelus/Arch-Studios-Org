@@ -141,7 +141,8 @@ export async function POST(req: Request) {
         .insert({
           user_id: userId,
           amount: -creditCost,
-          type: profile.subscription_status === 'TRIAL' ? 'TRIAL_USAGE' : 'MODEL_GENERATION',
+          transaction_type: profile.subscription_status === 'TRIAL' ? 'TRIAL_MODEL_GENERATION' : 'MODEL_GENERATION',
+          generation_type: '3D_MODEL',
           description: '3D model generation',
           created_at: new Date().toISOString()
         });
