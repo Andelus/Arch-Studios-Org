@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         tx_ref: `plan-${planId}-${Date.now()}`,
         amount: plan.price,
         currency: 'USD',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/verify/callback`,
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
         customer: {
           email: profile.email,
         },
