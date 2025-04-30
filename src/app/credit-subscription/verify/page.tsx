@@ -9,16 +9,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-interface SearchParams {
-  [key: string]: string | string[] | undefined;
+type Props = {
+  params: object;
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
-interface PageProps {
-  params: { slug: string };
-  searchParams: SearchParams;
-}
-
-export default async function VerifyPayment({ searchParams }: PageProps) {
+export default async function VerifyPayment({
+  searchParams,
+}: Props) {
   const status = searchParams['status'];
   const transaction_id = searchParams['transaction_id'];
 
