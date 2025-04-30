@@ -3,17 +3,9 @@ import { getAuth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
-}
-
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY is required');
-}
-
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(req: NextRequest) {
@@ -24,6 +16,17 @@ export async function POST(req: NextRequest) {
     }
 
     const { planId, autoBuy } = await req.json();
+
+    // Fetch user profile to get email
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+    }
 
     // Fetch plan details from database
     const { data: plan, error: planError } = await supabase
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest) {
         currency: 'USD',
         redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/verify`,
         customer: {
-          email: userId,
+          email: profile.email,
         },
         customizations: {
           title: 'Chateaux AI Subscription',
