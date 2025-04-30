@@ -130,6 +130,10 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    fetchUserProfile();
+  }, [userId, isLoaded, isSignedIn]);
+
+  useEffect(() => {
     // Handle payment status from URL
     if (searchParams) {
       const success = searchParams.get('success');
