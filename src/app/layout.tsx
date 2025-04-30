@@ -3,6 +3,7 @@ import { GeistSans, GeistMono } from 'geist/font';
 import Navigation from "@/components/Navigation";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "Chateaux AI",
@@ -35,6 +36,7 @@ export default function RootLayout({
           <main className="flex-1 w-full mx-auto px-0">
             {children}
           </main>
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
