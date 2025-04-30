@@ -241,6 +241,60 @@
   white-space: nowrap;
 }
 
+.modelNavigation {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  z-index: 10;
+}
+
+.navBtn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navBtn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.navBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.modelCount {
+  color: #ffffff;
+  font-size: 0.9rem;
+  min-width: 4rem;
+  text-align: center;
+}
+
+.modelControls {
+  position: absolute;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 10;
+}
+
 /* Mobile-specific styles */
 @media (max-width: 768px) {
   .header {
@@ -291,4 +345,4 @@
   .dropArea {
     min-height: 200px;
   }
-} 
+}

@@ -3,13 +3,22 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
 
+// Validate environment variables
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY is not set in environment variables');
+}
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error('Supabase configuration is missing in environment variables');
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
 const generatePrompt = (style: string, material: string) => {
@@ -31,9 +40,17 @@ export async function POST(req: Request) {
       .single();
 
     if (profileError) {
+      console.error('Database error:', profileError);
       return NextResponse.json(
-        { error: 'Failed to fetch user profile' },
+        { error: 'Failed to fetch user profile', details: profileError.message },
         { status: 500 }
+      );
+    }
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 }
       );
     }
 
@@ -56,70 +73,78 @@ export async function POST(req: Request) {
 
     const finalPrompt = style && material ? generatePrompt(style, material) : prompt;
 
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: finalPrompt,
-      n: 1,
-      size: size as "1024x1024" | "1024x1792" | "1792x1024",
-      quality: "standard",
-      style: "natural",
-    });
+    try {
+      const response = await openai.images.generate({
+        model: "dall-e-3",
+        prompt: finalPrompt,
+        n: 1,
+        size: size as "1024x1024" | "1024x1792" | "1792x1024",
+        quality: "standard",
+        style: "natural",
+      });
 
-    if (!response.data?.[0]?.url) {
-      throw new Error('No image URL in response');
-    }
-
-    // Increment the user's image generation count
-    if (!profile.subscription_status) {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ image_generations_count: (profile.image_generations_count || 0) + 1 })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error('Failed to update generation count:', updateError);
+      if (!response.data?.[0]?.url) {
+        throw new Error('No image URL in response');
       }
-    }
 
-    return NextResponse.json({ images: [response.data[0].url] });
-  } catch (error: any) {
-    console.error('Error generating image:', error);
-    
-    // Check for specific error types
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Error response:', error.response.data);
+      // Increment the user's image generation count
+      if (!profile.subscription_status) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ image_generations_count: (profile.image_generations_count || 0) + 1 })
+          .eq('id', userId);
+
+        if (updateError) {
+          console.error('Failed to update generation count:', updateError);
+        }
+      }
+
+      return NextResponse.json({ images: [response.data[0].url] });
+    } catch (openaiError: any) {
+      console.error('OpenAI API Error:', openaiError);
+
+      // Check if it's an API key error
+      if (openaiError.message?.includes('api key') || openaiError.status === 401) {
+        return NextResponse.json(
+          {
+            error: 'API configuration error',
+            details: 'There was an issue with the image generation service configuration.',
+            type: 'AUTH_ERROR'
+          },
+          { status: 500 }
+        );
+      }
+
+      // Handle rate limits
+      if (openaiError.status === 429) {
+        return NextResponse.json(
+          {
+            error: 'Rate limit exceeded',
+            details: 'The image generation service is currently busy. Please try again in a few moments.',
+            type: 'RATE_LIMIT'
+          },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
-        { 
-          error: 'OpenAI API Error',
-          details: error.response.data.error?.message || 'Unknown API error',
+        {
+          error: 'Image generation failed',
+          details: openaiError.message || 'An unexpected error occurred',
           type: 'API_ERROR'
-        },
-        { status: error.response.status }
-      );
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received:', error.request);
-      return NextResponse.json(
-        { 
-          error: 'No response from OpenAI',
-          details: 'The request was made but no response was received',
-          type: 'NETWORK_ERROR'
-        },
-        { status: 503 }
-      );
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error setting up request:', error.message);
-      return NextResponse.json(
-        { 
-          error: 'Request setup error',
-          details: error.message,
-          type: 'REQUEST_ERROR'
         },
         { status: 500 }
       );
     }
+  } catch (error: any) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json(
+      {
+        error: 'Server error',
+        details: 'An unexpected error occurred',
+        type: 'SERVER_ERROR'
+      },
+      { status: 500 }
+    );
   }
 }

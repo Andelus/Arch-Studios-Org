@@ -33,7 +33,8 @@ function ThreeDModelingContent() {
   
   const [prompt, setPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [modelUrl, setModelUrl] = useState<string | null>(null);
+  const [generatedModels, setGeneratedModels] = useState<Array<{url: string; sourceImage?: string}>>([]);
+  const [currentModelIndex, setCurrentModelIndex] = useState<number>(0);
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,13 @@ function ThreeDModelingContent() {
       setSourceImage(decodeURIComponent(imageUrl));
     }
   }, [imageUrl]);
+
+  // Handle model loading when current model changes
+  useEffect(() => {
+    if (generatedModels[currentModelIndex]?.url) {
+      loadModel(generatedModels[currentModelIndex].url);
+    }
+  }, [currentModelIndex, generatedModels]);
 
   const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
@@ -82,6 +90,92 @@ function ThreeDModelingContent() {
     }
   };
 
+  const loadModel = async (modelUrl: string) => {
+    if (!canvasRef.current) return;
+
+    // Initialize Three.js scene
+    if (!sceneRef.current) {
+      sceneRef.current = new THREE.Scene();
+      sceneRef.current.background = new THREE.Color(0x111111);
+
+      // Add lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      sceneRef.current.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 5, 5);
+      sceneRef.current.add(directionalLight);
+
+      // Camera setup
+      const aspect = canvasRef.current.clientWidth / canvasRef.current.clientHeight;
+      cameraRef.current = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+      cameraRef.current.position.z = 5;
+
+      // Renderer setup
+      rendererRef.current = new THREE.WebGLRenderer({
+        canvas: canvasRef.current,
+        antialias: true,
+      });
+      rendererRef.current.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
+
+      // Controls setup
+      if (cameraRef.current) {
+        controlsRef.current = new OrbitControls(cameraRef.current, canvasRef.current);
+        controlsRef.current.enableDamping = true;
+      }
+    }
+
+    // Clear existing model
+    if (sceneRef.current) {
+      const existingModel = sceneRef.current.getObjectByName('currentModel');
+      if (existingModel) {
+        sceneRef.current.remove(existingModel);
+      }
+    }
+
+    setIsModelLoaded(false);
+
+    // Load new model
+    const loader = new GLTFLoader();
+    loader.load(
+      modelUrl,
+      (gltf) => {
+        if (!sceneRef.current) return;
+        
+        const model = gltf.scene;
+        model.name = 'currentModel';
+        model.position.set(0, 0, 0);
+        model.scale.set(1, 1, 1);
+        
+        // Center model
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+        
+        sceneRef.current.add(model);
+        setIsModelLoaded(true);
+
+        // Start animation loop
+        const animate = () => {
+          if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+          
+          requestAnimationFrame(animate);
+          if (controlsRef.current) {
+            controlsRef.current.update();
+          }
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        };
+        animate();
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading model:', error);
+        setIsModelLoaded(false);
+        setError('Failed to load 3D model');
+      }
+    );
+  };
+
   const generate3DModel = async () => {
     if (!sourceImage && !prompt.trim()) {
       setError('Please provide either an image or a prompt');
@@ -112,7 +206,22 @@ function ThreeDModelingContent() {
       }
       
       if (data.modelUrl) {
-        setModelUrl(data.modelUrl);
+        // Add new model while maintaining 3-tile limit
+        setGeneratedModels(prevModels => {
+          const newModels = [...prevModels];
+          if (newModels.length >= 3) {
+            // Remove the oldest model
+            newModels.shift();
+          }
+          // Add the new model
+          newModels.push({
+            url: data.modelUrl,
+            sourceImage: sourceImage || undefined
+          });
+          return newModels;
+        });
+        // Show the newly added model
+        setCurrentModelIndex(prev => Math.min(2, prev + 1));
       }
     } catch (error) {
       setError('Failed to generate 3D model. Please try again.');
@@ -122,9 +231,10 @@ function ThreeDModelingContent() {
   };
 
   const downloadModel = async () => {
-    if (modelUrl) {
+    const currentModel = generatedModels[currentModelIndex];
+    if (currentModel?.url) {
       try {
-        const response = await fetch(modelUrl);
+        const response = await fetch(currentModel.url);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -138,6 +248,18 @@ function ThreeDModelingContent() {
         console.error('Error downloading model:', error);
         setError('Failed to download model. Please try again.');
       }
+    }
+  };
+
+  const handleNextModel = () => {
+    if (currentModelIndex < generatedModels.length - 1) {
+      setCurrentModelIndex(currentModelIndex + 1);
+    }
+  };
+
+  const handlePrevModel = () => {
+    if (currentModelIndex > 0) {
+      setCurrentModelIndex(currentModelIndex - 1);
     }
   };
 
@@ -210,16 +332,40 @@ function ThreeDModelingContent() {
         <div className={styles.canvasArea}>
           <canvas ref={canvasRef} className={styles.canvas3d}></canvas>
           
-          {isModelLoaded && modelUrl && (
-            <div className={styles.modelControls}>
-              <button 
-                className={styles.downloadBtn}
-                onClick={downloadModel}
-              >
-                <i className="fa-solid fa-download"></i>
-                <span>Download 3D Model</span>
-              </button>
-            </div>
+          {isModelLoaded && generatedModels.length > 0 && (
+            <>
+              <div className={styles.modelControls}>
+                <button 
+                  className={styles.downloadBtn}
+                  onClick={downloadModel}
+                >
+                  <i className="fa-solid fa-download"></i>
+                  <span>Download 3D Model</span>
+                </button>
+              </div>
+              
+              {generatedModels.length > 1 && (
+                <div className={styles.modelNavigation}>
+                  <button
+                    className={styles.navBtn}
+                    onClick={handlePrevModel}
+                    disabled={currentModelIndex === 0}
+                  >
+                    <i className="fa-solid fa-chevron-left"></i>
+                  </button>
+                  <span className={styles.modelCount}>
+                    {currentModelIndex + 1} / {generatedModels.length}
+                  </span>
+                  <button
+                    className={styles.navBtn}
+                    onClick={handleNextModel}
+                    disabled={currentModelIndex === generatedModels.length - 1}
+                  >
+                    <i className="fa-solid fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
