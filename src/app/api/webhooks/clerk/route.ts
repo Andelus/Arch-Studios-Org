@@ -103,6 +103,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Profile created successfully' });
     }
 
+    // Return a 200 for any other event types
     return NextResponse.json({ message: 'Event received but not processed' });
   } catch (error) {
     console.error('Webhook Handler Error:', error);

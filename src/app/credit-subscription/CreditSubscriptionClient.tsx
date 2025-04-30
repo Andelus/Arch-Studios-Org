@@ -400,7 +400,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               title="STANDARD"
               titleColor="#ffffff"
               price="$5"
-              onSelect={() => selectPlan('STANDARD')}
+              onSelect={() => selectPlan('Standard')}
               features={[
                 { highlight: '250', text: 'free trial credits' },
                 { highlight: '2,000', text: 'monthly credits' },
@@ -415,7 +415,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               title="PRO"
               titleColor="#ffc107"
               price="$15"
-              onSelect={() => selectPlan('PRO')}
+              onSelect={() => selectPlan('Pro')}
               features={[
                 { highlight: '250', text: 'free trial credits' },
                 { highlight: '5,000', text: 'monthly credits' },
