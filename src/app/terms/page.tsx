@@ -183,9 +183,9 @@ export default function TermsOfService() {
             lineHeight: '1.6',
             marginBottom: '1rem',
             color: '#e0e0e0'
-          }}>Email: legal@archstudios.ai</p>
+          }}>Email: support@chateauxai.com</p>
         </section>
       </div>
     </div>
   );
-} 
+}

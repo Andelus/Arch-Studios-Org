@@ -62,9 +62,9 @@ export default function PrivacyPolicy() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>6. Contact Us</h2>
           <p className={styles.paragraph}>If you have any questions about this privacy policy or our privacy practices, please contact us at:</p>
-          <p className={styles.paragraph}>Email: privacy@archstudios.ai</p>
+          <p className={styles.paragraph}>Email: support@chateauxai.com</p>
         </section>
       </div>
     </div>
   );
-} 
+}

@@ -261,10 +261,10 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
             Need help?
           </div>
           <a
-            href="mailto:info@chateauxai.com"
+            href="mailto:support@chateauxai.com"
             className={styles.emailLink}
           >
-            info@chateauxai.com
+            support@chateauxai.com
           </a>
           
           <a
