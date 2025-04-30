@@ -11,8 +11,8 @@ const supabase = createClient(
 type SearchParams = { [key: string]: string | string[] | undefined };
 
 interface PageProps {
-  params: { [key: string]: string };
-  searchParams: SearchParams;
+  params: Record<string, string | string[]>;
+  searchParams: Record<string, string | string[] | undefined>;
 }
 
 export default async function VerifyPayment({
