@@ -60,6 +60,58 @@ const PlanCard: React.FC<PlanCardProps> = ({
       </button>
     </div>
   );
+}
+
+interface BillingManagementModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentPlan: string | null;
+  onCancelSubscription: () => void;
+  onUpdatePayment: () => void;
+}
+
+const BillingManagementModal: React.FC<BillingManagementModalProps> = ({
+  isOpen,
+  onClose,
+  currentPlan,
+  onCancelSubscription,
+  onUpdatePayment
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modal}>
+        <div className={styles.modalHeader}>
+          <h2>Manage Billing</h2>
+          <button onClick={onClose} className={styles.closeButton}>×</button>
+        </div>
+        <div className={styles.modalContent}>
+          {currentPlan ? (
+            <>
+              <div className={styles.currentPlanInfo}>
+                <p>Current Plan: {currentPlan}</p>
+              </div>
+              <button
+                onClick={onUpdatePayment}
+                className={styles.updatePaymentButton}
+              >
+                Update Payment Method
+              </button>
+              <button
+                onClick={onCancelSubscription}
+                className={styles.cancelSubscriptionButton}
+              >
+                Cancel Subscription
+              </button>
+            </>
+          ) : (
+            <p>No active subscription</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 interface CreditSubscriptionClientProps {
@@ -73,6 +125,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   const [error, setError] = useState<string | null>(null);
   const { userId, isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) {
@@ -152,6 +205,59 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
     }
   };
 
+  const handleCancelSubscription = async () => {
+    try {
+      const response = await fetch('/api/subscription/cancel', {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to cancel subscription');
+      }
+
+      setCurrentPlan(null);
+      setIsBillingModalOpen(false);
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      setError('Failed to cancel subscription. Please try again.');
+    }
+  };
+
+  const handleUpdatePayment = async () => {
+    try {
+      const selectedPlan = initialPlans.find(plan => plan.name === currentPlan);
+      if (!selectedPlan) {
+        throw new Error('Current plan not found');
+      }
+
+      const response = await fetch('/api/payment/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planId: selectedPlan.id,
+          autoBuy: false,
+          updatePayment: true
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initialize payment update');
+      }
+
+      // Redirect to payment page
+      window.location.href = data.paymentUrl;
+    } catch (error) {
+      console.error('Error updating payment method:', error);
+      setError('Failed to update payment method. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return <div className={styles.loading}>Loading...</div>;
   }
@@ -197,7 +303,10 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
             </div>
           </div>
           
-          <button className={styles.manageBillingButton}>
+          <button 
+            className={styles.manageBillingButton}
+            onClick={() => setIsBillingModalOpen(true)}
+          >
             <svg
               width="20"
               height="20"
@@ -309,6 +418,14 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           </div>
         </div>
       </div>
+
+      <BillingManagementModal
+        isOpen={isBillingModalOpen}
+        onClose={() => setIsBillingModalOpen(false)}
+        currentPlan={currentPlan}
+        onCancelSubscription={handleCancelSubscription}
+        onUpdatePayment={handleUpdatePayment}
+      />
     </div>
   );
 }
