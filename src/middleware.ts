@@ -32,18 +32,10 @@ export default clerkMiddleware((auth, req) => {
   auth.protect();
 });
 
+// Ensure profile API endpoint is matched
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - webhooks
-     * Note: This is a catch-all matcher, so it needs to be last
-     */
-    "/((?!_next/static|_next/image|favicon\\.ico|api/webhooks).*)",
-    "/api/((?!webhooks).)*"
-  ],
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/api/:path*"
+  ]
 };
