@@ -220,7 +220,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
       return;
     }
 
-    const selectedPlan = initialPlans.find(plan => plan.name === planName);
+    const selectedPlan = initialPlans.find(plan => plan.name.toUpperCase() === planName.toUpperCase());
     if (!selectedPlan) {
       console.error('Plan not found:', planName, 'Available plans:', initialPlans);
       setError('Selected plan not found. Please try again.');

@@ -105,6 +105,10 @@ export default function ImageGeneration() {
           // Profile not found - redirect to subscription page
           router.push('/credit-subscription');
           return;
+        } else if (response.status === 403) {
+          // Insufficient credits - redirect to subscription page
+          router.push('/credit-subscription');
+          return;
         } else {
           setError(data.error || 'Failed to generate images');
         }
