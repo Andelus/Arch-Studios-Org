@@ -477,6 +477,16 @@
   background: rgba(255, 59, 48, 0.2);
 }
 
+.error {
+  background-color: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 20px 0;
+  text-align: center;
+  border: 1px solid rgba(255, 59, 48, 0.2);
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .container {

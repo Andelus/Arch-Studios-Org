@@ -5,6 +5,7 @@ import styles from './CreditSubscription.module.css';
 import { Inter } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -126,8 +127,27 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   const { userId, isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Handle payment status from URL
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    
+    if (error) {
+      const errorMessages: Record<string, string> = {
+        payment_failed: 'Payment verification failed. Please try again or contact support.',
+        invalid_plan: 'Invalid subscription plan. Please try again.',
+        payment_processing: 'Error processing payment. Please contact support.'
+      };
+      setError(errorMessages[error] || 'An error occurred during payment.');
+    } else if (success === 'true') {
+      // Refresh user profile to get updated credits and plan
+      fetchUserProfile();
+    }
+  }, [searchParams]);
+
+  const fetchUserProfile = async () => {
     if (!isLoaded) {
       return;
     }
@@ -137,37 +157,33 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
       return;
     }
 
-    const fetchUserProfile = async () => {
-      if (!userId) {
-        setIsLoading(false);
-        return;
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/profile');
+      if (!response.ok) {
+        throw new Error('Failed to fetch profile');
       }
 
-      try {
-        const response = await fetch('/api/profile');
-        if (!response.ok) {
-          throw new Error('Failed to fetch profile');
-        }
-
-        const data = await response.json();
-        if (data) {
-          setCredits(data.credits_balance || 0);
-          setCurrentPlan(
-            data.subscription_status === 'ACTIVE' && data.subscription_plans
-              ? data.subscription_plans.name
-              : null
-          );
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        setError('An error occurred while loading your profile');
-      } finally {
-        setIsLoading(false);
+      const data = await response.json();
+      if (data) {
+        setCredits(data.credits_balance || 0);
+        setCurrentPlan(
+          data.subscription_status === 'ACTIVE' && data.subscription_plans
+            ? data.subscription_plans.name
+            : null
+        );
       }
-    };
-
-    fetchUserProfile();
-  }, [userId, isLoaded, isSignedIn, router]);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setError('An error occurred while loading your profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const selectPlan = async (planName: string) => {
     const selectedPlan = initialPlans.find(plan => plan.name === planName);
