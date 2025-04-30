@@ -25,6 +25,16 @@ const generatePrompt = (style: string, material: string) => {
   return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio. The image should be suitable for a 3D rendering.`;
 };
 
+interface SubscriptionPlan {
+  image_credit_cost: number;
+}
+
+interface UserProfile {
+  credits_balance: number;
+  subscription_plan_id: string | null;
+  subscription_plan?: SubscriptionPlan;
+}
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
@@ -32,12 +42,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check user's subscription and image generation count
+    // Get user's profile and subscription plan
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('subscription_status, image_generations_count')
+      .select(`
+        credits_balance,
+        subscription_plan_id,
+        subscription_plan:subscription_plans (
+          image_credit_cost
+        )
+      `)
       .eq('id', userId)
-      .single();
+      .single() as { data: UserProfile | null; error: any };
 
     if (profileError) {
       console.error('Database error:', profileError);
@@ -54,15 +70,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // If user has no subscription and has already used their free generation
-    if (!profile.subscription_status && profile.image_generations_count >= 1) {
+    const creditCost = profile.subscription_plan?.image_credit_cost || 200; // Default to STANDARD plan cost
+
+    // Check if user has enough credits
+    if (profile.credits_balance < creditCost) {
       return NextResponse.json(
-        { error: 'Free plan limit reached. Please subscribe to generate more images.' },
+        { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
         { status: 403 }
       );
     }
 
-    const { prompt, style, material, size = '1024x1024', n = 4 } = await req.json();
+    const { prompt, style, material, size = '1024x1024' } = await req.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -87,16 +105,16 @@ export async function POST(req: Request) {
         throw new Error('No image URL in response');
       }
 
-      // Increment the user's image generation count
-      if (!profile.subscription_status) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ image_generations_count: (profile.image_generations_count || 0) + 1 })
-          .eq('id', userId);
+      // Deduct credits from user's balance
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          credits_balance: profile.credits_balance - creditCost
+        })
+        .eq('id', userId);
 
-        if (updateError) {
-          console.error('Failed to update generation count:', updateError);
-        }
+      if (updateError) {
+        console.error('Failed to update credits balance:', updateError);
       }
 
       return NextResponse.json({ images: [response.data[0].url] });

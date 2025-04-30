@@ -26,6 +26,16 @@ interface TrellisResponse {
   model_url: string;
 }
 
+interface SubscriptionPlan {
+  model_credit_cost: number;
+}
+
+interface UserProfile {
+  credits_balance: number;
+  subscription_plan_id: string | null;
+  subscription_plan?: SubscriptionPlan;
+}
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
@@ -33,12 +43,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check user's subscription and 3D generation count
+    // Get user's profile and subscription plan
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('subscription_status, model_generations_count')
+      .select(`
+        credits_balance,
+        subscription_plan_id,
+        subscription_plan:subscription_plans (
+          model_credit_cost
+        )
+      `)
       .eq('id', userId)
-      .single();
+      .single() as { data: UserProfile | null; error: any };
 
     if (profileError) {
       console.error('Database error:', profileError);
@@ -55,10 +71,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // If user has no subscription and has already used their free generation
-    if (!profile.subscription_status && profile.model_generations_count >= 1) {
+    const creditCost = profile.subscription_plan?.model_credit_cost || 100; // Default to STANDARD plan cost
+
+    // Check if user has enough credits
+    if (profile.credits_balance < creditCost) {
       return NextResponse.json(
-        { error: 'Free plan limit reached. Please subscribe to generate more 3D models.' },
+        { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
         { status: 403 }
       );
     }
@@ -89,16 +107,16 @@ export async function POST(req: Request) {
         throw new Error('No model URL in response');
       }
 
-      // Increment the user's 3D model generation count
-      if (!profile.subscription_status) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ model_generations_count: (profile.model_generations_count || 0) + 1 })
-          .eq('id', userId);
+      // Deduct credits from user's balance
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          credits_balance: profile.credits_balance - creditCost
+        })
+        .eq('id', userId);
 
-        if (updateError) {
-          console.error('Failed to update generation count:', updateError);
-        }
+      if (updateError) {
+        console.error('Failed to update credits balance:', updateError);
       }
 
       return NextResponse.json({ modelUrl: response.model_url });
