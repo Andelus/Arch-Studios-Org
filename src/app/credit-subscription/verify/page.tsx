@@ -10,7 +10,7 @@ const supabase = createClient(
 );
 
 type Props = {
-  params: object;
+  params: { [key: string]: string | string[] | undefined };
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
