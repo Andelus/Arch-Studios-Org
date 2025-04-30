@@ -283,7 +283,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
             </div>
             <div className={styles.documentsList}>
               <a
-                href="/privacy"
+                href="/refund"
                 className={styles.documentLink}
               >
                 <svg
@@ -303,7 +303,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
                   <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
                   <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
                 </svg>
-                Privacy Policy
+                Refund Policy
               </a>
             </div>
           </div>
