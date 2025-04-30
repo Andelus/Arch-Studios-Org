@@ -101,6 +101,10 @@ export default function ImageGeneration() {
         if (response.status === 401) {
           setError('Please sign in to generate images');
           router.push('/');
+        } else if (response.status === 404) {
+          // Profile not found - redirect to subscription page
+          router.push('/credit-subscription');
+          return;
         } else {
           setError(data.error || 'Failed to generate images');
         }

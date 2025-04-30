@@ -308,11 +308,11 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
             <div className={styles.planSection}>
               <div className={styles.sectionLabel}>Tier</div>
               <div className={styles.planName}>
-                {currentPlan || 'SELECT PLAN'}
+                {currentPlan || 'FREE TRIAL'}
               </div>
-              {!currentPlan && (
-                <div className={styles.notSubscribed}>
-                  Not Subscribed
+              {!currentPlan && profile?.subscription_status === 'TRIAL' && (
+                <div className={styles.trialStatus}>
+                  Trial Credits Available
                 </div>
               )}
             </div>
@@ -325,34 +325,49 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
                   height="24"
                   viewBox="0 0 24 24"
                   fill="currentColor"
+                  className={styles.creditIcon}
                 >
                   <path d="M10 2L3 14h9l-1 8 8-12h-9l1-8z" />
                 </svg>
                 <span>{credits}</span>
+                {profile?.subscription_status === 'TRIAL' && (
+                  <div className={styles.trialCredits}>
+                    Trial Credits Remaining
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          {profile?.subscription_status === 'TRIAL' && (
+            <div className={styles.trialInfo}>
+              <p>Get started with 250 free trial credits! Generate images for 10 credits each or 3D models for 10 credits each.</p>
+              <p>Subscribe to a plan below to continue after your trial credits are used.</p>
+            </div>
+          )}
           
-          <button 
-            className={styles.manageBillingButton}
-            onClick={() => setIsBillingModalOpen(true)}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={styles.billingIcon}
+          {currentPlan && (
+            <button 
+              className={styles.manageBillingButton}
+              onClick={() => setIsBillingModalOpen(true)}
             >
-              <path d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
-              <line x1="1" y1="10" x2="23" y2="10"></line>
-            </svg>
-            Manage Billing
-          </button>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={styles.billingIcon}
+              >
+                <path d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+              Manage Billing
+            </button>
+          )}
         </div>
         
         <div className={styles.subscriptionSection}>

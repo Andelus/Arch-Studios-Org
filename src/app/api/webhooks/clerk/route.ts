@@ -71,9 +71,9 @@ export async function POST(req: Request) {
         .insert({
           id: id,
           email: primaryEmail,
-          credits_balance: 0,
+          credits_balance: 250, // Give initial trial credits
           auto_buy_enabled: false,
-          subscription_status: 'CANCELLED',
+          subscription_status: 'TRIAL',
           current_plan_id: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -84,19 +84,19 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
-      // Create initial credit transaction
+      // Create initial credit transaction for trial credits
       const { error: transactionError } = await supabase
         .from('credit_transactions')
         .insert({
           user_id: id,
-          amount: 0,
-          transaction_type: 'PURCHASE',
-          description: 'Initial account creation'
+          amount: 250,
+          type: 'TRIAL_CREDIT',
+          description: 'Initial trial credits',
+          created_at: new Date().toISOString()
         });
 
       if (transactionError) {
-        console.error('Transaction Creation Error:', transactionError);
-        // Don't fail the webhook if transaction creation fails
+        console.error('Transaction Error:', transactionError);
       }
 
       console.log('Profile and initial transaction created successfully');

@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       .select(`
         credits_balance,
         current_plan_id,
+        subscription_status,
         subscription_plan:subscription_plans (
           model_credit_cost
         )
@@ -57,6 +58,12 @@ export async function POST(req: Request) {
       .single() as { data: UserProfile | null; error: any };
 
     if (profileError) {
+      if (profileError.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Profile not found' },
+          { status: 404 }
+        );
+      }
       console.error('Database error:', profileError);
       return NextResponse.json(
         { error: 'Failed to fetch user profile', details: profileError.message },
@@ -66,19 +73,27 @@ export async function POST(req: Request) {
 
     if (!profile) {
       return NextResponse.json(
-        { error: 'User profile not found' },
+        { error: 'Profile not found' },
         { status: 404 }
       );
     }
 
-    const creditCost = profile.subscription_plan?.model_credit_cost || 100; // Default to STANDARD plan cost
+    // Default credit cost for trial users is 10 (same as STANDARD plan)
+    const creditCost = profile.subscription_plan?.model_credit_cost || 10;
 
     // Check if user has enough credits
     if (profile.credits_balance < creditCost) {
-      return NextResponse.json(
-        { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
-        { status: 403 }
-      );
+      if (profile.subscription_status === 'TRIAL') {
+        return NextResponse.json(
+          { error: 'You have used all your trial credits. Please subscribe to continue generating 3D models.' },
+          { status: 403 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
+          { status: 403 }
+        );
+      }
     }
 
     const { prompt, imageUrl } = await req.json();
@@ -107,7 +122,7 @@ export async function POST(req: Request) {
         throw new Error('No model URL in response');
       }
 
-      // Deduct credits from user's balance
+      // Deduct credits and record transaction
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
@@ -117,6 +132,21 @@ export async function POST(req: Request) {
 
       if (updateError) {
         console.error('Failed to update credits balance:', updateError);
+      }
+
+      // Record credit usage
+      const { error: transactionError } = await supabase
+        .from('credit_transactions')
+        .insert({
+          user_id: userId,
+          amount: -creditCost,
+          type: profile.subscription_status === 'TRIAL' ? 'TRIAL_USAGE' : 'MODEL_GENERATION',
+          description: '3D model generation',
+          created_at: new Date().toISOString()
+        });
+
+      if (transactionError) {
+        console.error('Failed to record transaction:', transactionError);
       }
 
       return NextResponse.json({ modelUrl: response.model_url });

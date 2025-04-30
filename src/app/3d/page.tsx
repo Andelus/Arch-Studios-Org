@@ -422,6 +422,10 @@ export default function ThreeDModeling() {
         if (response.status === 401) {
           setError('Please sign in to generate 3D models');
           router.push('/');
+        } else if (response.status === 404) {
+          // Profile not found - redirect to subscription page
+          router.push('/credit-subscription');
+          return;
         } else {
           setError(data.error || 'Failed to generate 3D model');
         }
