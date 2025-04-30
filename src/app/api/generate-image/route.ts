@@ -32,6 +32,7 @@ interface SubscriptionPlan {
 interface UserProfile {
   credits_balance: number;
   current_plan_id: string | null;
+  subscription_status: string;
   subscription_plan?: SubscriptionPlan;
 }
 

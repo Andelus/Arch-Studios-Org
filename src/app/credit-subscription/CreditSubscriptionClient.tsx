@@ -119,9 +119,18 @@ interface CreditSubscriptionClientProps {
   initialPlans: any[];
 }
 
+interface UserProfile {
+  subscription_status: string;
+  credits_balance: number;
+  subscription_plans?: {
+    name: string;
+  };
+}
+
 export default function CreditSubscriptionClient({ initialPlans }: CreditSubscriptionClientProps) {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [credits, setCredits] = useState<number>(0);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { userId, isLoaded, isSignedIn } = useAuth();
@@ -175,6 +184,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
         // This is expected for new users - they won't have a profile yet
         setCurrentPlan(null);
         setCredits(0);
+        setProfile(null);
         setIsLoading(false);
         return;
       }
@@ -185,6 +195,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
 
       const data = await response.json();
       if (data) {
+        setProfile(data);
         setCredits(data.credits_balance || 0);
         setCurrentPlan(
           data.subscription_status === 'ACTIVE' && data.subscription_plans
