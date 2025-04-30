@@ -1,17 +1,24 @@
 import { redirect } from 'next/navigation';
 import { verifyPayment } from '@/lib/flutterwave';
 import { createClient } from '@supabase/supabase-js';
+import { NextRequest } from 'next/server';
+import { Suspense } from 'react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function VerifyPayment({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined }
-}) {
+interface SearchParams {
+  [key: string]: string | string[] | undefined;
+}
+
+interface PageProps {
+  params: { slug: string };
+  searchParams: SearchParams;
+}
+
+export default async function VerifyPayment({ searchParams }: PageProps) {
   const status = searchParams['status'];
   const transaction_id = searchParams['transaction_id'];
 
