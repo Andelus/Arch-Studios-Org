@@ -131,19 +131,21 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
 
   useEffect(() => {
     // Handle payment status from URL
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
-    
-    if (error) {
-      const errorMessages: Record<string, string> = {
-        payment_failed: 'Payment verification failed. Please try again or contact support.',
-        invalid_plan: 'Invalid subscription plan. Please try again.',
-        payment_processing: 'Error processing payment. Please contact support.'
-      };
-      setError(errorMessages[error] || 'An error occurred during payment.');
-    } else if (success === 'true') {
-      // Refresh user profile to get updated credits and plan
-      fetchUserProfile();
+    if (searchParams) {
+      const success = searchParams.get('success');
+      const error = searchParams.get('error');
+      
+      if (error) {
+        const errorMessages: Record<string, string> = {
+          payment_failed: 'Payment verification failed. Please try again or contact support.',
+          invalid_plan: 'Invalid subscription plan. Please try again.',
+          payment_processing: 'Error processing payment. Please contact support.'
+        };
+        setError(errorMessages[error] || 'An error occurred during payment.');
+      } else if (success === 'true') {
+        // Refresh user profile to get updated credits and plan
+        fetchUserProfile();
+      }
     }
   }, [searchParams]);
 
