@@ -13,7 +13,6 @@ if (openaiApiKey) {
   });
 } else {
   console.warn('OPENAI_API_KEY is not set in environment variables');
-  // Create a mock client to prevent build errors
   openai = {
     images: {
       generate: () => {
@@ -42,117 +41,92 @@ export async function POST(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ 
+        success: false,
+        error: 'Unauthorized',
+        status: 401 
+      });
     }
 
     // Get user's profile and subscription plan with a timeout
-    const profilePromise = supabase
-      .from('profiles')
-      .select(`
-        credits_balance,
-        current_plan_id,
-        subscription_status,
-        subscription_plan:subscription_plans (
-          image_credit_cost
-        )
-      `)
-      .eq('id', userId)
-      .single();
-
-    // Add timeout to profile fetch
-    const profileTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-    );
-
     const { data: profile, error: profileError } = await Promise.race([
-      profilePromise,
-      profileTimeout
+      supabase
+        .from('profiles')
+        .select(`
+          credits_balance,
+          current_plan_id,
+          subscription_status,
+          subscription_plan:subscription_plans (
+            image_credit_cost
+          )
+        `)
+        .eq('id', userId)
+        .single(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      )
     ]) as { data: UserProfile | null; error: any };
 
-    // Debug logs
-    console.log('Profile data:', {
-      current_plan_id: profile?.current_plan_id,
-      subscription_status: profile?.subscription_status,
-      subscription_plan: profile?.subscription_plan,
-      credits_balance: profile?.credits_balance
-    });
-
     if (profileError) {
-      if (profileError.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Profile not found' },
-          { status: 404 }
-        );
-      }
-      console.error('Database error:', profileError);
-      return NextResponse.json(
-        { error: 'Failed to fetch user profile', details: profileError.message },
-        { status: 500 }
-      );
+      console.error('Profile error:', profileError);
+      return NextResponse.json({ 
+        success: false,
+        error: profileError.code === 'PGRST116' ? 'Profile not found' : 'Failed to fetch user profile',
+        details: profileError.message,
+        status: profileError.code === 'PGRST116' ? 404 : 500
+      });
     }
 
     if (!profile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ 
+        success: false,
+        error: 'Profile not found',
+        status: 404
+      });
     }
 
-    // Check if user can generate images based on subscription status
+    // Check subscription status
     if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Your subscription has expired or been cancelled. Please renew your subscription to continue using this feature.' },
-        { status: 403 }
-      );
+      return NextResponse.json({ 
+        success: false,
+        error: 'Subscription expired',
+        message: 'Your subscription has expired or been cancelled. Please renew your subscription to continue.',
+        status: 403
+      });
     }
 
-    // Determine credit cost based on subscription status
-    let creditCost = 100; // Default for Standard plan
-    
-    switch (profile.subscription_status) {
-      case 'TRIAL':
-        // For trial users, use 125 credits
-        creditCost = 125;
-        break;
-      case 'ACTIVE':
-        // For active paid users, use the plan's credit cost or default
-        if (profile.subscription_plan?.image_credit_cost) {
-          creditCost = profile.subscription_plan.image_credit_cost;
-        } else {
-          // Default costs based on plan type (if not specified in database)
-          creditCost = profile.current_plan_id?.toLowerCase().includes('pro') ? 142 : 100;
-        }
-        break;
-    }
-    console.log('Using credit cost:', creditCost);
+    // Calculate credit cost
+    const creditCost = profile.subscription_status === 'TRIAL' ? 125 :
+      profile.subscription_plan?.image_credit_cost ?? 
+      (profile.current_plan_id?.toLowerCase().includes('pro') ? 142 : 100);
 
-    // Check if user has enough credits
     if (profile.credits_balance < creditCost) {
-      return NextResponse.json(
-        { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
-        { status: 403 }
-      );
+      return NextResponse.json({ 
+        success: false,
+        error: 'Insufficient credits',
+        message: 'Please purchase more credits or upgrade your plan.',
+        status: 403
+      });
     }
 
     const { prompt, style, material, size = '1024x1024' } = await req.json();
 
-    if (!prompt) {
-      return NextResponse.json(
-        { error: 'A prompt is required' },
-        { status: 400 }
-      );
+    if (!prompt && (!style || !material)) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Invalid input',
+        message: 'A prompt or style/material combination is required',
+        status: 400
+      });
     }
 
     const finalPrompt = style && material ? generatePrompt(style, material) : prompt;
 
-    try {
-      // Set up AbortController for DALL-E API timeout
-      const controller = new AbortController();
-      const timeout = setTimeout(() => {
-        controller.abort();
-        console.log('Request aborted due to timeout');
-      }, 30000); // Increased to 30 second timeout
+    // Generate image with OpenAI
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
 
+    try {
       const response = await openai.images.generate({
         model: "dall-e-3",
         prompt: finalPrompt,
@@ -161,238 +135,94 @@ export async function POST(req: Request) {
         quality: "standard",
         style: "natural",
       }, { 
-        signal: controller.signal as AbortSignal
-      }).catch(error => {
-        clearTimeout(timeout);
-        throw error;
+        signal: controller.signal as AbortSignal 
       });
 
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
 
       if (!response.data?.[0]?.url) {
         throw new Error('No image URL in response');
       }
 
-      // Verify the image URL is accessible with a timeout
       const imageUrl = response.data[0].url;
-      
+
+      // Verify and process the image
       try {
-        // Verify the image URL is accessible with a timeout
         const imageResponse = await fetch(imageUrl, {
-          signal: AbortSignal.timeout(10000) // 10 second timeout for image verification
+          signal: AbortSignal.timeout(10000)
         });
-        
+
         if (!imageResponse.ok) {
           throw new Error('Generated image URL is not accessible');
         }
-        
-        // For OpenAI URLs, which expire quickly, we could download the image to a more permanent location
-        // This is a simplified approach - in production you might use cloud storage like S3
-        if (imageUrl.includes('openai.com') || imageUrl.includes('oaiusercontent.com')) {
-          console.log('OpenAI URL detected, these expire quickly. Using direct image data instead of URL.');
-          
-          try {
-            // Get the image data
-            const imageData = await imageResponse.arrayBuffer();
-            
-            // Convert ArrayBuffer to Base64 string using Node.js Buffer
-            const base64Data = Buffer.from(imageData).toString('base64');
-            
-            // Determine MIME type from response headers or default to image/png
-            const contentType = imageResponse.headers.get('content-type') || 'image/png';
-            
-            // Create a data URL
-            const dataUrl = `data:${contentType};base64,${base64Data}`;
-            
-            console.log('Successfully created data URL from OpenAI image');
-            
-            // Now that we have confirmed the image is generated and accessible, deduct credits
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({ 
-                credits_balance: profile.credits_balance - creditCost
-              })
-              .eq('id', userId);
 
-            if (updateError) {
-              console.error('Failed to update credits balance:', updateError);
-              throw new Error('Failed to update credits balance');
-            }
+        // Always convert OpenAI URLs to data URLs to prevent expiration issues
+        const imageData = await imageResponse.arrayBuffer();
+        const base64Data = Buffer.from(imageData).toString('base64');
+        const contentType = imageResponse.headers.get('content-type') || 'image/png';
+        const dataUrl = `data:${contentType};base64,${base64Data}`;
 
-            // Record credit usage
-            const { error: transactionError } = await supabase
-              .from('credit_transactions')
-              .insert({
-                user_id: userId,
-                amount: -creditCost,
-                type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
-                generation_type: 'IMAGE',
-                description: 'Image generation',
-                created_at: new Date().toISOString()
-              });
-
-            // Add a warning flag if transaction recording fails
-            let transactionWarning = false;
-            if (transactionError) {
-              console.error('Failed to record transaction:', transactionError);
-              transactionWarning = true;
-              
-              // Try to log the failure for later reconciliation
-              try {
-                await supabase
-                  .from('error_logs')
-                  .insert({
-                    user_id: userId,
-                    error_type: 'TRANSACTION_RECORD_FAILURE',
-                    details: JSON.stringify({
-                      amount: -creditCost,
-                      type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
-                      error: transactionError
-                    }),
-                    created_at: new Date().toISOString()
-                  });
-              } catch (logError) {
-                console.error('Failed to log transaction error:', logError);
-              }
-            }
-            
-            // Return the data URL with optional warning
-            return NextResponse.json({
-              url: dataUrl,
-              isDataUrl: true,
-              warning: transactionWarning ? 'Your image was generated successfully, but there was an issue recording your transaction.' : undefined
-            }, { status: 200 });
-          } catch (dataUrlError) {
-            console.error('Error creating data URL:', dataUrlError);
-            // Continue with original URL as fallback
-          }
-        }
-      } catch (error) {
-        console.error('Error verifying or processing image:', error);
-        // Continue with the original URL if there was an error in our enhanced processing
-      }
-
-      // Now that we have confirmed the image is generated and accessible, deduct credits
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ 
-          credits_balance: profile.credits_balance - creditCost
-        })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error('Failed to update credits balance:', updateError);
-        throw new Error('Failed to update credits balance');
-      }
-
-      // Record credit usage
-      const { error: transactionError } = await supabase
-        .from('credit_transactions')
-        .insert({
-          user_id: userId,
-          amount: -creditCost,
-          type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
-          generation_type: 'IMAGE',
-          description: 'Image generation',
-          created_at: new Date().toISOString()
+        // Update credits and record transaction atomically
+        const { error: dbError } = await supabase.rpc('process_image_generation', {
+          p_user_id: userId,
+          p_credit_cost: creditCost,
+          p_is_trial: profile.subscription_status === 'TRIAL'
         });
 
-      // Add a warning flag if transaction recording fails
-      let transactionWarning = false;
-      if (transactionError) {
-        console.error('Failed to record transaction:', transactionError);
-        transactionWarning = true;
-        
-        // Try to log the failure for later reconciliation
-        try {
-          await supabase
-            .from('error_logs')
-            .insert({
-              user_id: userId,
-              error_type: 'TRANSACTION_RECORD_FAILURE',
-              details: JSON.stringify({
-                amount: -creditCost,
-                type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
-                error: transactionError
-              }),
-              created_at: new Date().toISOString()
-            });
-        } catch (logError) {
-          console.error('Failed to log transaction error:', logError);
+        if (dbError) {
+          console.error('Database error:', dbError);
+          // Still return the image but with a warning
+          return NextResponse.json({
+            success: true,
+            url: dataUrl,
+            warning: 'Image generated successfully, but there was an issue recording the transaction.',
+            status: 200
+          });
         }
-      }
 
-      // Return the image URL with optional warning
-      if (transactionWarning) {
         return NextResponse.json({
-          url: imageUrl,
-          warning: 'Your image was generated successfully, but there was an issue recording your transaction.'
-        }, { status: 200 });
-      } else {
-        return new Response(imageUrl, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/plain'
-          }
+          success: true,
+          url: dataUrl,
+          status: 200
         });
+
+      } catch (processError) {
+        console.error('Image processing error:', processError);
+        throw new Error('Failed to process generated image');
       }
 
     } catch (openaiError: any) {
-      console.error('OpenAI API Error:', openaiError);
+      clearTimeout(timeoutId);
+      console.error('OpenAI error:', openaiError);
 
       if (openaiError.name === 'AbortError') {
-        return NextResponse.json(
-          {
-            error: 'Request timeout',
-            details: 'The image generation request took too long. Please try again.',
-            type: 'TIMEOUT_ERROR'
-          },
-          { status: 408 }
-        );
+        return NextResponse.json({
+          success: false,
+          error: 'Request timeout',
+          message: 'The image generation took too long. Please try again.',
+          status: 408
+        });
       }
 
-      // Check if it's an API key error
-      if (openaiError.message?.includes('api key') || openaiError.status === 401) {
-        return NextResponse.json(
-          {
-            error: 'API configuration error',
-            details: 'There was an issue with the image generation service configuration.',
-            type: 'AUTH_ERROR'
-          },
-          { status: 500 }
-        );
-      }
+      const errorResponse = {
+        success: false,
+        error: 'Generation failed',
+        status: openaiError.status === 429 ? 429 : 500,
+        message: openaiError.status === 429 
+          ? 'The service is currently busy. Please try again in a moment.'
+          : 'Failed to generate image. Please try again.'
+      };
 
-      // Handle rate limits
-      if (openaiError.status === 429) {
-        return NextResponse.json(
-          {
-            error: 'Rate limit exceeded',
-            details: 'The image generation service is currently busy. Please try again in a few moments.',
-            type: 'RATE_LIMIT'
-          },
-          { status: 429 }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          error: 'Image generation failed',
-          details: openaiError.message || 'An unexpected error occurred',
-          type: 'API_ERROR'
-        },
-        { status: 500 }
-      );
+      return NextResponse.json(errorResponse);
     }
+
   } catch (error: any) {
     console.error('Unexpected error:', error);
-    return NextResponse.json(
-      {
-        error: 'Server error',
-        details: 'An unexpected error occurred',
-        type: 'SERVER_ERROR'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: 'Server error',
+      message: 'An unexpected error occurred',
+      status: 500
+    });
   }
 }

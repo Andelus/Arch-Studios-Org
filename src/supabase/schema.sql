@@ -1,4 +1,5 @@
--- Enable necessary extensions
+
+  p_is_trial BO-- Enable necessary extensions
 create extension if not exists "uuid-ossp";
 
 -- Clean up existing tables and functions
@@ -399,8 +400,44 @@ begin
         coalesce(p_description, p_generation_type || ' generation')
     );
 
-    return v_credit_cost;
+     return v_credit_cost;
 end;
+$$;
+
+-- Add stored procedure for atomic image generation transaction
+CREATE OR REPLACE FUNCTION process_image_generation(
+  p_user_id UUID,
+  p_credit_cost INT,OLEAN
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Update credits balance and record transaction in a single transaction
+  UPDATE profiles 
+  SET credits_balance = credits_balance - p_credit_cost
+  WHERE id = p_user_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found';
+  END IF;
+
+  INSERT INTO credit_transactions (
+    user_id,
+    amount,
+    type,
+    generation_type,
+    description,
+    created_at
+  ) VALUES (
+    p_user_id,
+    -p_credit_cost,
+    CASE WHEN p_is_trial THEN 'TRIAL_IMAGE_GENERATION' ELSE 'IMAGE_GENERATION' END,
+    'IMAGE',
+    'Image generation',
+    NOW()
+  );
+END;
 $$;
 
 -- Initial subscription plans
