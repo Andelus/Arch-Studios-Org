@@ -148,7 +148,10 @@ export async function POST(req: Request) {
     try {
       // Set up AbortController for DALL-E API timeout
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000); // 12 second timeout
+      const timeout = setTimeout(() => {
+        controller.abort();
+        console.log('Request aborted due to timeout');
+      }, 30000); // Increased to 30 second timeout
 
       const response = await openai.images.generate({
         model: "dall-e-3",
@@ -159,6 +162,9 @@ export async function POST(req: Request) {
         style: "natural",
       }, { 
         signal: controller.signal as AbortSignal
+      }).catch(error => {
+        clearTimeout(timeout);
+        throw error;
       });
 
       clearTimeout(timeout);
@@ -170,7 +176,7 @@ export async function POST(req: Request) {
       // Verify the image URL is accessible with a timeout
       const imageUrl = response.data[0].url;
       const imageResponse = await fetch(imageUrl, {
-        signal: AbortSignal.timeout(5000) // 5 second timeout for image verification
+        signal: AbortSignal.timeout(10000) // Increased to 10 second timeout for image verification
       });
       
       if (!imageResponse.ok) {

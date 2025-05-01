@@ -98,7 +98,15 @@ export default function ImageGeneration() {
           return;
         }
         if (response.status === 403 && errorData.error?.includes('subscription has expired')) {
-          setError('Your subscription has expired. Please renew your subscription to continue.');
+          setError('Your subscription has expired. Please renew your subscription to continue generating images.');
+          return;
+        }
+        if (response.status === 408 || errorData.type === 'TIMEOUT_ERROR') {
+          setError('The request took too long to complete. This might be due to high server load. Please try again.');
+          return;
+        }
+        if (errorData.type === 'RATE_LIMIT') {
+          setError('The service is currently experiencing high demand. Please wait a moment and try again.');
           return;
         }
         setError(errorData.error || 'Failed to generate images');
@@ -113,7 +121,7 @@ export default function ImageGeneration() {
         return;
       }
       
-      // Create a new Image object
+      // Create a new Image object with increased timeout handling
       const img = new Image();
       img.crossOrigin = 'anonymous';
       
@@ -123,7 +131,7 @@ export default function ImageGeneration() {
         container.classList.add(styles.loading);
       }
       
-      // Set a shorter timeout for image loading
+      // Set a longer timeout for image loading
       const timeoutId = setTimeout(() => {
         if (!img.complete) {
           img.src = ''; // Cancel the image load
@@ -133,7 +141,7 @@ export default function ImageGeneration() {
             container.classList.remove(styles.loading);
           }
         }
-      }, 10000); // 10 second timeout
+      }, 20000); // Increased to 20 second timeout
 
       // Track load attempts
       let loadAttempts = 0;
