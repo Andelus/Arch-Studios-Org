@@ -21,16 +21,14 @@ const initializeFalAI = async () => {
 
   try {
     // Import the module inside the async function
-    const falModule = await import('@fal-ai/client');
-    const falInstance = falModule.fal;
+    const { fal: falInstance } = await import('@fal-ai/client');
     
-    // Configure with authentication
+    // Configure with full key format
     falInstance.config({
-      credentials: falApiKey
+      credentials: `Key ${falApiKey}`
     });
     
-    // Just initialize without test call
-    console.log('FAL AI client initialized');
+    console.log('FAL AI client initialized with key format:', `Key ${falApiKey.substring(0, 5)}...`);
     return falInstance;
   } catch (error) {
     console.error('Failed to initialize FAL AI client:', error);
@@ -38,7 +36,7 @@ const initializeFalAI = async () => {
   }
 };
 
-// Initialize fal on first use
+// Initialize fal on first use with proper key handling
 const getFalInstance = async () => {
   if (fal) {
     return fal;
@@ -51,6 +49,9 @@ const getFalInstance = async () => {
 
   initializationInProgress = initializeFalAI().then(instance => {
     fal = instance;
+  }).catch(error => {
+    console.error('Initialization error:', error);
+    fal = null;
   });
 
   await initializationInProgress;
