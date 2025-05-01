@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import styles from "./Image.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import ErrorComponent from '@/components/ErrorComponent';
 
 const ARCHITECTURAL_STYLES = [
   'Modern',
@@ -94,19 +95,37 @@ export default function ImageGeneration() {
       const data = await response.json();
       
       if (!response.ok) {
-      // Handle insufficient credits error specifically
-      if (response.status === 403 && data.error?.includes('insufficient credits')) {
-        setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
+        // Handle insufficient credits error specifically
+        if (response.status === 403 && data.error?.includes('insufficient credits')) {
+          setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
+          // Add a purchase credits button
+          const container = document.querySelector('.error-message');
+          if (container) {
+            const button = document.createElement('button');
+            button.className = 'purchase-credits-button';
+            button.textContent = 'Purchase Credits';
+            button.onclick = () => window.location.href = '/credit-subscription';
+            container.appendChild(button);
+          }
+          return;
+        }
+        // Handle subscription expired/cancelled error
+        else if (response.status === 403 && data.error?.includes('subscription has expired')) {
+          setError('Your subscription has expired. Please renew your subscription to continue.');
+          // Add a renew subscription button
+          const container = document.querySelector('.error-message');
+          if (container) {
+            const button = document.createElement('button');
+            button.className = 'purchase-credits-button';
+            button.textContent = 'Renew Subscription';
+            button.onclick = () => window.location.href = '/credit-subscription';
+            container.appendChild(button);
+          }
+          return;
+        }
+        // Handle other errors
+        setError(data.error || 'Failed to generate images');
         return;
-      }
-      // Handle subscription expired/cancelled error
-      else if (response.status === 403 && data.error?.includes('subscription has expired')) {
-        setError('Your subscription has expired. Please renew your subscription to continue.');
-        return;
-      }
-      // Handle other errors
-      setError(data.error || 'Failed to generate images');
-      return;
       }
       
       if (data.images && data.images.length > 0) {
@@ -247,6 +266,57 @@ export default function ImageGeneration() {
 
   return (
     <div className={styles.container}>
+      <ErrorComponent // Replace error display with ErrorComponent
+        error={error}
+        onPurchaseCredits={() => window.location.href = '/credit-subscription'}
+        onRenewSubscription={() => window.location.href = '/credit-subscription'}
+      />
+      {/* Remove the error display code below */}
+      {/* {error && (
+        <div className={styles['error-message']}>
+          <div className={styles['error-text']}>{error}</div>
+          {error.includes('insufficient credits') && (
+            <button 
+              className={styles['purchase-button']}
+              className="purchase-button"
+              onClick={() => window.location.href = '/credit-subscription'}
+            >
+              Purchase Credits
+            </button>
+          )}
+          {(error.includes('subscription has expired') || error.includes('subscription has been cancelled')) && (
+            <button 
+              className="purchase-button"
+              onClick={() => window.location.href = '/credit-subscription'}
+            >
+              Renew Subscription
+            </button>
+          )}
+        </div>
+      )}
+      <ErrorDisplay error={error} />
+      {/* Remove the error display code below */}
+      {/* {error && (
+        <div className="error-message">
+          {error}
+          {error.includes('insufficient credits') && (
+            <button 
+              className="purchase-credits-button"
+              onClick={() => window.location.href = '/credit-subscription'}
+            >
+              Purchase Credits
+            </button>
+          )}
+          {(error.includes('subscription has expired') || error.includes('subscription has been cancelled')) && (
+            <button 
+              className="purchase-credits-button"
+              onClick={() => window.location.href = '/credit-subscription'}
+            >
+              Renew Subscription
+            </button>
+          )}
+        </div>
+      )}
       <div className={styles.header}>
         <div className={styles.logoSection}>
           <span className={styles.logoText}>Arch Studios</span>
@@ -255,19 +325,16 @@ export default function ImageGeneration() {
         <Link href="/dashboard" className={styles.backButton}>
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
-      </div>
 
-      <div className={styles.mainContent}>
-        <div className={styles.sidebar}>
-          <div className={styles.promptArea}>
-            <label>
-              <span>Prompt</span>
-              <i className="fa-solid fa-circle-info"></i>
-            </label>
-            <textarea 
-              className={styles.promptInput} 
-              placeholder="Describe your architectural image..." 
-              value={prompt}
+
+      <div className={styles.logoSection}>
+        <span className={styles.logoText}>Arch Studios</span>
+        <span className={styles.beta}>BETA</span>
+      </div>
+      <Link href="/dashboard" className={styles.backButton}>
+        <i className="fa-solid fa-arrow-left"></i>
+      </Link>
+    </div>
               onChange={(e) => setPrompt(e.target.value)}
             ></textarea>
           </div>
