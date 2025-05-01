@@ -280,11 +280,24 @@ export default function ImageGeneration() {
         <div className={styles.canvasArea}>
           <div className={styles.canvas}>
             {generatedImages.length > 0 ? (
-              <img 
-                src={generatedImages[currentImageIndex]} 
-                alt={`Generated image from: ${prompt}`} 
-                className={styles.generatedImage}
-              />
+              <>
+                <img 
+                  src={generatedImages[currentImageIndex]} 
+                  alt={`Generated image from: ${prompt}`} 
+                  className={styles.generatedImage}
+                  onError={(e) => {
+                    console.error('Image failed to load:', generatedImages[currentImageIndex]);
+                    e.currentTarget.onerror = null; // Prevent infinite loop
+                    e.currentTarget.src = '/placeholder-image.png'; // Fallback image
+                  }}
+                />
+                {/* Image counter if multiple images */}
+                {generatedImages.length > 1 && (
+                  <div className={styles.imageCounter}>
+                    {currentImageIndex + 1} / {generatedImages.length}
+                  </div>
+                )}
+              </>
             ) : (
               <div className={styles.emptyCanvas}>
                 <p>Your generated images will appear here</p>

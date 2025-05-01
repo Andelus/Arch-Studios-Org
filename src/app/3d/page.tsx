@@ -92,37 +92,75 @@ function ThreeDModelingContent() {
 
   const loadModel = async (modelUrl: string) => {
     if (!canvasRef.current) return;
+    
+    console.log('Loading 3D model from URL:', modelUrl);
 
     // Initialize Three.js scene
     if (!sceneRef.current) {
+      console.log('Initializing new Three.js scene');
       sceneRef.current = new THREE.Scene();
       sceneRef.current.background = new THREE.Color(0x111111);
 
       // Add lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Increased intensity
       sceneRef.current.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Increased intensity
       directionalLight.position.set(5, 5, 5);
       sceneRef.current.add(directionalLight);
+      
+      // Add additional lights for better visibility
+      const backLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      backLight.position.set(-5, 5, -5);
+      sceneRef.current.add(backLight);
+      
+      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      bottomLight.position.set(0, -5, 0);
+      sceneRef.current.add(bottomLight);
 
       // Camera setup
       const aspect = canvasRef.current.clientWidth / canvasRef.current.clientHeight;
-      cameraRef.current = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+      cameraRef.current = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000); // Wider FOV
       cameraRef.current.position.z = 5;
 
-      // Renderer setup
+      // Renderer setup with improved settings
       rendererRef.current = new THREE.WebGLRenderer({
         canvas: canvasRef.current,
         antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true, // Important for taking screenshots
       });
       rendererRef.current.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
+      rendererRef.current.setPixelRatio(window.devicePixelRatio); // Better quality
+      // Use the correct encoding for Three.js version
+      rendererRef.current.shadowMap.enabled = true; // Enable shadows
 
-      // Controls setup
+      // Controls setup with better defaults
       if (cameraRef.current) {
         controlsRef.current = new OrbitControls(cameraRef.current, canvasRef.current);
         controlsRef.current.enableDamping = true;
+        controlsRef.current.dampingFactor = 0.1;
+        controlsRef.current.rotateSpeed = 0.7;
+        controlsRef.current.zoomSpeed = 1.2;
+        controlsRef.current.enablePan = true;
+        controlsRef.current.minDistance = 2;
+        controlsRef.current.maxDistance = 20;
       }
+      
+      // Handle window resize
+      const handleResize = () => {
+        if (!canvasRef.current || !cameraRef.current || !rendererRef.current) return;
+        
+        const width = canvasRef.current.clientWidth;
+        const height = canvasRef.current.clientHeight;
+        
+        cameraRef.current.aspect = width / height;
+        cameraRef.current.updateProjectionMatrix();
+        
+        rendererRef.current.setSize(width, height);
+      };
+      
+      window.addEventListener('resize', handleResize);
     }
 
     // Clear existing model
@@ -135,43 +173,94 @@ function ThreeDModelingContent() {
 
     setIsModelLoaded(false);
 
-    // Load new model
+    // Load new model with enhanced settings
     const loader = new GLTFLoader();
+    console.log('Starting to load GLB model from URL:', modelUrl);
+    
+    // Add a loading indicator or message
+    setMessage('Loading 3D model...');
+    
     loader.load(
       modelUrl,
       (gltf) => {
         if (!sceneRef.current) return;
+        console.log('Model loaded successfully:', gltf);
         
         const model = gltf.scene;
         model.name = 'currentModel';
         model.position.set(0, 0, 0);
-        model.scale.set(1, 1, 1);
+        
+        // Auto-scale model to fit view
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) {
+          const scale = 3.0 / maxDim; // Scale to reasonable size
+          model.scale.set(scale, scale, scale);
+        }
         
         // Center model
-        const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         model.position.sub(center);
         
+        // Apply better material settings to all meshes
+        model.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            // Enhance materials
+            if (child.material) {
+              child.material.side = THREE.DoubleSide; // Show both sides
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          }
+        });
+        
         sceneRef.current.add(model);
         setIsModelLoaded(true);
+        setMessage(''); // Clear loading message
 
-        // Start animation loop
+        // Reset camera position for better view
+        if (cameraRef.current && controlsRef.current) {
+          cameraRef.current.position.set(0, 0, 5);
+          controlsRef.current.update();
+        }
+
+        // Start animation loop with better performance
+        let animationFrameId: number;
         const animate = () => {
           if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
           
-          requestAnimationFrame(animate);
+          animationFrameId = requestAnimationFrame(animate);
           if (controlsRef.current) {
             controlsRef.current.update();
           }
+          
+          // Optional: Add subtle rotation for better visualization
+          if (model && !controlsRef.current?.enableDamping) {
+            model.rotation.y += 0.002;
+          }
+          
           rendererRef.current.render(sceneRef.current, cameraRef.current);
         };
+        
         animate();
+        
+        // Clean up animation on unmount
+        return () => {
+          cancelAnimationFrame(animationFrameId);
+        };
       },
-      undefined,
+      // Progress callback
+      (progress) => {
+        const percentComplete = Math.round((progress.loaded / progress.total) * 100);
+        setMessage(`Loading 3D model: ${percentComplete}%`);
+        console.log(`Loading progress: ${percentComplete}%`);
+      },
       (error) => {
         console.error('Error loading model:', error);
         setIsModelLoaded(false);
-        setError('Failed to load 3D model');
+        setError('Failed to load 3D model. Please try again.');
+        setMessage('');
       }
     );
   };
@@ -230,24 +319,30 @@ function ThreeDModelingContent() {
     }
   };
 
+  // Add a message state for user feedback
+  const [message, setMessage] = useState<string>('');
+  
   const downloadModel = async () => {
     const currentModel = generatedModels[currentModelIndex];
     if (currentModel?.url) {
       try {
-        const response = await fetch(currentModel.url);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        // Create a direct download link to the model URL
         const link = document.createElement('a');
-        link.href = url;
+        link.href = currentModel.url;
         link.download = `architectural_model_${Date.now()}.glb`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        
+        // Show success message
+        setMessage('Model download started!');
+        setTimeout(() => setMessage(''), 3000);
       } catch (error) {
         console.error('Error downloading model:', error);
         setError('Failed to download model. Please try again.');
       }
+    } else {
+      setError('No model URL available for download.');
     }
   };
 

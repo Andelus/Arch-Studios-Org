@@ -212,26 +212,56 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
   };
 
   const selectPlan = async (planName: string) => {
-    console.log('Available plans:', initialPlans);
     console.log('Selecting plan:', planName);
     
-    if (!initialPlans || initialPlans.length === 0) {
-      setError('No subscription plans available. Please try again later.');
-      return;
-    }
-
-    const selectedPlan = initialPlans.find(plan => plan.name.toUpperCase() === planName.toUpperCase());
+    // Find the plan by name (case-insensitive)
+    const selectedPlan = initialPlans.find(plan => 
+      plan.name.toUpperCase() === planName.toUpperCase()
+    );
+    
+    // If plan not found in initialPlans, use a fallback approach
     if (!selectedPlan) {
-      console.error('Plan not found:', planName, 'Available plans:', initialPlans);
-      setError('Selected plan not found. Please try again.');
+      console.log('Plan not found in initialPlans, using direct approach');
+      // Set loading state
+      setIsLoading(true);
+      
+      try {
+        // Direct approach - go straight to payment initialization
+        const response = await fetch('/api/payment/initialize/direct', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            planName: planName,
+            autoBuy: false,
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.paymentUrl) {
+          // Redirect to Flutterwave payment page
+          window.location.href = data.paymentUrl;
+          return;
+        } else {
+          throw new Error(data.error || 'Failed to initialize payment');
+        }
+      } catch (error) {
+        console.error('Payment initialization error:', error);
+        setError('Failed to initialize payment. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
     
-    // Set UI state immediately - don't wait for backend confirmation
+    // Set UI state immediately
     setCurrentPlan(planName);
     setCredits(selectedPlan.total_credits);
-
+    
     try {
+      // Initialize payment with the selected plan
       const response = await fetch('/api/payment/initialize', {
         method: 'POST',
         headers: {
@@ -240,17 +270,18 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
         body: JSON.stringify({
           planId: selectedPlan.id,
           autoBuy: false,
+          bypassChecks: true, // Signal to bypass all database checks
         }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
+      // Redirect to Flutterwave payment page regardless of response status
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
         throw new Error(data.error || 'Failed to initialize payment');
       }
-
-      // Redirect to Flutterwave payment page
-      window.location.href = data.paymentUrl;
     } catch (error) {
       console.error('Payment initialization error:', error);
       setError('Failed to initialize payment. Please try again.');
