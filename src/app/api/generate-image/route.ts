@@ -45,8 +45,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's profile and subscription plan
-    const { data: profile, error: profileError } = await supabase
+    // Get user's profile and subscription plan with a timeout
+    const profilePromise = supabase
       .from('profiles')
       .select(`
         credits_balance,
@@ -57,7 +57,17 @@ export async function POST(req: Request) {
         )
       `)
       .eq('id', userId)
-      .single() as { data: UserProfile | null; error: any };
+      .single();
+
+    // Add timeout to profile fetch
+    const profileTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+    );
+
+    const { data: profile, error: profileError } = await Promise.race([
+      profilePromise,
+      profileTimeout
+    ]) as { data: UserProfile | null; error: any };
 
     // Debug logs
     console.log('Profile data:', {
@@ -136,6 +146,10 @@ export async function POST(req: Request) {
     const finalPrompt = style && material ? generatePrompt(style, material) : prompt;
 
     try {
+      // Set up AbortController for DALL-E API timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000); // 12 second timeout
+
       const response = await openai.images.generate({
         model: "dall-e-3",
         prompt: finalPrompt,
@@ -143,22 +157,25 @@ export async function POST(req: Request) {
         size: size as "1024x1024" | "1024x1792" | "1792x1024",
         quality: "standard",
         style: "natural",
+      }, { 
+        signal: controller.signal as AbortSignal
       });
+
+      clearTimeout(timeout);
 
       if (!response.data?.[0]?.url) {
         throw new Error('No image URL in response');
       }
 
-      // Only deduct credits and record transaction after successful generation
+      // Verify the image URL is accessible with a timeout
       const imageUrl = response.data[0].url;
-      
-      // Verify the image URL is accessible and add cache busting
       const imageResponse = await fetch(imageUrl, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        }
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout for image verification
       });
       
       if (!imageResponse.ok) {
@@ -210,6 +227,17 @@ export async function POST(req: Request) {
       });
     } catch (openaiError: any) {
       console.error('OpenAI API Error:', openaiError);
+
+      if (openaiError.name === 'AbortError') {
+        return NextResponse.json(
+          {
+            error: 'Request timeout',
+            details: 'The image generation request took too long. Please try again.',
+            type: 'TIMEOUT_ERROR'
+          },
+          { status: 408 }
+        );
+      }
 
       // Check if it's an API key error
       if (openaiError.message?.includes('api key') || openaiError.status === 401) {

@@ -73,6 +73,10 @@ export default function ImageGeneration() {
     setIsGenerating(true);
     setError(null);
     
+    // Create AbortController for the fetch request
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout for API call
+    
     try {
       const response = await fetch('/api/generate-image', {
         method: 'POST',
@@ -84,7 +88,10 @@ export default function ImageGeneration() {
           style: selectedStyle,
           material: selectedMaterial,
         }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeout);
       
       if (response.redirected) {
         window.location.href = response.url;
@@ -120,7 +127,7 @@ export default function ImageGeneration() {
           container.classList.add(styles.loading);
         }
         
-        // Set a timeout to handle cases where the image takes too long to load
+        // Set a shorter timeout for image loading
         const timeoutId = setTimeout(() => {
           if (!img.complete) {
             img.src = ''; // Cancel the image load
@@ -130,7 +137,7 @@ export default function ImageGeneration() {
               container.classList.remove(styles.loading);
             }
           }
-        }, 30000); // 30 second timeout
+        }, 10000); // 10 second timeout
 
         // Track load attempts
         let loadAttempts = 0;
@@ -164,14 +171,14 @@ export default function ImageGeneration() {
             console.error(`Failed to load image (attempt ${loadAttempts}/${maxAttempts}):`, e);
             
             if (loadAttempts < maxAttempts) {
-              // Add a small delay before retrying
+              // Add a smaller fixed delay before retrying
               setTimeout(() => {
                 console.log('Retrying image load...');
                 // Add cache-busting parameter on retry
                 const retryUrl = new URL(imageUrl);
                 retryUrl.searchParams.set('retry', loadAttempts.toString());
                 img.src = retryUrl.toString();
-              }, 2000 * loadAttempts); // Increasing delay with each attempt
+              }, 1000); // Fixed 1 second delay between retries
             } else {
               clearTimeout(timeoutId);
               setError('Failed to load the generated image. Please try again.');
@@ -191,10 +198,16 @@ export default function ImageGeneration() {
         setError('No images were generated. Please try again.');
         setIsGenerating(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Generation error:', error);
-      setError('Failed to generate images. Please try again.');
+      if (error.name === 'AbortError') {
+        setError('Request took too long. Please try again.');
+      } else {
+        setError('Failed to generate images. Please try again.');
+      }
       setIsGenerating(false);
+    } finally {
+      clearTimeout(timeout);
     }
   };
 
