@@ -354,17 +354,16 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
       <div className={styles.contentWrapper}>
         <h1 className={styles.mainTitle}>Current Plan</h1>
         
-        {/* Current Plan Box */}
         <div className={styles.currentPlanBox}>
           <div className={styles.planInfo}>
             <div className={styles.planSection}>
               <div className={styles.sectionLabel}>Tier</div>
               <div className={styles.planName}>
-                {currentPlan || 'FREE TRIAL'}
+                {currentPlan || (profile?.subscription_status === 'TRIAL' ? 'FREE TRIAL' : 'NO ACTIVE PLAN')}
               </div>
               {!currentPlan && profile?.subscription_status === 'TRIAL' && (
-                <div className={styles.trialStatus}>
-                  Trial Credits Available
+                <div className={`${styles.trialStatus} ${credits <= 0 ? styles.trialExpired : ''}`}>
+                  {credits > 0 ? 'Trial Credits Available' : 'Trial Credits Exhausted'}
                 </div>
               )}
             </div>
@@ -377,14 +376,14 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
                   height="24"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className={styles.creditIcon}
+                  className={`${styles.creditIcon} ${credits <= 0 ? styles.creditIconEmpty : ''}`}
                 >
                   <path d="M10 2L3 14h9l-1 8 8-12h-9l1-8z" />
                 </svg>
                 <span>{credits}</span>
                 {profile?.subscription_status === 'TRIAL' && (
-                  <div className={styles.trialCredits}>
-                    Trial Credits Remaining
+                  <div className={`${styles.trialCredits} ${credits <= 0 ? styles.trialCreditsEmpty : ''}`}>
+                    {credits > 0 ? 'Trial Credits Remaining' : 'Trial Credits Depleted'}
                   </div>
                 )}
               </div>
@@ -392,9 +391,18 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           </div>
 
           {profile?.subscription_status === 'TRIAL' && (
-            <div className={styles.trialInfo}>
-              <p>Get started with 250 free trial credits! Generate images for 10 credits each or 3D models for 10 credits each.</p>
-              <p>Subscribe to a plan below to continue after your trial credits are used.</p>
+            <div className={`${styles.trialInfo} ${credits <= 0 ? styles.trialInfoWarning : ''}`}>
+              {credits > 0 ? (
+                <>
+                  <p>Get started with your remaining {credits} trial credits! Generate images for 10 credits each or 3D models for 10 credits each.</p>
+                  <p>Subscribe to a plan below to continue after your trial credits are used.</p>
+                </>
+              ) : (
+                <>
+                  <p>Your trial credits have been exhausted. Subscribe to a plan below to continue generating content.</p>
+                  <p>Choose from our Standard or Pro plans to unlock more features and credits.</p>
+                </>
+              )}
             </div>
           )}
           
