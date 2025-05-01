@@ -394,7 +394,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
             <div className={`${styles.trialInfo} ${credits <= 0 ? styles.trialInfoWarning : ''}`}>
               {credits > 0 ? (
                 <>
-                  <p>Get started with your remaining {credits} trial credits! Generate images for 10 credits each or 3D models for 10 credits each.</p>
+                  <p>Get started with your remaining {credits} trial credits! Generate images for 100 credits each or 3D models for 100 credits each.</p>
                   <p>Subscribe to a plan below to continue after your trial credits are used.</p>
                 </>
               ) : (
