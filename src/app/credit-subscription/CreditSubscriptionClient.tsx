@@ -444,8 +444,8 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               features={[
                 { highlight: '250', text: 'free trial credits' },
                 { highlight: '2,000', text: 'monthly credits' },
-                { highlight: '10', text: 'credits for images' },
-                { highlight: '10', text: 'credits for 3D' },
+                { highlight: '100', text: 'credits for images' },
+                { highlight: '100', text: 'credits for 3D' },
                 { text: 'Privacy mode' }
               ]}
             />
@@ -459,9 +459,10 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               features={[
                 { highlight: '250', text: 'free trial credits' },
                 { highlight: '5,000', text: 'monthly credits' },
-                { highlight: '20', text: 'credits for images' },
-                { highlight: '15', text: 'credits for 3D' },
+                { highlight: '142', text: 'credits for images' },
+                { highlight: '142', text: 'credits for 3D' },
                 { text: 'Privacy mode' },
+                { text: 'Priority support' },
                 { text: 'Early access to new features' }
               ]}
             />

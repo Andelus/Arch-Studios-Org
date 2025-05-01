@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import styles from "./Image.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import CreditDisplay from '@/components/CreditDisplay';
 
 const ARCHITECTURAL_STYLES = [
   'Modern',
@@ -234,6 +235,7 @@ export default function ImageGeneration() {
         <Link href="/dashboard" className={styles.backButton}>
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
+        <CreditDisplay />
       </div>
 
       <div className={styles.mainContent}>

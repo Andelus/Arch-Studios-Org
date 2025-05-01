@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     }
 
     // Determine credit cost based on subscription status
-    let creditCost = 10; // Default fallback
+    let creditCost = 100; // Default for Standard plan
     
     switch (profile.subscription_status) {
       case 'TRIAL':
@@ -105,9 +105,12 @@ export async function POST(req: Request) {
         creditCost = 125;
         break;
       case 'ACTIVE':
-        // For active paid users, use the plan's credit cost
+        // For active paid users, use the plan's credit cost or default
         if (profile.subscription_plan?.image_credit_cost) {
           creditCost = profile.subscription_plan.image_credit_cost;
+        } else {
+          // Default costs based on plan type (if not specified in database)
+          creditCost = profile.current_plan_id?.toLowerCase().includes('pro') ? 142 : 100;
         }
         break;
     }

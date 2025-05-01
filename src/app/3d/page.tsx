@@ -10,6 +10,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import styles from './ThreeD.module.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import CreditDisplay from '@/components/CreditDisplay';
 
 interface GLTFResult {
   scene: THREE.Group;
@@ -408,6 +409,7 @@ function ThreeDModelingContent() {
         <Link href="/dashboard" className={styles.backButton}>
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
+        <CreditDisplay />
       </div>
 
       <div className={styles.mainContent}>
