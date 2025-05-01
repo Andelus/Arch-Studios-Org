@@ -266,57 +266,6 @@ export default function ImageGeneration() {
 
   return (
     <div className={styles.container}>
-      <ErrorComponent // Replace error display with ErrorComponent
-        error={error}
-        onPurchaseCredits={() => window.location.href = '/credit-subscription'}
-        onRenewSubscription={() => window.location.href = '/credit-subscription'}
-      />
-      {/* Remove the error display code below */}
-      {/* {error && (
-        <div className={styles['error-message']}>
-          <div className={styles['error-text']}>{error}</div>
-          {error.includes('insufficient credits') && (
-            <button 
-              className={styles['purchase-button']}
-              className="purchase-button"
-              onClick={() => window.location.href = '/credit-subscription'}
-            >
-              Purchase Credits
-            </button>
-          )}
-          {(error.includes('subscription has expired') || error.includes('subscription has been cancelled')) && (
-            <button 
-              className="purchase-button"
-              onClick={() => window.location.href = '/credit-subscription'}
-            >
-              Renew Subscription
-            </button>
-          )}
-        </div>
-      )}
-      <ErrorDisplay error={error} />
-      {/* Remove the error display code below */}
-      {/* {error && (
-        <div className="error-message">
-          {error}
-          {error.includes('insufficient credits') && (
-            <button 
-              className="purchase-credits-button"
-              onClick={() => window.location.href = '/credit-subscription'}
-            >
-              Purchase Credits
-            </button>
-          )}
-          {(error.includes('subscription has expired') || error.includes('subscription has been cancelled')) && (
-            <button 
-              className="purchase-credits-button"
-              onClick={() => window.location.href = '/credit-subscription'}
-            >
-              Renew Subscription
-            </button>
-          )}
-        </div>
-      )}
       <div className={styles.header}>
         <div className={styles.logoSection}>
           <span className={styles.logoText}>Arch Studios</span>
@@ -325,31 +274,40 @@ export default function ImageGeneration() {
         <Link href="/dashboard" className={styles.backButton}>
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
-
-
-      <div className={styles.logoSection}>
-        <span className={styles.logoText}>Arch Studios</span>
-        <span className={styles.beta}>BETA</span>
       </div>
-      <Link href="/dashboard" className={styles.backButton}>
-        <i className="fa-solid fa-arrow-left"></i>
-      </Link>
-    </div>
-              onChange={(e) => setPrompt(e.target.value)}
-            ></textarea>
+      <ErrorComponent
+        error={error}
+        onPurchaseCredits={() => window.location.href = '/credit-subscription'}
+        onRenewSubscription={() => window.location.href = '/credit-subscription'}
+      />
+      <div className={styles.mainContent}>
+        <div className={styles.inputSection}>
+          <textarea
+            className={styles.promptInput}
+            placeholder="Enter your architectural design prompt..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+        </div>
+        <div className={styles.inputSection}>
+          <textarea
+            className={styles.promptInput}
+            placeholder="Enter your architectural design prompt..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+        </div>
+        <div className={styles.dropdownContainer}>
+          <div 
+            className={styles.styleSection}
+            onClick={() => setShowStyleDropdown(!showStyleDropdown)}
+          >
+            <span>
+              <i className="fa-solid fa-palette"></i>
+              <div>Style Modifier</div>
+            </span>
+            <i className={`fa-solid fa-chevron-${showStyleDropdown ? 'up' : 'right'}`} />
           </div>
-
-          <div className={styles.dropdownContainer}>
-            <div 
-              className={styles.styleSection}
-              onClick={() => setShowStyleDropdown(!showStyleDropdown)}
-            >
-              <span>
-                <i className="fa-solid fa-palette"></i>
-                <div>Style Modifier</div>
-              </span>
-              <i className={`fa-solid fa-chevron-${showStyleDropdown ? 'up' : 'right'}`}></i>
-            </div>
             {showStyleDropdown && (
               <div className={styles.dropdown}>
                 {ARCHITECTURAL_STYLES.map((style) => (
