@@ -361,18 +361,31 @@ export default function ImageGeneration() {
                     className={styles.generatedImage}
                     crossOrigin="anonymous"
                     loading="eager"
-                    onLoad={(e) => {
-                      console.log('Image displayed successfully');
-                      e.currentTarget.style.opacity = '1';
-                    }}
                     onError={(e) => {
                       console.error('Image failed to load:', generatedImages[currentImageIndex]);
-                      e.currentTarget.onerror = null;
-                      setError('Failed to load the generated image. Please try again.');
+                      // Retry loading the image once
+                      const imgElement = e.currentTarget;
+                      const originalSrc = imgElement.src;
+                      imgElement.src = '';
+                      setTimeout(() => {
+                        if (imgElement) {
+                          imgElement.src = originalSrc;
+                        }
+                      }, 1000);
+                      
+                      // If it fails again, show error
+                      imgElement.onerror = () => {
+                        setError('Failed to load the generated image. Please try again.');
+                      };
                     }}
                     style={{
                       opacity: 0,
                       transition: 'opacity 0.3s ease-in-out'
+                    }}
+                    onLoad={(e) => {
+                      console.log('Image loaded successfully');
+                      e.currentTarget.style.opacity = '1';
+                      setError(null); // Clear any previous errors
                     }}
                   />
                 </div>

@@ -96,206 +96,133 @@ function ThreeDModelingContent() {
     
     console.log('Loading 3D model from URL:', modelUrl);
 
-    // Initialize Three.js scene
+    // Initialize Three.js scene if not already done
     if (!sceneRef.current) {
       console.log('Initializing new Three.js scene');
       sceneRef.current = new THREE.Scene();
       sceneRef.current.background = new THREE.Color(0x111111);
 
-      // Add lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Increased intensity
-      sceneRef.current.add(ambientLight);
-
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Increased intensity
+      // Enhanced lighting setup
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
       directionalLight.position.set(5, 5, 5);
+      directionalLight.castShadow = true;
+      
+      sceneRef.current.add(ambientLight);
+      sceneRef.current.add(hemisphereLight);
       sceneRef.current.add(directionalLight);
-      
-      // Add additional lights for better visibility
-      const backLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      backLight.position.set(-5, 5, -5);
-      sceneRef.current.add(backLight);
-      
-      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      bottomLight.position.set(0, -5, 0);
-      sceneRef.current.add(bottomLight);
 
-      // Camera setup
-      const aspect = canvasRef.current.clientWidth / canvasRef.current.clientHeight;
-      cameraRef.current = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000); // Wider FOV
-      cameraRef.current.position.z = 5;
-
-      // Renderer setup with improved settings
-      rendererRef.current = new THREE.WebGLRenderer({
-        canvas: canvasRef.current,
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: true, // Important for taking screenshots
+      // Add a ground plane for better visualization
+      const planeGeometry = new THREE.PlaneGeometry(10, 10);
+      const planeMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x333333,
+        roughness: 0.8,
+        metalness: 0.2
       });
-      rendererRef.current.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
-      rendererRef.current.setPixelRatio(window.devicePixelRatio); // Better quality
-      // Use the correct encoding for Three.js version
-      rendererRef.current.shadowMap.enabled = true; // Enable shadows
-
-      // Controls setup with better defaults
-      if (cameraRef.current) {
-        controlsRef.current = new OrbitControls(cameraRef.current, canvasRef.current);
-        controlsRef.current.enableDamping = true;
-        controlsRef.current.dampingFactor = 0.1;
-        controlsRef.current.rotateSpeed = 0.7;
-        controlsRef.current.zoomSpeed = 1.2;
-        controlsRef.current.enablePan = true;
-        controlsRef.current.minDistance = 2;
-        controlsRef.current.maxDistance = 20;
-      }
-      
-      // Handle window resize
-      const handleResize = () => {
-        if (!canvasRef.current || !cameraRef.current || !rendererRef.current) return;
-        
-        const width = canvasRef.current.clientWidth;
-        const height = canvasRef.current.clientHeight;
-        
-        cameraRef.current.aspect = width / height;
-        cameraRef.current.updateProjectionMatrix();
-        
-        rendererRef.current.setSize(width, height);
-      };
-      
-      window.addEventListener('resize', handleResize);
+      const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.y = -2;
+      plane.receiveShadow = true;
+      sceneRef.current.add(plane);
     }
 
-    // Clear existing model and plate
-    if (sceneRef.current) {
-      const existingModel = sceneRef.current.getObjectByName('currentModel');
-      if (existingModel) {
-        sceneRef.current.remove(existingModel);
-      }
-      
-      const existingPlate = sceneRef.current.getObjectByName('displayPlate');
-      if (existingPlate) {
-        sceneRef.current.remove(existingPlate);
-      }
-      
-      // Create a display plate for the model
-      const plateGeometry = new THREE.CylinderGeometry(3, 3, 0.2, 32);
-      const plateMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x333333,
-        metalness: 0.8,
-        roughness: 0.2,
-        reflectivity: 0.5,
-      });
-      const plate = new THREE.Mesh(plateGeometry, plateMaterial);
-      plate.position.y = -1.5; // Position below where model will be placed
-      plate.rotation.x = Math.PI / 2; // Rotate to be flat
-      plate.name = 'displayPlate';
-      plate.receiveShadow = true;
-      sceneRef.current.add(plate);
-      
-      // Add a subtle ambient light from below for better plate visibility
-      const plateLight = new THREE.PointLight(0x6666ff, 0.5);
-      plateLight.position.set(0, -2, 0);
-      plateLight.name = 'plateLight';
-      sceneRef.current.add(plateLight);
+    // Remove existing model if any
+    const existingModel = sceneRef.current.getObjectByName('currentModel');
+    if (existingModel) {
+      sceneRef.current.remove(existingModel);
     }
 
     setIsModelLoaded(false);
-
-    // Load new model with enhanced settings
-    const loader = new GLTFLoader();
-    console.log('Starting to load GLB model from URL:', modelUrl);
-    
-    // Add a loading indicator or message
     setMessage('Loading 3D model...');
-    
-    loader.load(
-      modelUrl,
-      (gltf) => {
-        if (!sceneRef.current) return;
-        console.log('Model loaded successfully:', gltf);
-        
-        const model = gltf.scene;
-        model.name = 'currentModel';
-        model.position.set(0, 0, 0);
-        
-        // Auto-scale model to fit view
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) {
-          const scale = 2.5 / maxDim; // Scale to fit on plate
-          model.scale.set(scale, scale, scale);
-        }
-        
-        // Center model horizontally but position it on top of the plate
-        const center = box.getCenter(new THREE.Vector3());
-        model.position.x -= center.x;
-        model.position.z -= center.z;
-        
-        // Calculate the bottom of the model and position it on the plate
-        box.setFromObject(model); // Recalculate box after scaling
-        const bottomY = box.min.y;
-        model.position.y -= bottomY - 0.1; // Position slightly above plate
-        
-        // Apply better material settings to all meshes
-        model.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            // Enhance materials
-            if (child.material) {
-              child.material.side = THREE.DoubleSide; // Show both sides
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          }
-        });
-        
-        sceneRef.current.add(model);
-        setIsModelLoaded(true);
-        setMessage(''); // Clear loading message
 
-        // Reset camera position for better view
-        if (cameraRef.current && controlsRef.current) {
-          cameraRef.current.position.set(0, 0, 5);
+    try {
+      // Load new model with enhanced error handling
+      const loader = new GLTFLoader();
+      const gltf = await new Promise<any>((resolve, reject) => {
+        loader.load(
+          modelUrl,
+          (gltf) => resolve(gltf),
+          (progress) => {
+            const percentComplete = Math.round((progress.loaded / progress.total) * 100);
+            setMessage(`Loading 3D model: ${percentComplete}%`);
+          },
+          (error) => reject(error)
+        );
+      });
+
+      if (!sceneRef.current) return;
+      console.log('Model loaded successfully:', gltf);
+      
+      const model = gltf.scene;
+      model.name = 'currentModel';
+      model.position.set(0, 0, 0);
+      
+      // Auto-scale model to fit view
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      if (maxDim > 0) {
+        const scale = 4 / maxDim; // Scale to fit in a 4-unit cube
+        model.scale.multiplyScalar(scale);
+      }
+
+      // Center the model
+      box.setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+      
+      // Enable shadows
+      model.traverse((node: any) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+          // Improve material quality
+          if (node.material) {
+            node.material.roughness = 0.7;
+            node.material.metalness = 0.3;
+          }
+        }
+      });
+
+      sceneRef.current.add(model);
+      setIsModelLoaded(true);
+      setMessage(''); // Clear loading message
+      setError(null); // Clear any previous errors
+
+      // Reset camera position for better view
+      if (cameraRef.current && controlsRef.current) {
+        cameraRef.current.position.set(4, 4, 4);
+        controlsRef.current.target.set(0, 0, 0);
+        controlsRef.current.update();
+      }
+
+      // Animation loop with cleanup
+      let animationFrameId: number;
+      const animate = () => {
+        if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+        
+        animationFrameId = requestAnimationFrame(animate);
+        if (controlsRef.current) {
           controlsRef.current.update();
         }
-
-        // Start animation loop with better performance
-        let animationFrameId: number;
-        const animate = () => {
-          if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
-          
-          animationFrameId = requestAnimationFrame(animate);
-          if (controlsRef.current) {
-            controlsRef.current.update();
-          }
-          
-          // Optional: Add subtle rotation for better visualization
-          if (model && !controlsRef.current?.enableDamping) {
-            model.rotation.y += 0.002;
-          }
-          
-          rendererRef.current.render(sceneRef.current, cameraRef.current);
-        };
         
-        animate();
-        
-        // Clean up animation on unmount
-        return () => {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      };
+      
+      animate();
+      
+      return () => {
+        if (animationFrameId) {
           cancelAnimationFrame(animationFrameId);
-        };
-      },
-      // Progress callback
-      (progress) => {
-        const percentComplete = Math.round((progress.loaded / progress.total) * 100);
-        setMessage(`Loading 3D model: ${percentComplete}%`);
-        console.log(`Loading progress: ${percentComplete}%`);
-      },
-      (error) => {
-        console.error('Error loading model:', error);
-        setIsModelLoaded(false);
-        setError('Failed to load 3D model. Please try again.');
-        setMessage('');
-      }
-    );
+        }
+      };
+    } catch (error) {
+      console.error('Error loading model:', error);
+      setIsModelLoaded(false);
+      setError('Failed to load 3D model. Please try again.');
+      setMessage('');
+    }
   };
 
   const generate3DModel = async () => {

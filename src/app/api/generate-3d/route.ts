@@ -147,7 +147,13 @@ export async function POST(req: Request) {
         throw new Error('No model URL in response');
       }
 
-      // Deduct credits and record transaction
+      // Verify the model URL is accessible
+      const modelResponse = await fetch(response.model_url);
+      if (!modelResponse.ok) {
+        throw new Error('Generated model URL is not accessible');
+      }
+
+      // Only deduct credits after successful generation and verification
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
@@ -157,9 +163,10 @@ export async function POST(req: Request) {
 
       if (updateError) {
         console.error('Failed to update credits balance:', updateError);
+        throw new Error('Failed to update credits balance');
       }
 
-      // Record credit usage
+      // Record credit usage only after successful credit deduction
       const { error: transactionError } = await supabase
         .from('credit_transactions')
         .insert({

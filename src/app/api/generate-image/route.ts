@@ -149,7 +149,16 @@ export async function POST(req: Request) {
         throw new Error('No image URL in response');
       }
 
-      // Deduct credits and record transaction
+      // Only deduct credits and record transaction after successful generation
+      const imageUrl = response.data[0].url;
+      
+      // Verify the image URL is accessible
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error('Generated image URL is not accessible');
+      }
+
+      // Now that we have confirmed the image is generated and accessible, deduct credits
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
@@ -159,6 +168,7 @@ export async function POST(req: Request) {
 
       if (updateError) {
         console.error('Failed to update credits balance:', updateError);
+        throw new Error('Failed to update credits balance');
       }
 
       // Record credit usage
@@ -177,7 +187,7 @@ export async function POST(req: Request) {
         console.error('Failed to record transaction:', transactionError);
       }
 
-      return NextResponse.json({ images: [response.data[0].url] });
+      return NextResponse.json({ images: [imageUrl] });
     } catch (openaiError: any) {
       console.error('OpenAI API Error:', openaiError);
 
