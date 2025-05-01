@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import styles from "./Image.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
-import ErrorComponent from '@/components/ErrorComponent';
 
 const ARCHITECTURAL_STYLES = [
   'Modern',
@@ -95,37 +94,19 @@ export default function ImageGeneration() {
       const data = await response.json();
       
       if (!response.ok) {
-        // Handle insufficient credits error specifically
-        if (response.status === 403 && data.error?.includes('insufficient credits')) {
-          setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
-          // Add a purchase credits button
-          const container = document.querySelector('.error-message');
-          if (container) {
-            const button = document.createElement('button');
-            button.className = 'purchase-credits-button';
-            button.textContent = 'Purchase Credits';
-            button.onclick = () => window.location.href = '/credit-subscription';
-            container.appendChild(button);
-          }
-          return;
-        }
-        // Handle subscription expired/cancelled error
-        else if (response.status === 403 && data.error?.includes('subscription has expired')) {
-          setError('Your subscription has expired. Please renew your subscription to continue.');
-          // Add a renew subscription button
-          const container = document.querySelector('.error-message');
-          if (container) {
-            const button = document.createElement('button');
-            button.className = 'purchase-credits-button';
-            button.textContent = 'Renew Subscription';
-            button.onclick = () => window.location.href = '/credit-subscription';
-            container.appendChild(button);
-          }
-          return;
-        }
-        // Handle other errors
-        setError(data.error || 'Failed to generate images');
+      // Handle insufficient credits error specifically
+      if (response.status === 403 && data.error?.includes('insufficient credits')) {
+        setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
         return;
+      }
+      // Handle subscription expired/cancelled error
+      else if (response.status === 403 && data.error?.includes('subscription has expired')) {
+        setError('Your subscription has expired. Please renew your subscription to continue.');
+        return;
+      }
+      // Handle other errors
+      setError(data.error || 'Failed to generate images');
+      return;
       }
       
       if (data.images && data.images.length > 0) {
@@ -275,39 +256,33 @@ export default function ImageGeneration() {
           <i className="fa-solid fa-arrow-left"></i>
         </Link>
       </div>
-      <ErrorComponent
-        error={error}
-        onPurchaseCredits={() => window.location.href = '/credit-subscription'}
-        onRenewSubscription={() => window.location.href = '/credit-subscription'}
-      />
+
       <div className={styles.mainContent}>
-        <div className={styles.inputSection}>
-          <textarea
-            className={styles.promptInput}
-            placeholder="Enter your architectural design prompt..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-        </div>
-        <div className={styles.inputSection}>
-          <textarea
-            className={styles.promptInput}
-            placeholder="Enter your architectural design prompt..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-        </div>
-        <div className={styles.dropdownContainer}>
-          <div 
-            className={styles.styleSection}
-            onClick={() => setShowStyleDropdown(!showStyleDropdown)}
-          >
-            <span>
-              <i className="fa-solid fa-palette"></i>
-              <div>Style Modifier</div>
-            </span>
-            <i className={`fa-solid fa-chevron-${showStyleDropdown ? 'up' : 'right'}`} />
+        <div className={styles.sidebar}>
+          <div className={styles.promptArea}>
+            <label>
+              <span>Prompt</span>
+              <i className="fa-solid fa-circle-info"></i>
+            </label>
+            <textarea 
+              className={styles.promptInput} 
+              placeholder="Describe your architectural image..." 
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            ></textarea>
           </div>
+
+          <div className={styles.dropdownContainer}>
+            <div 
+              className={styles.styleSection}
+              onClick={() => setShowStyleDropdown(!showStyleDropdown)}
+            >
+              <span>
+                <i className="fa-solid fa-palette"></i>
+                <div>Style Modifier</div>
+              </span>
+              <i className={`fa-solid fa-chevron-${showStyleDropdown ? 'up' : 'right'}`}></i>
+            </div>
             {showStyleDropdown && (
               <div className={styles.dropdown}>
                 {ARCHITECTURAL_STYLES.map((style) => (
