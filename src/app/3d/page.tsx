@@ -324,7 +324,7 @@ function ThreeDModelingContent() {
       if (!response.ok) {
         // Handle insufficient credits error specifically
         if (response.status === 403 && data.error?.includes('insufficient credits')) {
-          setError('You have run out of credits. Please purchase more credits to continue.');
+          setError('Your credits have been exhausted. You need to purchase more credits to continue generating 3D models.');
           return;
         }
         // Handle subscription expired/cancelled error

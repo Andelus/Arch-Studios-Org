@@ -94,19 +94,19 @@ export default function ImageGeneration() {
       const data = await response.json();
       
       if (!response.ok) {
-        // Handle insufficient credits error specifically
-        if (response.status === 403 && data.error?.includes('insufficient credits')) {
-          setError('You have run out of credits. Please purchase more credits to continue.');
-          return;
-        }
-        // Handle subscription expired/cancelled error
-        else if (response.status === 403 && data.error?.includes('subscription has expired')) {
-          setError('Your subscription has expired. Please renew your subscription to continue.');
-          return;
-        }
-        // Handle other errors
-        setError(data.error || 'Failed to generate images');
+      // Handle insufficient credits error specifically
+      if (response.status === 403 && data.error?.includes('insufficient credits')) {
+        setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
         return;
+      }
+      // Handle subscription expired/cancelled error
+      else if (response.status === 403 && data.error?.includes('subscription has expired')) {
+        setError('Your subscription has expired. Please renew your subscription to continue.');
+        return;
+      }
+      // Handle other errors
+      setError(data.error || 'Failed to generate images');
+      return;
       }
       
       if (data.images && data.images.length > 0) {
