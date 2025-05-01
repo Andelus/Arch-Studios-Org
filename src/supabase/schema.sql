@@ -442,6 +442,65 @@ BEGIN
 END;
 $$;
 
+-- Add stored procedure for atomic credit deduction and transaction logging
+create or replace function deduct_credits_and_log(
+    p_user_id text,
+    p_credit_amount integer,
+    p_transaction_type text,
+    p_generation_type text,
+    p_description text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    -- Perform credit deduction and transaction logging in a single transaction
+    update profiles 
+    set credits_balance = credits_balance - p_credit_amount
+    where id = p_user_id;
+
+    if not found then
+        raise exception 'Profile not found';
+    end if;
+
+    -- Record the transaction
+    insert into credit_transactions (
+        user_id,
+        amount,
+        type,
+        generation_type,
+        description,
+        created_at
+    ) values (
+        p_user_id,
+        -p_credit_amount,
+        p_transaction_type,
+        p_generation_type,
+        p_description,
+        now()
+    );
+
+    -- Check if credits are running low and auto-buy is enabled
+    declare
+        v_auto_buy boolean;
+        v_current_balance integer;
+    begin
+        select auto_buy_enabled, credits_balance
+        into v_auto_buy, v_current_balance
+        from profiles
+        where id = p_user_id;
+
+        if v_auto_buy and v_current_balance < 500 then
+            -- Trigger auto-buy process (implement this part based on your auto-buy logic)
+            -- This could be a separate function call or direct implementation
+            null; -- Placeholder for now
+        end if;
+    end;
+end;
+$$;
+
 -- Initial subscription plans
 insert into subscription_plans (name, total_credits, price, image_credit_cost, model_credit_cost, features) values
     ('STANDARD', 2000, 5.00, 100, 100, '["Privacy mode", "Auto-buy option"]'::jsonb),
