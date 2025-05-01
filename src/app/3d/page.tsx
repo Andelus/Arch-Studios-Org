@@ -464,7 +464,15 @@ function ThreeDModelingContent() {
             </div>
           )}
           
-          <canvas ref={canvasRef} className={styles.canvas3d}></canvas>
+          <div className={styles.canvas3dContainer}>
+            <canvas ref={canvasRef} className={styles.canvas3d}></canvas>
+            {!isModelLoaded && generatedModels.length === 0 && !isGenerating && (
+              <div className={styles.emptyCanvas3d}>
+                <i className="fa-solid fa-cube fa-3x"></i>
+                <p>Your 3D model will appear here</p>
+              </div>
+            )}
+          </div>
           
           {isModelLoaded && generatedModels.length > 0 && (
             <>

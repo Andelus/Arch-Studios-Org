@@ -178,23 +178,56 @@ export default function ImageGeneration() {
 
   const downloadImage = () => {
     if (generatedImages[currentImageIndex]) {
-      // Create a new anchor element
-      const link = document.createElement('a');
-      
-      // Set the href to the image URL directly
-      link.href = generatedImages[currentImageIndex];
-      
-      // Set download attribute with a filename
-      link.download = `architectural_design_${Date.now()}.png`;
-      
-      // Append to the document body
-      document.body.appendChild(link);
-      
-      // Trigger the download
-      link.click();
-      
-      // Clean up
-      document.body.removeChild(link);
+      try {
+        console.log('Downloading image from URL:', generatedImages[currentImageIndex]);
+        
+        // Create a canvas to handle potential CORS issues
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.crossOrigin = 'anonymous'; // Handle CORS
+        img.onload = () => {
+          // Set canvas dimensions to match the image
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          // Draw image on canvas
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            
+            // Convert to blob and download
+            canvas.toBlob((blob) => {
+              if (blob) {
+                // Create download link
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `architectural_design_${Date.now()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                
+                // Clean up
+                setTimeout(() => {
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                }, 100);
+              }
+            });
+          }
+        };
+        
+        img.onerror = (e) => {
+          console.error('Error loading image for download:', e);
+          alert('Failed to download image. Please try again.');
+        };
+        
+        // Start loading the image
+        img.src = generatedImages[currentImageIndex];
+      } catch (error) {
+        console.error('Download error:', error);
+        alert('Failed to download image. Please try again.');
+      }
     }
   };
 
@@ -313,8 +346,11 @@ export default function ImageGeneration() {
                     className={styles.generatedImage}
                     crossOrigin="anonymous"
                     loading="eager"
+                    style={{ display: 'block', width: '100%', height: 'auto' }}
                     onLoad={(e) => {
                       console.log('Image loaded successfully:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
+                      // Force a re-render of the image container
+                      e.currentTarget.style.display = 'block';
                     }}
                     onError={(e) => {
                       console.error('Image failed to load:', generatedImages[currentImageIndex]);
