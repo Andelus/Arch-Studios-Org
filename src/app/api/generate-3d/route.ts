@@ -78,24 +78,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate image URL if provided
-    if (imageUrl) {
-      try {
-        const url = new URL(imageUrl);
-        if (!url.protocol.startsWith('http')) {
-          return NextResponse.json(
-            { error: 'Invalid image URL protocol' },
-            { status: 400 }
-          );
-        }
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Invalid image URL format' },
-          { status: 400 }
-        );
-      }
-    }
-
     // Get user's profile with retry mechanism
     const getProfile = async (retries = 3): Promise<UserProfile | null> => {
       for (let i = 0; i < retries; i++) {
