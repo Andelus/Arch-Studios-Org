@@ -23,7 +23,28 @@ if (openaiApiKey) {
 }
 
 const generatePrompt = (style: string, material: string) => {
-  return `Create an ultra-high-definition architectural visualization of a ${style.toLowerCase()} building, featuring ${material.toLowerCase()} as the primary material. 
+  if (style === '3D') {
+    return `Create an ultra-high-definition architectural visualization optimized for 3D conversion. The building should utilize ${material.toLowerCase()} as the primary material.
+
+Key requirements:
+- Clean orthographic or 3/4 perspective view with precise geometric forms
+- Hyper-detailed structural elements with clear depth information
+- Sharp edges and well-defined surfaces suitable for 3D modeling
+- Perfect scale proportions and architectural measurements
+- Crisp material texturing showing surface properties of ${material.toLowerCase()}
+- Studio lighting that emphasizes form and volume
+- Neutral background with subtle depth grid
+- No people or environmental clutter
+- Technical accuracy in construction details and joints
+
+Technical specifications:
+- Maximum detail preservation for 3D conversion
+- Professional CAD-like precision in all elements
+- Perfect edge definition and surface topology
+- Clear separation between architectural elements`;
+  }
+
+  return `Create an ultra-high-definition architectural visualization of a ${style.toLowerCase()} building utilizing ${material.toLowerCase()} as the primary material. 
 
 Key architectural requirements:
 - Precise technical architectural representation with accurate scale and proportions
