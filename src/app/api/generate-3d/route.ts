@@ -20,15 +20,14 @@ const initializeFalAI = async () => {
   }
 
   try {
-    // Import the module inside the async function
     const { fal: falInstance } = await import('@fal-ai/client');
     
-    // Configure with full key format
+    // Configure with credentials
     falInstance.config({
-      credentials: `Key ${falApiKey}`
+      credentials: falApiKey
     });
     
-    console.log('FAL AI client initialized with key format:', `Key ${falApiKey.substring(0, 5)}...`);
+    console.log('FAL AI client initialized');
     return falInstance;
   } catch (error) {
     console.error('Failed to initialize FAL AI client:', error);
@@ -36,7 +35,7 @@ const initializeFalAI = async () => {
   }
 };
 
-// Initialize fal on first use with proper key handling
+// Initialize fal on first use with proper error handling
 const getFalInstance = async () => {
   if (fal) {
     return fal;
@@ -161,30 +160,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify model URL with timeout and retries
-    const verifyModelUrl = async (url: string, maxRetries = 3, timeout = 10000): Promise<boolean> => {
-      for (let i = 0; i < maxRetries; i++) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-          const response = await fetch(url, {
-            method: 'HEAD',
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-          if (response.ok) return true;
-        } catch (error) {
-          if (i === maxRetries - 1) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-        }
-      }
-      return false;
-    };
-
     try {
-      // Generate 3D model
+      // Generate 3D model with direct authentication
       const result = await fal.subscribe('fal-ai/trellis-3d', {
         input: {
           prompt: prompt || 'Create a high-end architectural 3D model with precise geometry, clean lines, and professional detailing. The model should be suitable for architectural visualization and portfolio presentation.',
@@ -192,6 +169,7 @@ export async function POST(req: Request) {
           model: 'trellis-3d',
           output_format: 'glb',
         },
+        credentials: falApiKey, // Add credentials directly to the request
       });
 
       const response = result as unknown as TrellisResponse;
@@ -201,8 +179,8 @@ export async function POST(req: Request) {
       }
 
       // Verify the model URL is accessible
-      const isModelAccessible = await verifyModelUrl(response.model_url);
-      if (!isModelAccessible) {
+      const isModelAccessible = await fetch(response.model_url, { method: 'HEAD' });
+      if (!isModelAccessible.ok) {
         throw new Error('Generated model URL is not accessible');
       }
 
