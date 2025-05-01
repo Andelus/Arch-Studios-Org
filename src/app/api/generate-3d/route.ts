@@ -73,6 +73,14 @@ export async function POST(req: Request) {
       );
     }
 
+    // Debug logs in the same format as image generation
+    console.log('Profile data:', {
+      current_plan_id: profile.current_plan_id,
+      subscription_status: profile.subscription_status,
+      subscription_plan: profile.subscription_plan,
+      credits_balance: profile.credits_balance
+    });
+
     // Check if user can generate 3D models based on subscription status
     if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
       return NextResponse.json(

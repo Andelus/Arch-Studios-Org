@@ -80,7 +80,10 @@
 }
 
 .creditIcon {
-  color: #3b82f6;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   width: 28px;
   height: 28px;
   margin-right: 0;
@@ -498,7 +501,10 @@
 
 .trialCredits {
   font-size: 0.85rem;
-  color: #4facfe;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-top: 4px;
 }
 
