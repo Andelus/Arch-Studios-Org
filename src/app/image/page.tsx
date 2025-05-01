@@ -319,6 +319,16 @@ export default function ImageGeneration() {
                 <div className={styles.spinner}></div>
                 <p>Generating your image...</p>
               </div>
+            ) : error ? (
+              <div className={styles.errorMessage}>
+                <i className={`fa-solid fa-triangle-exclamation ${styles.errorIcon}`}></i>
+                <p>{error}</p>
+                {error.includes('credits') && (
+                  <Link href="/credit-subscription" className={styles.buyCreditsButton}>
+                    Buy More Credits
+                  </Link>
+                )}
+              </div>
             ) : generatedImages.length > 0 ? (
               <>
                 <div className={styles.imageContainer}>
