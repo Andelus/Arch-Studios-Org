@@ -1,5 +1,4 @@
-
-  p_is_trial BO-- Enable necessary extensions
+-- Enable necessary extensions
 create extension if not exists "uuid-ossp";
 
 -- Clean up existing tables and functions
@@ -406,11 +405,14 @@ $$;
 
 -- Add stored procedure for atomic image generation transaction
 CREATE OR REPLACE FUNCTION process_image_generation(
-  p_user_id UUID,
-  p_credit_cost INT,OLEAN
+  p_user_id TEXT,
+  p_credit_cost INT,
+  p_is_trial BOOLEAN
 )
 RETURNS void
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   -- Update credits balance and record transaction in a single transaction

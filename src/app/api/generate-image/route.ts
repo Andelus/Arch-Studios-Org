@@ -170,15 +170,16 @@ export async function POST(req: Request) {
         });
 
         if (dbError) {
-          console.error('Database error:', dbError);
-          // Still return the image but with a warning
-          return NextResponse.json({
-            success: true,
-            url: dataUrl,
-            warning: 'Image generated successfully, but there was an issue recording the transaction.',
-            status: 200
-          });
+          console.error('Database error during credit deduction:', dbError);
+          throw new Error(`Failed to process credit deduction: ${dbError.message}`);
         }
+
+        // Log successful transaction
+        console.log('Successfully processed image generation and deducted credits:', {
+          userId,
+          creditCost,
+          newBalance: profile.credits_balance - creditCost
+        });
 
         return NextResponse.json({
           success: true,
