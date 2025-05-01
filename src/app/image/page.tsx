@@ -85,7 +85,6 @@ export default function ImageGeneration() {
         }),
       });
       
-      // Handle redirect errors (like NEXT_REDIRECT)
       if (response.redirected) {
         window.location.href = response.url;
         return;
@@ -94,52 +93,35 @@ export default function ImageGeneration() {
       const data = await response.json();
       
       if (!response.ok) {
-      // Handle insufficient credits error specifically
-      if (response.status === 403 && data.error?.includes('insufficient credits')) {
-        setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
+        if (response.status === 403 && data.error?.includes('insufficient credits')) {
+          setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
+          return;
+        }
+        if (response.status === 403 && data.error?.includes('subscription has expired')) {
+          setError('Your subscription has expired. Please renew your subscription to continue.');
+          return;
+        }
+        setError(data.error || 'Failed to generate images');
         return;
-      }
-      // Handle subscription expired/cancelled error
-      else if (response.status === 403 && data.error?.includes('subscription has expired')) {
-        setError('Your subscription has expired. Please renew your subscription to continue.');
-        return;
-      }
-      // Handle other errors
-      setError(data.error || 'Failed to generate images');
-      return;
       }
       
       if (data.images && data.images.length > 0) {
         console.log('Received images:', data.images);
-        
-        // Ensure we have the full image URL
         const imageUrl = data.images[0];
-        console.log('Processing image URL:', imageUrl);
         
-        // Pre-load the image to ensure it's cached
+        // Pre-load the image
         const img = new Image();
         img.crossOrigin = 'anonymous';
         
         img.onload = () => {
-          console.log('Image loaded successfully:', imageUrl, img.naturalWidth, 'x', img.naturalHeight);
-          
-          // Add new image while maintaining 3-tile limit
+          console.log('Image loaded successfully:', imageUrl);
           const newImages = [...generatedImages];
           if (newImages.length >= 3) {
-            // Remove the oldest image when limit is reached
             newImages.shift();
           }
-          // Add the new image
           newImages.push(imageUrl);
-          
-          // Update state with new images and set current index to the new image
           setGeneratedImages(newImages);
           setCurrentImageIndex(newImages.length - 1);
-          
-          // Force a re-render
-          setTimeout(() => {
-            console.log('Forcing re-render with current image index:', newImages.length - 1);
-          }, 100);
         };
         
         img.onerror = (e) => {
@@ -147,13 +129,10 @@ export default function ImageGeneration() {
           setError('Failed to load the generated image. Please try again.');
         };
         
-        // Start loading the image
         img.src = imageUrl;
-      } else {
-        console.error('No images received from API');
-        setError('No images were generated. Please try again.');
       }
     } catch (error) {
+      console.error('Generation error:', error);
       setError('Failed to generate images. Please try again.');
     } finally {
       setIsGenerating(false);
@@ -350,20 +329,21 @@ export default function ImageGeneration() {
                     className={styles.generatedImage}
                     crossOrigin="anonymous"
                     loading="eager"
-                    style={{ display: 'block', width: '100%', height: 'auto' }}
                     onLoad={(e) => {
-                      console.log('Image loaded successfully:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
-                      // Force a re-render of the image container
-                      e.currentTarget.style.display = 'block';
+                      console.log('Image displayed successfully');
+                      e.currentTarget.style.opacity = '1';
                     }}
                     onError={(e) => {
                       console.error('Image failed to load:', generatedImages[currentImageIndex]);
-                      e.currentTarget.onerror = null; // Prevent infinite loop
-                      e.currentTarget.src = '/placeholder-image.png'; // Fallback image
+                      e.currentTarget.onerror = null;
+                      setError('Failed to load the generated image. Please try again.');
+                    }}
+                    style={{
+                      opacity: 0,
+                      transition: 'opacity 0.3s ease-in-out'
                     }}
                   />
                 </div>
-                {/* Image counter if multiple images */}
                 {generatedImages.length > 1 && (
                   <div className={styles.imageCounter}>
                     {currentImageIndex + 1} / {generatedImages.length}
