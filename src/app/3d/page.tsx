@@ -322,6 +322,17 @@ function ThreeDModelingContent() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle insufficient credits error specifically
+        if (response.status === 403 && data.error?.includes('insufficient credits')) {
+          setError('You have run out of credits. Please purchase more credits to continue.');
+          return;
+        }
+        // Handle subscription expired/cancelled error
+        else if (response.status === 403 && data.error?.includes('subscription has expired')) {
+          setError('Your subscription has expired. Please renew your subscription to continue.');
+          return;
+        }
+        // Handle other errors
         setError(data.error || 'Failed to generate 3D model');
         return;
       }

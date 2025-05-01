@@ -96,10 +96,14 @@ export default function ImageGeneration() {
       if (!response.ok) {
         // Handle insufficient credits error specifically
         if (response.status === 403 && data.error?.includes('insufficient credits')) {
-          window.location.href = '/credit-subscription';
+          setError('You have run out of credits. Please purchase more credits to continue.');
           return;
         }
-        
+        // Handle subscription expired/cancelled error
+        else if (response.status === 403 && data.error?.includes('subscription has expired')) {
+          setError('Your subscription has expired. Please renew your subscription to continue.');
+          return;
+        }
         // Handle other errors
         setError(data.error || 'Failed to generate images');
         return;
