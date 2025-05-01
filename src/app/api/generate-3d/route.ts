@@ -11,6 +11,7 @@ interface FalAIClient {
 const falApiKey = process.env.FAL_AI_API_KEY;
 
 let fal: FalAIClient | null = null;
+
 const initializeFalAI = async () => {
   if (!falApiKey) {
     console.error('FAL_AI_API_KEY is not set in environment variables');
@@ -18,22 +19,44 @@ const initializeFalAI = async () => {
   }
 
   try {
-    const falModule = await import('@fal-ai/client');
-    const falInstance = falModule.fal;
+    const { fal: falInstance } = await import('@fal-ai/client');
+    
+    // Configure with authentication
     falInstance.config({
-      credentials: falApiKey,
+      credentials: falApiKey
     });
-    console.log('FAL AI client initialized successfully');
-    return falInstance;
+    
+    // Test the configuration
+    try {
+      await falInstance.subscribe('fal-ai/trellis-3d', {
+        input: {
+          prompt: 'test',
+          model: 'trellis-3d',
+          output_format: 'glb',
+        }
+      });
+      console.log('FAL AI client initialized and authenticated successfully');
+      return falInstance;
+    } catch (testError: any) {
+      if (testError.status === 401) {
+        console.error('FAL AI authentication failed:', testError);
+        return null;
+      }
+      // Other errors might be normal (like invalid input), so we can still return the client
+      return falInstance;
+    }
   } catch (error) {
     console.error('Failed to initialize FAL AI client:', error);
     return null;
   }
 };
 
-// Initialize fal on first import
-initializeFalAI().then(instance => {
+// Initialize fal on first import with proper error handling
+let initPromise = initializeFalAI().then(instance => {
   fal = instance;
+}).catch(error => {
+  console.error('Failed to initialize FAL AI:', error);
+  fal = null;
 });
 
 interface TrellisResponse {
