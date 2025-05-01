@@ -208,16 +208,45 @@ export async function POST(req: Request) {
           created_at: new Date().toISOString()
         });
 
+      // Add a warning flag if transaction recording fails
+      let transactionWarning = false;
       if (transactionError) {
         console.error('Failed to record transaction:', transactionError);
+        transactionWarning = true;
+        
+        // Try to log the failure for later reconciliation
+        try {
+          await supabase
+            .from('error_logs')
+            .insert({
+              user_id: userId,
+              error_type: 'TRANSACTION_RECORD_FAILURE',
+              details: JSON.stringify({
+                amount: -creditCost,
+                type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
+                error: transactionError
+              }),
+              created_at: new Date().toISOString()
+            });
+        } catch (logError) {
+          console.error('Failed to log transaction error:', logError);
+        }
       }
 
-      return new Response(imageUrl, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain'
-        }
-      });
+      // Return the image URL with optional warning
+      if (transactionWarning) {
+        return NextResponse.json({
+          url: imageUrl,
+          warning: 'Your image was generated successfully, but there was an issue recording your transaction.'
+        }, { status: 200 });
+      } else {
+        return new Response(imageUrl, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/plain'
+          }
+        });
+      }
 
     } catch (openaiError: any) {
       console.error('OpenAI API Error:', openaiError);

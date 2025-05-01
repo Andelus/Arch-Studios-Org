@@ -94,11 +94,11 @@ export default function ImageGeneration() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 403 && errorData.error?.includes('insufficient credits')) {
+        if (response.status === 403 && errorData.error?.includes('insufficient')) {
           setError('Your credits have been exhausted. You need to purchase more credits to continue generating images.');
           return;
         }
-        if (response.status === 403 && errorData.error?.includes('subscription has expired')) {
+        if (response.status === 403 && errorData.error?.includes('expired')) {
           setError('Your subscription has expired. Please renew your subscription to continue generating images.');
           return;
         }
@@ -114,8 +114,23 @@ export default function ImageGeneration() {
         return;
       }
 
-      // Get the direct URL from the response
-      const imageUrl = await response.text();
+      // Handle the response based on content type
+      const contentType = response.headers.get('Content-Type');
+      let imageUrl = '';
+      let warning = null;
+      
+      if (contentType?.includes('application/json')) {
+        // New format with potential warnings
+        const jsonResponse = await response.json();
+        imageUrl = jsonResponse.url;
+        warning = jsonResponse.warning;
+        if (warning) {
+          console.warn('Generation warning:', warning);
+        }
+      } else {
+        // Old format with direct URL text
+        imageUrl = await response.text();
+      }
       
       if (!imageUrl) {
         setError('No image URL received');
@@ -148,7 +163,7 @@ export default function ImageGeneration() {
             container.classList.remove(styles.loading);
           }
         }
-      }, 20000); // Increased to 20 second timeout
+      }, 30000); // Increased to 30 second timeout to match backend
 
       // Track load attempts
       let loadAttempts = 0;
@@ -156,7 +171,7 @@ export default function ImageGeneration() {
       
       const attemptLoad = () => {
         loadAttempts++;
-        console.log(`Attempting to load image (attempt ${loadAttempts}/${maxAttempts})`);
+        console.log(`Attempting to load image (attempt ${loadAttempts}/${maxAttempts}):`, imageUrl);
         
         img.onload = () => {
           clearTimeout(timeoutId);
@@ -180,20 +195,48 @@ export default function ImageGeneration() {
         
         img.onerror = (e) => {
           console.error(`Failed to load image (attempt ${loadAttempts}/${maxAttempts}):`, e);
+          // Check if the URL is from OpenAI (which might have temporary access tokens)
+          if (imageUrl.includes('openai.com') || imageUrl.includes('oaiusercontent.com')) {
+            console.warn('Detected OpenAI URL which may have limited token validity');
+          }
           
           if (loadAttempts < maxAttempts) {
             // Add a smaller fixed delay before retrying
             setTimeout(() => {
               console.log('Retrying image load...');
-              img.src = imageUrl;
+              // Add cache-busting parameter for retry
+              const retryUrl = new URL(imageUrl);
+              retryUrl.searchParams.set('retry', loadAttempts.toString());
+              img.src = retryUrl.toString();
             }, 1000); // Fixed 1 second delay between retries
           } else {
             clearTimeout(timeoutId);
-            setError('Failed to load the generated image. Please try again.');
+            setError('Failed to load the generated image. This could be due to temporary access issues with the image service. Please try generating a new image.');
             setIsGenerating(false);
             if (container) {
               container.classList.remove(styles.loading);
             }
+            
+            // Try to diagnose the issue
+            console.error('All image load attempts failed. Diagnosing...');
+            fetch(imageUrl, { 
+              method: 'HEAD',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              credentials: 'omit',
+              referrerPolicy: 'no-referrer',
+            })
+            .then(response => {
+              console.log('HEAD check result:', {
+                status: response.status,
+                ok: response.ok,
+                type: response.type,
+                headers: Object.fromEntries(response.headers.entries())
+              });
+            })
+            .catch(fetchError => {
+              console.error('HEAD check failed:', fetchError);
+            });
           }
         };
         
@@ -421,6 +464,16 @@ export default function ImageGeneration() {
                       const originalSrc = imgElement.src;
                       console.error('Image load error. URL:', originalSrc);
                       
+                      // Check if URL points to OpenAI
+                      const isOpenAIUrl = originalSrc.includes('openai.com') || originalSrc.includes('oaiusercontent.com');
+                      
+                      if (isOpenAIUrl) {
+                        console.warn('OpenAI image URL detected - these URLs may expire. Will attempt regeneration.');
+                        setError('The image URL has expired. Please try generating again.');
+                        setIsGenerating(false);
+                        return;
+                      }
+                      
                       // Try to fetch the image directly to check response
                       fetch(originalSrc, { 
                         method: 'GET',
@@ -444,11 +497,12 @@ export default function ImageGeneration() {
                           console.error('Direct fetch error:', fetchError);
                         });
 
-                      // Retry loading with a delay
+                      // Retry loading with a delay and cache-busting
                       setTimeout(() => {
                         const newImgUrl = new URL(originalSrc);
                         newImgUrl.searchParams.set('t', Date.now().toString());
                         imgElement.src = newImgUrl.toString();
+                        console.log('Retrying with cache-busting URL:', newImgUrl.toString());
                       }, 2000);
                     }}
                     style={{
