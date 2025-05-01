@@ -59,6 +59,14 @@ export async function POST(req: Request) {
       .eq('id', userId)
       .single() as { data: UserProfile | null; error: any };
 
+    // Debug logs
+    console.log('Profile data:', {
+      current_plan_id: profile?.current_plan_id,
+      subscription_status: profile?.subscription_status,
+      subscription_plan: profile?.subscription_plan,
+      credits_balance: profile?.credits_balance
+    });
+
     if (profileError) {
       if (profileError.code === 'PGRST116') {
         return NextResponse.json(
@@ -80,9 +88,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // For users without a subscription plan (trial or new users)
-    // Use default credit costs
-    const creditCost = profile.subscription_plan?.image_credit_cost || 10;
+    // Check if user can generate images based on subscription status
+    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Your subscription has expired or been cancelled. Please renew your subscription to continue using this feature.' },
+        { status: 403 }
+      );
+    }
+
+    // Determine credit cost based on subscription status
+    let creditCost = 10; // Default fallback
+    
+    switch (profile.subscription_status) {
+      case 'TRIAL':
+        // For trial users, use 125 credits
+        creditCost = 125;
+        break;
+      case 'ACTIVE':
+        // For active paid users, use the plan's credit cost
+        if (profile.subscription_plan?.image_credit_cost) {
+          creditCost = profile.subscription_plan.image_credit_cost;
+        }
+        break;
+    }
+    console.log('Using credit cost:', creditCost);
 
     // Check if user has enough credits
     if (profile.credits_balance < creditCost) {

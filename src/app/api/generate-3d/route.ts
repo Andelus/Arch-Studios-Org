@@ -73,9 +73,29 @@ export async function POST(req: Request) {
       );
     }
 
-    // For users without a subscription plan (trial or new users)
-    // Use default credit costs
-    const creditCost = profile.subscription_plan?.model_credit_cost || 10;
+    // Check if user can generate 3D models based on subscription status
+    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Your subscription has expired or been cancelled. Please renew your subscription to continue using this feature.' },
+        { status: 403 }
+      );
+    }
+
+    // Determine credit cost based on subscription status
+    let creditCost = 10; // Default fallback
+    
+    switch (profile.subscription_status) {
+      case 'TRIAL':
+        // For trial users, use 125 credits
+        creditCost = 125;
+        break;
+      case 'ACTIVE':
+        // For active paid users, use the plan's credit cost
+        if (profile.subscription_plan?.model_credit_cost) {
+          creditCost = profile.subscription_plan.model_credit_cost;
+        }
+        break;
+    }
 
     // Check if user has enough credits
     if (profile.credits_balance < creditCost) {
