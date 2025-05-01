@@ -175,12 +175,98 @@ export async function POST(req: Request) {
 
       // Verify the image URL is accessible with a timeout
       const imageUrl = response.data[0].url;
-      const imageResponse = await fetch(imageUrl, {
-        signal: AbortSignal.timeout(10000) // Increased to 10 second timeout for image verification
-      });
       
-      if (!imageResponse.ok) {
-        throw new Error('Generated image URL is not accessible');
+      try {
+        // Verify the image URL is accessible with a timeout
+        const imageResponse = await fetch(imageUrl, {
+          signal: AbortSignal.timeout(10000) // 10 second timeout for image verification
+        });
+        
+        if (!imageResponse.ok) {
+          throw new Error('Generated image URL is not accessible');
+        }
+        
+        // For OpenAI URLs, which expire quickly, we could download the image to a more permanent location
+        // This is a simplified approach - in production you might use cloud storage like S3
+        if (imageUrl.includes('openai.com') || imageUrl.includes('oaiusercontent.com')) {
+          console.log('OpenAI URL detected, these expire quickly. Using direct image data instead of URL.');
+          
+          // Get the image data
+          const imageData = await imageResponse.blob();
+          
+          // Use the raw image data in the response directly to avoid URL expiration
+          // In a real production app, you might upload this to S3/Cloudinary/etc.
+          // and return that persistent URL instead
+          
+          // Now that we have confirmed the image is generated and accessible, deduct credits
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+              credits_balance: profile.credits_balance - creditCost
+            })
+            .eq('id', userId);
+
+          if (updateError) {
+            console.error('Failed to update credits balance:', updateError);
+            throw new Error('Failed to update credits balance');
+          }
+
+          // Record credit usage
+          const { error: transactionError } = await supabase
+            .from('credit_transactions')
+            .insert({
+              user_id: userId,
+              amount: -creditCost,
+              type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
+              generation_type: 'IMAGE',
+              description: 'Image generation',
+              created_at: new Date().toISOString()
+            });
+
+          // Add a warning flag if transaction recording fails
+          let transactionWarning = false;
+          if (transactionError) {
+            console.error('Failed to record transaction:', transactionError);
+            transactionWarning = true;
+            
+            // Try to log the failure for later reconciliation
+            try {
+              await supabase
+                .from('error_logs')
+                .insert({
+                  user_id: userId,
+                  error_type: 'TRANSACTION_RECORD_FAILURE',
+                  details: JSON.stringify({
+                    amount: -creditCost,
+                    type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
+                    error: transactionError
+                  }),
+                  created_at: new Date().toISOString()
+                });
+            } catch (logError) {
+              console.error('Failed to log transaction error:', logError);
+            }
+          }
+
+          // Create a data URL from the blob
+          const reader = new FileReader();
+          const dataUrlPromise = new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(imageData);
+          });
+          
+          const dataUrl = await dataUrlPromise;
+          
+          // Return the data URL with optional warning
+          return NextResponse.json({
+            url: dataUrl,
+            isDataUrl: true,
+            warning: transactionWarning ? 'Your image was generated successfully, but there was an issue recording your transaction.' : undefined
+          }, { status: 200 });
+        }
+      } catch (error) {
+        console.error('Error verifying or processing image:', error);
+        // Continue with the original URL if there was an error in our enhanced processing
       }
 
       // Now that we have confirmed the image is generated and accessible, deduct credits
