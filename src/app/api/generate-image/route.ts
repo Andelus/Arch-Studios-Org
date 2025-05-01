@@ -191,78 +191,81 @@ export async function POST(req: Request) {
         if (imageUrl.includes('openai.com') || imageUrl.includes('oaiusercontent.com')) {
           console.log('OpenAI URL detected, these expire quickly. Using direct image data instead of URL.');
           
-          // Get the image data
-          const imageData = await imageResponse.blob();
-          
-          // Use the raw image data in the response directly to avoid URL expiration
-          // In a real production app, you might upload this to S3/Cloudinary/etc.
-          // and return that persistent URL instead
-          
-          // Now that we have confirmed the image is generated and accessible, deduct credits
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              credits_balance: profile.credits_balance - creditCost
-            })
-            .eq('id', userId);
-
-          if (updateError) {
-            console.error('Failed to update credits balance:', updateError);
-            throw new Error('Failed to update credits balance');
-          }
-
-          // Record credit usage
-          const { error: transactionError } = await supabase
-            .from('credit_transactions')
-            .insert({
-              user_id: userId,
-              amount: -creditCost,
-              type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
-              generation_type: 'IMAGE',
-              description: 'Image generation',
-              created_at: new Date().toISOString()
-            });
-
-          // Add a warning flag if transaction recording fails
-          let transactionWarning = false;
-          if (transactionError) {
-            console.error('Failed to record transaction:', transactionError);
-            transactionWarning = true;
+          try {
+            // Get the image data
+            const imageData = await imageResponse.arrayBuffer();
             
-            // Try to log the failure for later reconciliation
-            try {
-              await supabase
-                .from('error_logs')
-                .insert({
-                  user_id: userId,
-                  error_type: 'TRANSACTION_RECORD_FAILURE',
-                  details: JSON.stringify({
-                    amount: -creditCost,
-                    type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
-                    error: transactionError
-                  }),
-                  created_at: new Date().toISOString()
-                });
-            } catch (logError) {
-              console.error('Failed to log transaction error:', logError);
-            }
-          }
+            // Convert ArrayBuffer to Base64 string using Node.js Buffer
+            const base64Data = Buffer.from(imageData).toString('base64');
+            
+            // Determine MIME type from response headers or default to image/png
+            const contentType = imageResponse.headers.get('content-type') || 'image/png';
+            
+            // Create a data URL
+            const dataUrl = `data:${contentType};base64,${base64Data}`;
+            
+            console.log('Successfully created data URL from OpenAI image');
+            
+            // Now that we have confirmed the image is generated and accessible, deduct credits
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                credits_balance: profile.credits_balance - creditCost
+              })
+              .eq('id', userId);
 
-          // Create a data URL from the blob
-          const reader = new FileReader();
-          const dataUrlPromise = new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(imageData);
-          });
-          
-          const dataUrl = await dataUrlPromise;
-          
-          // Return the data URL with optional warning
-          return NextResponse.json({
-            url: dataUrl,
-            isDataUrl: true,
-            warning: transactionWarning ? 'Your image was generated successfully, but there was an issue recording your transaction.' : undefined
-          }, { status: 200 });
+            if (updateError) {
+              console.error('Failed to update credits balance:', updateError);
+              throw new Error('Failed to update credits balance');
+            }
+
+            // Record credit usage
+            const { error: transactionError } = await supabase
+              .from('credit_transactions')
+              .insert({
+                user_id: userId,
+                amount: -creditCost,
+                type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
+                generation_type: 'IMAGE',
+                description: 'Image generation',
+                created_at: new Date().toISOString()
+              });
+
+            // Add a warning flag if transaction recording fails
+            let transactionWarning = false;
+            if (transactionError) {
+              console.error('Failed to record transaction:', transactionError);
+              transactionWarning = true;
+              
+              // Try to log the failure for later reconciliation
+              try {
+                await supabase
+                  .from('error_logs')
+                  .insert({
+                    user_id: userId,
+                    error_type: 'TRANSACTION_RECORD_FAILURE',
+                    details: JSON.stringify({
+                      amount: -creditCost,
+                      type: profile.subscription_status === 'TRIAL' ? 'TRIAL_IMAGE_GENERATION' : 'IMAGE_GENERATION',
+                      error: transactionError
+                    }),
+                    created_at: new Date().toISOString()
+                  });
+              } catch (logError) {
+                console.error('Failed to log transaction error:', logError);
+              }
+            }
+            
+            // Return the data URL with optional warning
+            return NextResponse.json({
+              url: dataUrl,
+              isDataUrl: true,
+              warning: transactionWarning ? 'Your image was generated successfully, but there was an issue recording your transaction.' : undefined
+            }, { status: 200 });
+          } catch (dataUrlError) {
+            console.error('Error creating data URL:', dataUrlError);
+            // Continue with original URL as fallback
+          }
         }
       } catch (error) {
         console.error('Error verifying or processing image:', error);
