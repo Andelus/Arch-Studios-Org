@@ -197,7 +197,6 @@
   background: #1a1a1a;
   border-radius: 8px;
   overflow: hidden;
-  transition: opacity 0.3s ease;
 }
 
 .imageContainer.loading::before {
@@ -223,12 +222,12 @@
 }
 
 .generatedImage {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  object-fit: contain !important;
+  padding: 0 !important;
   border-radius: 8px;
-  position: relative;
-  z-index: 2;
+  position: relative !important;
+  height: unset !important;
+  max-height: 100%;
 }
 
 .loadingContainer {

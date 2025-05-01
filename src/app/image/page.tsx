@@ -7,6 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 import styles from "./Image.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import CreditDisplay from '@/components/CreditDisplay';
+import Image from 'next/image';
 
 const ARCHITECTURAL_STYLES = [
   'Modern',
@@ -397,29 +398,33 @@ export default function ImageGeneration() {
             ) : generatedImages.length > 0 ? (
               <>
                 <div className={styles.imageContainer}>
-                  <img 
+                  <Image 
                     key={`img-${currentImageIndex}-${Date.now()}`}
                     src={generatedImages[currentImageIndex]} 
                     alt={`Generated image from: ${prompt || 'architectural design'}`} 
                     className={styles.generatedImage}
+                    fill
+                    priority
+                    quality={100}
                     crossOrigin="anonymous"
                     loading="eager"
                     referrerPolicy="no-referrer"
+                    sizes="(max-width: 768px) 100vw, 50vw"
                     onError={(e) => {
-                      const imgElement = e.currentTarget;
+                      const imgElement = e.currentTarget as HTMLImageElement;
                       const originalSrc = imgElement.src;
                       console.error('Image load error. URL:', originalSrc);
-                      console.error('Image natural size:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
-                      console.error('Image display size:', imgElement.width, 'x', imgElement.height);
-                      console.error('Image complete:', imgElement.complete);
-                      console.error('Current network status:', navigator.onLine);
                       
                       // Try to fetch the image directly to check response
                       fetch(originalSrc, { 
                         method: 'GET',
                         mode: 'cors',
                         credentials: 'omit',
-                        referrerPolicy: 'no-referrer'
+                        referrerPolicy: 'no-referrer',
+                        headers: {
+                          'Cache-Control': 'no-cache',
+                          'Pragma': 'no-cache'
+                        }
                       })
                         .then(response => {
                           console.log('Direct fetch response:', {
@@ -434,32 +439,20 @@ export default function ImageGeneration() {
                         });
 
                       // Retry loading with a delay
-                      imgElement.src = '';
                       setTimeout(() => {
-                        if (imgElement) {
-                          console.log('Retrying image load with URL:', originalSrc);
-                          imgElement.src = originalSrc;
-                        }
+                        const newImgUrl = new URL(originalSrc);
+                        newImgUrl.searchParams.set('t', Date.now().toString());
+                        imgElement.src = newImgUrl.toString();
                       }, 2000);
-                      
-                      // If retry fails, show error
-                      imgElement.onerror = () => {
-                        console.error('Image retry failed');
-                        setError('Failed to load the generated image. Please try again.');
-                      };
-                    }}
-                    onLoad={(e) => {
-                      const imgElement = e.currentTarget;
-                      console.log('Image loaded successfully');
-                      console.log('Natural size:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
-                      console.log('Display size:', imgElement.width, 'x', imgElement.height);
-                      console.log('Image complete:', imgElement.complete);
-                      imgElement.style.opacity = '1';
-                      setError(null);
                     }}
                     style={{
                       opacity: 0,
                       transition: 'opacity 0.3s ease-in-out'
+                    }}
+                    onLoad={(e) => {
+                      const imgElement = e.currentTarget as HTMLImageElement;
+                      imgElement.style.opacity = '1';
+                      setError(null);
                     }}
                   />
                 </div>

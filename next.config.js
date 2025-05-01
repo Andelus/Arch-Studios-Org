@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [],
+    domains: ['oaidalleapiprodscus.blob.core.windows.net', 'cdn.openai.com'],
   },
   trailingSlash: false
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
