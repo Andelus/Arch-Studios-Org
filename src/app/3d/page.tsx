@@ -345,23 +345,22 @@ function ThreeDModelingContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle insufficient credits error specifically
         if (response.status === 403 && data.error?.includes('insufficient credits')) {
           setError('Your credits have been exhausted. You need to purchase more credits to continue generating 3D models.');
           return;
         }
-        // Handle subscription expired/cancelled error
-        else if (response.status === 403 && data.error?.includes('subscription has expired')) {
+        if (response.status === 403 && data.error?.includes('subscription has expired')) {
           setError('Your subscription has expired. Please renew your subscription to continue.');
           return;
         }
-        // Handle other errors
         setError(data.error || 'Failed to generate 3D model');
         return;
       }
       
       if (data.modelUrl) {
-        // Add new model while maintaining 3-tile limit
+        console.log('Received model URL:', data.modelUrl);
+        
+        // Update state in a single batch to ensure synchronization
         setGeneratedModels(prevModels => {
           const newModels = [...prevModels];
           if (newModels.length >= 3) {
@@ -371,11 +370,18 @@ function ThreeDModelingContent() {
             url: data.modelUrl,
             sourceImage: sourceImage || undefined
           });
+          
+          // Update the current model index in the same batch
+          setCurrentModelIndex(newModels.length - 1);
+          
           return newModels;
         });
-        setCurrentModelIndex(prev => Math.min(2, prev + 1));
+        
+        // Load the model directly
+        await loadModel(data.modelUrl);
       }
     } catch (error) {
+      console.error('Generation error:', error);
       setError('Failed to generate 3D model. Please try again.');
     } finally {
       setIsGenerating(false);
