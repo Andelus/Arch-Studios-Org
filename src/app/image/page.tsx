@@ -67,15 +67,7 @@ export default function ImageGeneration() {
   };
 
   const generateImages = async () => {
-    if (!isSignedIn) {
-      setError('Please sign in to generate images');
-      return;
-    }
-
-    if (!prompt.trim() && (!selectedStyle || !selectedMaterial)) {
-      setError('Please select both style and material');
-      return;
-    }
+    if (isGenerating) return;
     
     setIsGenerating(true);
     setError(null);
@@ -87,48 +79,66 @@ export default function ImageGeneration() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
+          prompt: prompt.trim(),
           style: selectedStyle,
           material: selectedMaterial,
-          size: '1024x1024',
-          n: 1,
         }),
       });
+      
+      // Handle redirect errors (like NEXT_REDIRECT)
+      if (response.redirected) {
+        window.location.href = response.url;
+        return;
+      }
       
       const data = await response.json();
       
       if (!response.ok) {
-        if (response.status === 401) {
-          setError('Please sign in to generate images');
-          router.push('/');
-        } else if (response.status === 404) {
-          // Profile not found - redirect to subscription page
-          router.push('/credit-subscription');
+        // Handle insufficient credits error specifically
+        if (response.status === 403 && data.error?.includes('insufficient credits')) {
+          window.location.href = '/credit-subscription';
           return;
-        } else if (response.status === 403) {
-          // Insufficient credits - redirect to subscription page
-          router.push('/credit-subscription');
-          return;
-        } else {
-          setError(data.error || 'Failed to generate images');
         }
+        
+        // Handle other errors
+        setError(data.error || 'Failed to generate images');
         return;
       }
       
       if (data.images && data.images.length > 0) {
-        // Add new image while maintaining 3-tile limit
-        setGeneratedImages(prevImages => {
-          const newImages = [...prevImages];
-          if (newImages.length >= 3) {
-            // Remove the oldest image when limit is reached
-            newImages.shift();
-          }
-          // Add the new image
-          newImages.push(data.images[0]);
-          return newImages;
-        });
-        // Show the newly added image
-        setCurrentImageIndex(prev => Math.min(2, prev + 1));
+        console.log('Received images:', data.images);
+        
+        // Pre-load the image to ensure it's cached
+        const img = new Image();
+        img.onload = () => {
+          console.log('Image loaded successfully:', data.images[0]);
+          
+          // Add new image while maintaining 3-tile limit
+          setGeneratedImages(prevImages => {
+            const newImages = [...prevImages];
+            if (newImages.length >= 3) {
+              // Remove the oldest image when limit is reached
+              newImages.shift();
+            }
+            // Add the new image
+            newImages.push(data.images[0]);
+            return newImages;
+          });
+          
+          // Show the newly added image
+          setCurrentImageIndex(prev => Math.min(2, prev + 1));
+        };
+        
+        img.onerror = (e) => {
+          console.error('Failed to load image:', data.images[0], e);
+          setError('Failed to load the generated image. Please try again.');
+        };
+        
+        // Start loading the image
+        img.src = data.images[0];
+      } else {
+        console.error('No images received from API');
+        setError('No images were generated. Please try again.');
       }
     } catch (error) {
       setError('Failed to generate images. Please try again.');
@@ -279,18 +289,26 @@ export default function ImageGeneration() {
 
         <div className={styles.canvasArea}>
           <div className={styles.canvas}>
-            {generatedImages.length > 0 ? (
+            {isGenerating ? (
+              <div className={styles.loadingContainer}>
+                <div className={styles.spinner}></div>
+                <p>Generating your image...</p>
+              </div>
+            ) : generatedImages.length > 0 ? (
               <>
-                <img 
-                  src={generatedImages[currentImageIndex]} 
-                  alt={`Generated image from: ${prompt}`} 
-                  className={styles.generatedImage}
-                  onError={(e) => {
-                    console.error('Image failed to load:', generatedImages[currentImageIndex]);
-                    e.currentTarget.onerror = null; // Prevent infinite loop
-                    e.currentTarget.src = '/placeholder-image.png'; // Fallback image
-                  }}
-                />
+                <div className={styles.imageContainer}>
+                  <img 
+                    key={`img-${currentImageIndex}-${generatedImages[currentImageIndex]}`}
+                    src={generatedImages[currentImageIndex]} 
+                    alt={`Generated image from: ${prompt || 'architectural design'}`} 
+                    className={styles.generatedImage}
+                    onError={(e) => {
+                      console.error('Image failed to load:', generatedImages[currentImageIndex]);
+                      e.currentTarget.onerror = null; // Prevent infinite loop
+                      e.currentTarget.src = '/placeholder-image.png'; // Fallback image
+                    }}
+                  />
+                </div>
                 {/* Image counter if multiple images */}
                 {generatedImages.length > 1 && (
                   <div className={styles.imageCounter}>

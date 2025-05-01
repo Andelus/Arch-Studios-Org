@@ -163,12 +163,38 @@ function ThreeDModelingContent() {
       window.addEventListener('resize', handleResize);
     }
 
-    // Clear existing model
+    // Clear existing model and plate
     if (sceneRef.current) {
       const existingModel = sceneRef.current.getObjectByName('currentModel');
       if (existingModel) {
         sceneRef.current.remove(existingModel);
       }
+      
+      const existingPlate = sceneRef.current.getObjectByName('displayPlate');
+      if (existingPlate) {
+        sceneRef.current.remove(existingPlate);
+      }
+      
+      // Create a display plate for the model
+      const plateGeometry = new THREE.CylinderGeometry(3, 3, 0.2, 32);
+      const plateMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x333333,
+        metalness: 0.8,
+        roughness: 0.2,
+        reflectivity: 0.5,
+      });
+      const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+      plate.position.y = -1.5; // Position below where model will be placed
+      plate.rotation.x = Math.PI / 2; // Rotate to be flat
+      plate.name = 'displayPlate';
+      plate.receiveShadow = true;
+      sceneRef.current.add(plate);
+      
+      // Add a subtle ambient light from below for better plate visibility
+      const plateLight = new THREE.PointLight(0x6666ff, 0.5);
+      plateLight.position.set(0, -2, 0);
+      plateLight.name = 'plateLight';
+      sceneRef.current.add(plateLight);
     }
 
     setIsModelLoaded(false);
@@ -195,13 +221,19 @@ function ThreeDModelingContent() {
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         if (maxDim > 0) {
-          const scale = 3.0 / maxDim; // Scale to reasonable size
+          const scale = 2.5 / maxDim; // Scale to fit on plate
           model.scale.set(scale, scale, scale);
         }
         
-        // Center model
+        // Center model horizontally but position it on top of the plate
         const center = box.getCenter(new THREE.Vector3());
-        model.position.sub(center);
+        model.position.x -= center.x;
+        model.position.z -= center.z;
+        
+        // Calculate the bottom of the model and position it on the plate
+        box.setFromObject(model); // Recalculate box after scaling
+        const bottomY = box.min.y;
+        model.position.y -= bottomY - 0.1; // Position slightly above plate
         
         // Apply better material settings to all meshes
         model.traverse((child) => {
@@ -425,6 +457,13 @@ function ThreeDModelingContent() {
         </div>
 
         <div className={styles.canvasArea}>
+          {message && (
+            <div className={styles.loadingMessage}>
+              <div className={styles.spinner}></div>
+              <p>{message}</p>
+            </div>
+          )}
+          
           <canvas ref={canvasRef} className={styles.canvas3d}></canvas>
           
           {isModelLoaded && generatedModels.length > 0 && (
