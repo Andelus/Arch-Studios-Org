@@ -122,8 +122,14 @@ export default function ImageGeneration() {
         return;
       }
       
+      // Ensure we're in the browser before creating an Image
+      if (typeof window === 'undefined') {
+        setError('Browser environment required');
+        return;
+      }
+      
       // Create a new Image object with increased timeout handling
-      const img = new Image();
+      const img = new window.Image();
       img.crossOrigin = 'anonymous';
       
       // Add loading class to container
@@ -232,7 +238,7 @@ export default function ImageGeneration() {
         // Create a canvas to handle potential CORS issues
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const img = new Image();
+        const img = new window.Image();
         
         img.crossOrigin = 'anonymous'; // Handle CORS
         img.onload = () => {
