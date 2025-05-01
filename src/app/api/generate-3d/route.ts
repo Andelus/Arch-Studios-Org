@@ -8,21 +8,42 @@ interface FalAIClient {
 }
 
 // Initialize Fal AI client if API key is available
-const falApiKey = process.env.FAL_AI_API_KEY;
+const falApiKey = process.env.FAL_KEY || process.env.FAL_AI_API_KEY;
 
 let fal: FalAIClient | null = null;
 let initializationInProgress: Promise<void> | null = null;
 
+interface TrellisResponse {
+  model_mesh: {
+    url: string;
+    content_type: string;
+    file_name: string;
+    file_size: number;
+  };
+  timings?: any;
+}
+
+interface SubscriptionPlan {
+  model_credit_cost: number;
+}
+
+interface UserProfile {
+  credits_balance: number;
+  current_plan_id: string | null;
+  subscription_status: string;
+  subscription_plan?: SubscriptionPlan;
+}
+
 const initializeFalAI = async () => {
   if (!falApiKey) {
-    console.error('FAL_AI_API_KEY is not set in environment variables');
+    console.error('FAL_KEY is not set in environment variables');
     return null;
   }
 
   try {
     const { fal: falInstance } = await import('@fal-ai/client');
     
-    // Configure with credentials
+    // Configure with credentials as shown in docs
     falInstance.config({
       credentials: falApiKey
     });
@@ -35,7 +56,6 @@ const initializeFalAI = async () => {
   }
 };
 
-// Initialize fal on first use with proper error handling
 const getFalInstance = async () => {
   if (fal) {
     return fal;
@@ -57,24 +77,8 @@ const getFalInstance = async () => {
   return fal;
 };
 
-interface TrellisResponse {
-  model_url: string;
-}
-
-interface SubscriptionPlan {
-  model_credit_cost: number;
-}
-
-interface UserProfile {
-  credits_balance: number;
-  current_plan_id: string | null;
-  subscription_status: string;
-  subscription_plan?: SubscriptionPlan;
-}
-
 export async function POST(req: Request) {
   try {
-    // Get FAL AI client instance
     fal = await getFalInstance();
     
     if (!fal) {
@@ -161,25 +165,33 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Generate 3D model with direct authentication
-      const result = await fal.subscribe('fal-ai/trellis-3d', {
+      // Generate 3D model with parameters from the documentation
+      const result = await fal.subscribe('fal-ai/trellis', {
         input: {
-          prompt: prompt || 'Create a high-end architectural 3D model with precise geometry, clean lines, and professional detailing. The model should be suitable for architectural visualization and portfolio presentation.',
           image_url: imageUrl,
-          model: 'trellis-3d',
-          output_format: 'glb',
+          ss_guidance_strength: 7.5,
+          ss_sampling_steps: 12,
+          slat_guidance_strength: 3,
+          slat_sampling_steps: 12,
+          mesh_simplify: 0.95,
+          texture_size: 1024
         },
-        credentials: falApiKey, // Add credentials directly to the request
+        logs: true,
+        onQueueUpdate: (update: any) => {
+          if (update.status === "IN_PROGRESS") {
+            console.log('Generation progress:', update.logs?.map((log: any) => log.message));
+          }
+        }
       });
 
       const response = result as unknown as TrellisResponse;
 
-      if (!response.model_url) {
+      if (!response.model_mesh?.url) {
         throw new Error('No model URL in response');
       }
 
       // Verify the model URL is accessible
-      const isModelAccessible = await fetch(response.model_url, { method: 'HEAD' });
+      const isModelAccessible = await fetch(response.model_mesh.url, { method: 'HEAD' });
       if (!isModelAccessible.ok) {
         throw new Error('Generated model URL is not accessible');
       }
@@ -198,7 +210,7 @@ export async function POST(req: Request) {
         throw new Error('Failed to process credit transaction');
       }
 
-      return NextResponse.json({ modelUrl: response.model_url });
+      return NextResponse.json({ modelUrl: response.model_mesh.url });
     } catch (falError: any) {
       console.error('Fal AI Error:', falError);
 
