@@ -351,9 +351,7 @@ export default function ImageGeneration() {
                 )}
               </>
             ) : (
-              <div className={styles.emptyCanvas}>
-                <p>Your generated images will appear here</p>
-              </div>
+              <div className={styles.imageContainer} />
             )}
             
             {generatedImages.length > 0 && (
