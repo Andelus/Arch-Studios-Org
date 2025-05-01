@@ -184,14 +184,18 @@ export async function POST(req: Request) {
         }
       });
 
-      const response = result as unknown as TrellisResponse;
+      console.log('Raw model response:', JSON.stringify(result, null, 2));
 
-      if (!response.model_mesh?.url) {
-        throw new Error('No model URL in response');
+      // The model returns data in the 'model_mesh' property
+      const modelUrl = result?.data?.model_mesh?.url || result?.model_mesh?.url;
+
+      if (!modelUrl) {
+        console.error('Invalid model response:', result);
+        throw new Error('No model URL in response. Raw response: ' + JSON.stringify(result));
       }
 
       // Verify the model URL is accessible
-      const isModelAccessible = await fetch(response.model_mesh.url, { method: 'HEAD' });
+      const isModelAccessible = await fetch(modelUrl, { method: 'HEAD' });
       if (!isModelAccessible.ok) {
         throw new Error('Generated model URL is not accessible');
       }
@@ -210,7 +214,7 @@ export async function POST(req: Request) {
         throw new Error('Failed to process credit transaction');
       }
 
-      return NextResponse.json({ modelUrl: response.model_mesh.url });
+      return NextResponse.json({ modelUrl });
     } catch (falError: any) {
       console.error('Fal AI Error:', falError);
 
