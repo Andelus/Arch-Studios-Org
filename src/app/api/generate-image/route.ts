@@ -23,7 +23,32 @@ if (openaiApiKey) {
 }
 
 const generatePrompt = (style: string, material: string) => {
-  return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio. The image should be suitable for a 3D rendering.`;
+  return `Create an ultra-high-definition architectural visualization of a ${style.toLowerCase()} building, featuring ${material.toLowerCase()} as the primary material. 
+
+Key architectural requirements:
+- Precise technical architectural representation with accurate scale and proportions
+- Hyper-detailed structural elements and architectural features
+- Professional architectural documentation quality with crisp edges and clear depth
+- Masterful material representation with accurate texturing and surface detail
+- Studio-quality lighting that emphasizes architectural form and spatial relationships
+- Clean, architectural background with proper perspective grid
+- Perfect symmetry and geometric precision where appropriate
+- Technical accuracy in construction details and joints
+- Clear delineation of different architectural planes and surfaces
+- Architectural-grade rendering quality suitable for professional documentation
+
+Composition requirements:
+- Primary view should be a clear architectural elevation or precise 3/4 perspective
+- Include subtle depth cues and shadow detail for enhanced dimensionality
+- Maintain perfect vertical and horizontal alignments
+- Ensure mathematical precision in all proportions and angles
+- Maximum clarity for potential 3D conversion
+
+Technical specifications:
+- Ultra-high-definition output with maximum detail preservation
+- Professional architectural visualization standards
+- Perfect edge definition and surface detail
+- RAW-like quality for maximum post-processing potential`;
 };
 
 interface SubscriptionPlan {
@@ -131,9 +156,9 @@ export async function POST(req: Request) {
         model: "dall-e-3",
         prompt: finalPrompt,
         n: 1,
-        size: size as "1024x1024" | "1024x1792" | "1792x1024",
-        quality: "standard",
-        style: "natural",
+        size: "1792x1024", // Using the highest available resolution
+        quality: "hd", // Using HD quality
+        style: "natural", // Keeping natural style for architectural accuracy
       }, { 
         signal: controller.signal as AbortSignal 
       });
