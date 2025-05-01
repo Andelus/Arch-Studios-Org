@@ -11,6 +11,7 @@ interface FalAIClient {
 const falApiKey = process.env.FAL_AI_API_KEY;
 
 let fal: FalAIClient | null = null;
+let initializationInProgress: Promise<void> | null = null;
 
 const initializeFalAI = async () => {
   if (!falApiKey) {
@@ -19,45 +20,42 @@ const initializeFalAI = async () => {
   }
 
   try {
-    const { fal: falInstance } = await import('@fal-ai/client');
+    // Import the module inside the async function
+    const falModule = await import('@fal-ai/client');
+    const falInstance = falModule.fal;
     
     // Configure with authentication
     falInstance.config({
       credentials: falApiKey
     });
     
-    // Test the configuration
-    try {
-      await falInstance.subscribe('fal-ai/trellis-3d', {
-        input: {
-          prompt: 'test',
-          model: 'trellis-3d',
-          output_format: 'glb',
-        }
-      });
-      console.log('FAL AI client initialized and authenticated successfully');
-      return falInstance;
-    } catch (testError: any) {
-      if (testError.status === 401) {
-        console.error('FAL AI authentication failed:', testError);
-        return null;
-      }
-      // Other errors might be normal (like invalid input), so we can still return the client
-      return falInstance;
-    }
+    // Just initialize without test call
+    console.log('FAL AI client initialized');
+    return falInstance;
   } catch (error) {
     console.error('Failed to initialize FAL AI client:', error);
     return null;
   }
 };
 
-// Initialize fal on first import with proper error handling
-let initPromise = initializeFalAI().then(instance => {
-  fal = instance;
-}).catch(error => {
-  console.error('Failed to initialize FAL AI:', error);
-  fal = null;
-});
+// Initialize fal on first use
+const getFalInstance = async () => {
+  if (fal) {
+    return fal;
+  }
+
+  if (initializationInProgress) {
+    await initializationInProgress;
+    return fal;
+  }
+
+  initializationInProgress = initializeFalAI().then(instance => {
+    fal = instance;
+  });
+
+  await initializationInProgress;
+  return fal;
+};
 
 interface TrellisResponse {
   model_url: string;
@@ -76,9 +74,11 @@ interface UserProfile {
 
 export async function POST(req: Request) {
   try {
-    // Check FAL AI configuration first
+    // Get FAL AI client instance
+    fal = await getFalInstance();
+    
     if (!fal) {
-      console.error('FAL AI client is not initialized');
+      console.error('FAL AI client failed to initialize');
       return NextResponse.json({
         error: 'Service configuration error',
         details: 'The 3D generation service is not properly configured. Please contact support.',
