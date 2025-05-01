@@ -342,17 +342,14 @@ function ThreeDModelingContent() {
         setGeneratedModels(prevModels => {
           const newModels = [...prevModels];
           if (newModels.length >= 3) {
-            // Remove the oldest model
-            newModels.shift();
+            newModels.shift(); // Remove the oldest model
           }
-          // Add the new model
           newModels.push({
             url: data.modelUrl,
             sourceImage: sourceImage || undefined
           });
           return newModels;
         });
-        // Show the newly added model
         setCurrentModelIndex(prev => Math.min(2, prev + 1));
       }
     } catch (error) {
@@ -468,7 +465,7 @@ function ThreeDModelingContent() {
         </div>
 
         <div className={styles.canvasArea}>
-          {message && (
+          {message && !error && (
             <div className={styles.loadingMessage}>
               <div className={styles.spinner}></div>
               <p>{message}</p>
@@ -477,7 +474,17 @@ function ThreeDModelingContent() {
           
           <div className={styles.canvas3dContainer}>
             <canvas ref={canvasRef} className={styles.canvas3d}></canvas>
-            {!isModelLoaded && generatedModels.length === 0 && !isGenerating && (
+            {error ? (
+              <div className={styles.errorMessage}>
+                <i className={`fa-solid fa-triangle-exclamation ${styles.errorIcon}`}></i>
+                <p>{error}</p>
+                {error.includes('credits') && (
+                  <Link href="/credit-subscription" className={styles.buyCreditsButton}>
+                    Buy More Credits
+                  </Link>
+                )}
+              </div>
+            ) : !isModelLoaded && generatedModels.length === 0 && !isGenerating && (
               <div className={styles.emptyCanvas3d}>
                 <i className="fa-solid fa-cube fa-3x"></i>
                 <p>Your 3D model will appear here</p>
