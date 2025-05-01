@@ -110,9 +110,15 @@ export default function ImageGeneration() {
         console.log('Received images:', data.images);
         const imageUrl = data.images[0];
         
-        // Pre-load the image
+        // Create a new Image object with cache busting
         const img = new Image();
         img.crossOrigin = 'anonymous';
+        
+        // Add loading class to container
+        const container = document.querySelector(`.${styles.imageContainer}`);
+        if (container) {
+          container.classList.add(styles.loading);
+        }
         
         // Set a timeout to handle cases where the image takes too long to load
         const timeoutId = setTimeout(() => {
@@ -120,35 +126,67 @@ export default function ImageGeneration() {
             img.src = ''; // Cancel the image load
             setError('Image loading timed out. Please try again.');
             setIsGenerating(false);
+            if (container) {
+              container.classList.remove(styles.loading);
+            }
           }
         }, 30000); // 30 second timeout
+
+        // Track load attempts
+        let loadAttempts = 0;
+        const maxAttempts = 3;
         
-        img.onload = () => {
-          clearTimeout(timeoutId);
-          img.onload = null;
-          img.onerror = null;
-          console.log('Image loaded successfully:', imageUrl);
-          const newImages = [...generatedImages];
-          if (newImages.length >= 3) {
-            newImages.shift();
-          }
-          newImages.push(imageUrl);
-          setGeneratedImages(newImages);
-          setCurrentImageIndex(newImages.length - 1);
-          setIsGenerating(false); // Ensure loading state is cleared on success
+        const attemptLoad = () => {
+          loadAttempts++;
+          console.log(`Attempting to load image (attempt ${loadAttempts}/${maxAttempts})`);
+          
+          img.onload = () => {
+            clearTimeout(timeoutId);
+            console.log('Image loaded successfully:', imageUrl);
+            console.log('Natural size:', img.naturalWidth, 'x', img.naturalHeight);
+            
+            const newImages = [...generatedImages];
+            if (newImages.length >= 3) {
+              newImages.shift();
+            }
+            newImages.push(imageUrl);
+            setGeneratedImages(newImages);
+            setCurrentImageIndex(newImages.length - 1);
+            setIsGenerating(false);
+            setError(null);
+            
+            if (container) {
+              container.classList.remove(styles.loading);
+            }
+          };
+          
+          img.onerror = (e) => {
+            console.error(`Failed to load image (attempt ${loadAttempts}/${maxAttempts}):`, e);
+            
+            if (loadAttempts < maxAttempts) {
+              // Add a small delay before retrying
+              setTimeout(() => {
+                console.log('Retrying image load...');
+                // Add cache-busting parameter on retry
+                const retryUrl = new URL(imageUrl);
+                retryUrl.searchParams.set('retry', loadAttempts.toString());
+                img.src = retryUrl.toString();
+              }, 2000 * loadAttempts); // Increasing delay with each attempt
+            } else {
+              clearTimeout(timeoutId);
+              setError('Failed to load the generated image. Please try again.');
+              setIsGenerating(false);
+              if (container) {
+                container.classList.remove(styles.loading);
+              }
+            }
+          };
+          
+          img.src = imageUrl;
         };
         
-        img.onerror = (e) => {
-          clearTimeout(timeoutId);
-          img.onload = null;
-          img.onerror = null;
-          console.error('Failed to load image:', imageUrl, e);
-          setError('Failed to load the generated image. Please refresh and try again.');
-          setIsGenerating(false); // Ensure loading state is cleared on error
-        };
-        
-        // Start loading the image
-        img.src = imageUrl;
+        // Start first load attempt
+        attemptLoad();
       } else {
         setError('No images were generated. Please try again.');
         setIsGenerating(false);
@@ -361,31 +399,62 @@ export default function ImageGeneration() {
                     className={styles.generatedImage}
                     crossOrigin="anonymous"
                     loading="eager"
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
-                      console.error('Image failed to load:', generatedImages[currentImageIndex]);
-                      // Retry loading the image once
                       const imgElement = e.currentTarget;
                       const originalSrc = imgElement.src;
+                      console.error('Image load error. URL:', originalSrc);
+                      console.error('Image natural size:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
+                      console.error('Image display size:', imgElement.width, 'x', imgElement.height);
+                      console.error('Image complete:', imgElement.complete);
+                      console.error('Current network status:', navigator.onLine);
+                      
+                      // Try to fetch the image directly to check response
+                      fetch(originalSrc, { 
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'omit',
+                        referrerPolicy: 'no-referrer'
+                      })
+                        .then(response => {
+                          console.log('Direct fetch response:', {
+                            ok: response.ok,
+                            status: response.status,
+                            statusText: response.statusText,
+                            headers: Object.fromEntries(response.headers.entries())
+                          });
+                        })
+                        .catch(fetchError => {
+                          console.error('Direct fetch error:', fetchError);
+                        });
+
+                      // Retry loading with a delay
                       imgElement.src = '';
                       setTimeout(() => {
                         if (imgElement) {
+                          console.log('Retrying image load with URL:', originalSrc);
                           imgElement.src = originalSrc;
                         }
-                      }, 1000);
+                      }, 2000);
                       
-                      // If it fails again, show error
+                      // If retry fails, show error
                       imgElement.onerror = () => {
+                        console.error('Image retry failed');
                         setError('Failed to load the generated image. Please try again.');
                       };
+                    }}
+                    onLoad={(e) => {
+                      const imgElement = e.currentTarget;
+                      console.log('Image loaded successfully');
+                      console.log('Natural size:', imgElement.naturalWidth, 'x', imgElement.naturalHeight);
+                      console.log('Display size:', imgElement.width, 'x', imgElement.height);
+                      console.log('Image complete:', imgElement.complete);
+                      imgElement.style.opacity = '1';
+                      setError(null);
                     }}
                     style={{
                       opacity: 0,
                       transition: 'opacity 0.3s ease-in-out'
-                    }}
-                    onLoad={(e) => {
-                      console.log('Image loaded successfully');
-                      e.currentTarget.style.opacity = '1';
-                      setError(null); // Clear any previous errors
                     }}
                   />
                 </div>

@@ -99,130 +99,225 @@ function ThreeDModelingContent() {
     // Initialize Three.js scene if not already done
     if (!sceneRef.current) {
       console.log('Initializing new Three.js scene');
-      sceneRef.current = new THREE.Scene();
-      sceneRef.current.background = new THREE.Color(0x111111);
-
-      // Enhanced lighting setup
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-      const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 5, 5);
-      directionalLight.castShadow = true;
-      
-      sceneRef.current.add(ambientLight);
-      sceneRef.current.add(hemisphereLight);
-      sceneRef.current.add(directionalLight);
-
-      // Add a ground plane for better visualization
-      const planeGeometry = new THREE.PlaneGeometry(10, 10);
-      const planeMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x333333,
-        roughness: 0.8,
-        metalness: 0.2
-      });
-      const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-      plane.rotation.x = -Math.PI / 2;
-      plane.position.y = -2;
-      plane.receiveShadow = true;
-      sceneRef.current.add(plane);
+      initializeScene();
     }
 
-    // Remove existing model if any
-    const existingModel = sceneRef.current.getObjectByName('currentModel');
-    if (existingModel) {
-      sceneRef.current.remove(existingModel);
-    }
+   
 
     setIsModelLoaded(false);
     setMessage('Loading 3D model...');
+    
+    // Add cache busting to URL
+    const cacheBustedUrl = new URL(modelUrl);
+    cacheBustedUrl.searchParams.append('t', Date.now().toString());
 
-    try {
-      // Load new model with enhanced error handling
-      const loader = new GLTFLoader();
-      const gltf = await new Promise<any>((resolve, reject) => {
-        loader.load(
-          modelUrl,
-          (gltf) => resolve(gltf),
-          (progress) => {
-            const percentComplete = Math.round((progress.loaded / progress.total) * 100);
-            setMessage(`Loading 3D model: ${percentComplete}%`);
-          },
-          (error) => reject(error)
-        );
-      });
+    // Track load attempts
+    let loadAttempts = 0;
+    const maxAttempts = 3;
 
-      if (!sceneRef.current) return;
-      console.log('Model loaded successfully:', gltf);
-      
-      const model = gltf.scene;
-      model.name = 'currentModel';
-      model.position.set(0, 0, 0);
-      
-      // Auto-scale model to fit view
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      if (maxDim > 0) {
-        const scale = 4 / maxDim; // Scale to fit in a 4-unit cube
-        model.scale.multiplyScalar(scale);
-      }
+    const attemptModelLoad = async () => {
+      loadAttempts++;
+      console.log(`Attempting to load 3D model (attempt ${loadAttempts}/${maxAttempts})`);
 
-      // Center the model
-      box.setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      model.position.sub(center);
-      
-      // Enable shadows
-      model.traverse((node: any) => {
-        if (node.isMesh) {
-          node.castShadow = true;
-          node.receiveShadow = true;
-          // Improve material quality
-          if (node.material) {
-            node.material.roughness = 0.7;
-            node.material.metalness = 0.3;
+      try {
+        // Verify the model URL is accessible before loading
+        const modelResponse = await fetch(cacheBustedUrl.toString(), {
+          method: 'HEAD',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
           }
+        });
+
+        if (!modelResponse.ok) {
+          throw new Error(`Model URL not accessible: ${modelResponse.status}`);
         }
-      });
 
-      sceneRef.current.add(model);
-      setIsModelLoaded(true);
-      setMessage(''); // Clear loading message
-      setError(null); // Clear any previous errors
+        // Load model with enhanced error handling
+        const loader = new GLTFLoader();
+        const gltf = await new Promise<any>((resolve, reject) => {
+          loader.load(
+            cacheBustedUrl.toString(),
+            (gltf) => resolve(gltf),
+            (progress) => {
+              const percentComplete = Math.round((progress.loaded / progress.total) * 100);
+              setMessage(`Loading 3D model: ${percentComplete}%`);
+              console.log(`Loading progress: ${percentComplete}%`);
+            },
+            (error) => {
+              console.error('GLTFLoader error:', error);
+              reject(error);
+            }
+          );
+        });
 
-      // Reset camera position for better view
-      if (cameraRef.current && controlsRef.current) {
-        cameraRef.current.position.set(4, 4, 4);
-        controlsRef.current.target.set(0, 0, 0);
-        controlsRef.current.update();
-      }
+        if (!sceneRef.current) {
+          throw new Error('Scene not initialized');
+        }
 
-      // Animation loop with cleanup
-      let animationFrameId: number;
-      const animate = () => {
-        if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+        console.log('Model loaded successfully:', gltf);
         
-        animationFrameId = requestAnimationFrame(animate);
-        if (controlsRef.current) {
+        const model = gltf.scene;
+        model.name = 'currentModel';
+        
+        // Auto-scale and center model
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) {
+          const scale = 4 / maxDim;
+          model.scale.multiplyScalar(scale);
+        }
+
+        // Center the model
+        box.setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+        
+        // Enable shadows and improve materials
+        model.traverse((node: any) => {
+          if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+            if (node.material) {
+              node.material.roughness = 0.7;
+              node.material.metalness = 0.3;
+              // Enable transparency if material has it
+              if (node.material.transparent) {
+                node.material.opacity = 0.8;
+              }
+            }
+          }
+        });
+
+        sceneRef.current.add(model);
+        setIsModelLoaded(true);
+        setMessage(''); // Clear loading message
+        setError(null);
+
+        // Reset camera for better view
+        if (cameraRef.current && controlsRef.current) {
+          cameraRef.current.position.set(4, 4, 4);
+          controlsRef.current.target.set(0, 0, 0);
           controlsRef.current.update();
         }
+
+        // Start animation loop
+        startAnimationLoop();
+
+      } catch (error) {
+        console.error(`Error loading model (attempt ${loadAttempts}/${maxAttempts}):`, error);
         
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
-      };
-      
-      animate();
-      
-      return () => {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
+        if (loadAttempts < maxAttempts) {
+          // Add increasing delay before retry
+          const retryDelay = 2000 * loadAttempts;
+          setMessage(`Load failed, retrying in ${retryDelay/1000} seconds...`);
+          
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return attemptModelLoad();
+        } else {
+          setIsModelLoaded(false);
+          setError('Failed to load 3D model. Please try again.');
+          setMessage('');
         }
-      };
-    } catch (error) {
-      console.error('Error loading model:', error);
-      setIsModelLoaded(false);
-      setError('Failed to load 3D model. Please try again.');
-      setMessage('');
-    }
+      }
+    };
+
+    // Start first load attempt
+    attemptModelLoad();
+  };
+
+  const initializeScene = () => {
+    if (!canvasRef.current) return;
+
+    // Initialize scene
+    sceneRef.current = new THREE.Scene();
+    sceneRef.current.background = new THREE.Color(0x111111);
+
+    // Initialize renderer
+    rendererRef.current = new THREE.WebGLRenderer({
+      canvas: canvasRef.current,
+      antialias: true
+    });
+    rendererRef.current.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
+    rendererRef.current.shadowMap.enabled = true;
+    rendererRef.current.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Initialize camera
+    const aspect = canvasRef.current.clientWidth / canvasRef.current.clientHeight;
+    cameraRef.current = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+    cameraRef.current.position.set(4, 4, 4);
+
+    // Initialize controls
+    controlsRef.current = new OrbitControls(cameraRef.current, canvasRef.current);
+    controlsRef.current.enableDamping = true;
+    controlsRef.current.dampingFactor = 0.05;
+
+    // Setup lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 5, 5);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    
+    sceneRef.current.add(ambientLight);
+    sceneRef.current.add(hemisphereLight);
+    sceneRef.current.add(directionalLight);
+
+    // Add ground plane
+    const planeGeometry = new THREE.PlaneGeometry(10, 10);
+    const planeMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x333333,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = -2;
+    plane.receiveShadow = true;
+    sceneRef.current.add(plane);
+
+    // Handle window resize
+    const handleResize = () => {
+      if (!canvasRef.current || !rendererRef.current || !cameraRef.current) return;
+      
+      const width = canvasRef.current.clientWidth;
+      const height = canvasRef.current.clientHeight;
+      
+      rendererRef.current.setSize(width, height);
+      cameraRef.current.aspect = width / height;
+      cameraRef.current.updateProjectionMatrix();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  };
+
+  const startAnimationLoop = () => {
+    let animationFrameId: number;
+    
+    const animate = () => {
+      if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+      
+      animationFrameId = requestAnimationFrame(animate);
+      
+      if (controlsRef.current) {
+        controlsRef.current.update();
+      }
+      
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+    };
+    
+    animate();
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   };
 
   const generate3DModel = async () => {

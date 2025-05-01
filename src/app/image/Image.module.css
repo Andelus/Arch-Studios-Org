@@ -191,26 +191,44 @@
 }
 
 .imageContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.imageContainer.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  position: relative;
-  min-height: 400px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
+  background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  z-index: 1;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .generatedImage {
   width: 100%;
   height: 100%;
-  max-height: 600px;
-  border-radius: 8px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
   object-fit: contain;
-  display: block;
+  border-radius: 8px;
+  position: relative;
+  z-index: 2;
 }
 
 .loadingContainer {

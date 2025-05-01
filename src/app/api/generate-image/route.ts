@@ -152,11 +152,22 @@ export async function POST(req: Request) {
       // Only deduct credits and record transaction after successful generation
       const imageUrl = response.data[0].url;
       
-      // Verify the image URL is accessible
-      const imageResponse = await fetch(imageUrl);
+      // Verify the image URL is accessible and add cache busting
+      const imageResponse = await fetch(imageUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       if (!imageResponse.ok) {
         throw new Error('Generated image URL is not accessible');
       }
+
+      // Add cache busting parameter to URL
+      const cacheBustedUrl = new URL(imageUrl);
+      cacheBustedUrl.searchParams.append('t', Date.now().toString());
 
       // Now that we have confirmed the image is generated and accessible, deduct credits
       const { error: updateError } = await supabase
@@ -187,7 +198,16 @@ export async function POST(req: Request) {
         console.error('Failed to record transaction:', transactionError);
       }
 
-      return NextResponse.json({ images: [imageUrl] });
+      return NextResponse.json({ 
+        images: [cacheBustedUrl.toString()],
+        contentType: imageResponse.headers.get('content-type'),
+        cacheControl: 'no-cache, no-store, must-revalidate'
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     } catch (openaiError: any) {
       console.error('OpenAI API Error:', openaiError);
 
