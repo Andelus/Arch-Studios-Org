@@ -2,24 +2,39 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
+interface FalAIClient {
+  subscribe: (model: string, options: any) => Promise<any>;
+  config: (options: { credentials: string }) => void;
+}
+
 // Initialize Fal AI client if API key is available
 const falApiKey = process.env.FAL_AI_API_KEY;
 
-let fal: any;
-if (falApiKey) {
-  fal = require('@fal-ai/client').fal;
-  fal.config({
-    credentials: falApiKey,
-  });
-} else {
-  console.warn('FAL_AI_API_KEY is not set in environment variables');
-  // Create a mock client to prevent build errors and provide clear error messages
-  fal = {
-    subscribe: () => {
-      throw new Error('FAL_AI_API_KEY is not set in environment variables. Please configure the API key to use 3D generation features.');
-    }
-  };
-}
+let fal: FalAIClient | null = null;
+const initializeFalAI = async () => {
+  if (!falApiKey) {
+    console.error('FAL_AI_API_KEY is not set in environment variables');
+    return null;
+  }
+
+  try {
+    const falModule = await import('@fal-ai/client');
+    const falInstance = falModule.fal;
+    falInstance.config({
+      credentials: falApiKey,
+    });
+    console.log('FAL AI client initialized successfully');
+    return falInstance;
+  } catch (error) {
+    console.error('Failed to initialize FAL AI client:', error);
+    return null;
+  }
+};
+
+// Initialize fal on first import
+initializeFalAI().then(instance => {
+  fal = instance;
+});
 
 interface TrellisResponse {
   model_url: string;
@@ -38,6 +53,16 @@ interface UserProfile {
 
 export async function POST(req: Request) {
   try {
+    // Check FAL AI configuration first
+    if (!fal) {
+      console.error('FAL AI client is not initialized');
+      return NextResponse.json({
+        error: 'Service configuration error',
+        details: 'The 3D generation service is not properly configured. Please contact support.',
+        type: 'CONFIG_ERROR'
+      }, { status: 503 });
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
