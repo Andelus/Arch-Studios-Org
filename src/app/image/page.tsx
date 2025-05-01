@@ -108,34 +108,43 @@ export default function ImageGeneration() {
       if (data.images && data.images.length > 0) {
         console.log('Received images:', data.images);
         
+        // Ensure we have the full image URL
+        const imageUrl = data.images[0];
+        console.log('Processing image URL:', imageUrl);
+        
         // Pre-load the image to ensure it's cached
         const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
         img.onload = () => {
-          console.log('Image loaded successfully:', data.images[0]);
+          console.log('Image loaded successfully:', imageUrl, img.naturalWidth, 'x', img.naturalHeight);
           
           // Add new image while maintaining 3-tile limit
-          setGeneratedImages(prevImages => {
-            const newImages = [...prevImages];
-            if (newImages.length >= 3) {
-              // Remove the oldest image when limit is reached
-              newImages.shift();
-            }
-            // Add the new image
-            newImages.push(data.images[0]);
-            return newImages;
-          });
+          const newImages = [...generatedImages];
+          if (newImages.length >= 3) {
+            // Remove the oldest image when limit is reached
+            newImages.shift();
+          }
+          // Add the new image
+          newImages.push(imageUrl);
           
-          // Show the newly added image
-          setCurrentImageIndex(prev => Math.min(2, prev + 1));
+          // Update state with new images and set current index to the new image
+          setGeneratedImages(newImages);
+          setCurrentImageIndex(newImages.length - 1);
+          
+          // Force a re-render
+          setTimeout(() => {
+            console.log('Forcing re-render with current image index:', newImages.length - 1);
+          }, 100);
         };
         
         img.onerror = (e) => {
-          console.error('Failed to load image:', data.images[0], e);
+          console.error('Failed to load image:', imageUrl, e);
           setError('Failed to load the generated image. Please try again.');
         };
         
         // Start loading the image
-        img.src = data.images[0];
+        img.src = imageUrl;
       } else {
         console.error('No images received from API');
         setError('No images were generated. Please try again.');
@@ -298,10 +307,15 @@ export default function ImageGeneration() {
               <>
                 <div className={styles.imageContainer}>
                   <img 
-                    key={`img-${currentImageIndex}-${generatedImages[currentImageIndex]}`}
+                    key={`img-${currentImageIndex}-${Date.now()}`}
                     src={generatedImages[currentImageIndex]} 
                     alt={`Generated image from: ${prompt || 'architectural design'}`} 
                     className={styles.generatedImage}
+                    crossOrigin="anonymous"
+                    loading="eager"
+                    onLoad={(e) => {
+                      console.log('Image loaded successfully:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
+                    }}
                     onError={(e) => {
                       console.error('Image failed to load:', generatedImages[currentImageIndex]);
                       e.currentTarget.onerror = null; // Prevent infinite loop
