@@ -114,7 +114,19 @@ export default function ImageGeneration() {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         
+        // Set a timeout to handle cases where the image takes too long to load
+        const timeoutId = setTimeout(() => {
+          if (!img.complete) {
+            img.src = ''; // Cancel the image load
+            setError('Image loading timed out. Please try again.');
+            setIsGenerating(false);
+          }
+        }, 30000); // 30 second timeout
+        
         img.onload = () => {
+          clearTimeout(timeoutId);
+          img.onload = null;
+          img.onerror = null;
           console.log('Image loaded successfully:', imageUrl);
           const newImages = [...generatedImages];
           if (newImages.length >= 3) {
@@ -123,19 +135,27 @@ export default function ImageGeneration() {
           newImages.push(imageUrl);
           setGeneratedImages(newImages);
           setCurrentImageIndex(newImages.length - 1);
+          setIsGenerating(false); // Ensure loading state is cleared on success
         };
         
         img.onerror = (e) => {
+          clearTimeout(timeoutId);
+          img.onload = null;
+          img.onerror = null;
           console.error('Failed to load image:', imageUrl, e);
-          setError('Failed to load the generated image. Please try again.');
+          setError('Failed to load the generated image. Please refresh and try again.');
+          setIsGenerating(false); // Ensure loading state is cleared on error
         };
         
+        // Start loading the image
         img.src = imageUrl;
+      } else {
+        setError('No images were generated. Please try again.');
+        setIsGenerating(false);
       }
     } catch (error) {
       console.error('Generation error:', error);
       setError('Failed to generate images. Please try again.');
-    } finally {
       setIsGenerating(false);
     }
   };

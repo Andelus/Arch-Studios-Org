@@ -1,19 +1,24 @@
 import { NextResponse } from 'next/server';
-import { fal } from '@fal-ai/client';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
 // Initialize Fal AI client if API key is available
 const falApiKey = process.env.FAL_AI_API_KEY;
 
+let fal: any;
 if (falApiKey) {
+  fal = require('@fal-ai/client').fal;
   fal.config({
     credentials: falApiKey,
   });
 } else {
   console.warn('FAL_AI_API_KEY is not set in environment variables');
-  // The API calls will fail at runtime with appropriate errors
-  // This prevents build-time errors
+  // Create a mock client to prevent build errors and provide clear error messages
+  fal = {
+    subscribe: () => {
+      throw new Error('FAL_AI_API_KEY is not set in environment variables. Please configure the API key to use 3D generation features.');
+    }
+  };
 }
 
 interface TrellisResponse {
