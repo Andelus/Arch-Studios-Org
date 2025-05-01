@@ -170,21 +170,12 @@ export async function POST(req: Request) {
       // Verify the image URL is accessible with a timeout
       const imageUrl = response.data[0].url;
       const imageResponse = await fetch(imageUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
         signal: AbortSignal.timeout(5000) // 5 second timeout for image verification
       });
       
       if (!imageResponse.ok) {
         throw new Error('Generated image URL is not accessible');
       }
-
-      // Add cache busting parameter to URL
-      const cacheBustedUrl = new URL(imageUrl);
-      cacheBustedUrl.searchParams.append('t', Date.now().toString());
 
       // Now that we have confirmed the image is generated and accessible, deduct credits
       const { error: updateError } = await supabase
@@ -215,16 +206,13 @@ export async function POST(req: Request) {
         console.error('Failed to record transaction:', transactionError);
       }
 
-      return NextResponse.json({ 
-        images: [cacheBustedUrl.toString()],
-        contentType: imageResponse.headers.get('content-type'),
-        cacheControl: 'no-cache, no-store, must-revalidate'
-      }, {
+      return new Response(imageUrl, {
+        status: 200,
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Content-Type': 'text/plain'
         }
       });
+
     } catch (openaiError: any) {
       console.error('OpenAI API Error:', openaiError);
 
