@@ -39,8 +39,6 @@ function ThreeDModelingContent() {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [style, setStyle] = useState<'3D' | 'Normal'>('3D');
-  const [material, setMaterial] = useState<string>('Wood');
   
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -90,24 +88,6 @@ function ThreeDModelingContent() {
     const file = e.target.files?.[0];
     if (file) {
       handleFileSelect(file);
-    }
-  };
-
-  const handleStyleChange = (newStyle: '3D' | 'Normal') => {
-    setStyle(newStyle);
-    if (newStyle === '3D') {
-      setPrompt(
-        'Create a high-definition 3D architectural model with precise geometric forms and clean lines. ' +
-        'Ensure orthographic perspectives (front, side, top views) with clearly defined edges and surfaces. ' +
-        'Model should have accurate scale proportions, detailed architectural elements, and proper structural hierarchy. ' +
-        'Optimize for 3D printing and digital modeling with emphasis on technical accuracy and architectural integrity.'
-      );
-    } else {
-      setPrompt(
-        'Generate a photorealistic architectural visualization with accurate materials, texturing, and environmental context. ' +
-        'Include detailed surface properties, realistic lighting conditions, and proper architectural proportions. ' +
-        'Focus on material authenticity, structural clarity, and spatial relationships while maintaining architectural accuracy.'
-      );
     }
   };
 
@@ -491,56 +471,6 @@ function ThreeDModelingContent() {
               <div>Click anywhere in this area<br/>to select files from your computer</div>
             </div>
           )}
-
-          <div className={styles.styleSelectorContainer}>
-            <div className={styles.styleOption}>
-              <input
-                type="radio"
-                id="style-3d"
-                name="style"
-                value="3D"
-                checked={style === '3D'}
-                onChange={() => handleStyleChange('3D')}
-              />
-              <label htmlFor="style-3d">3D</label>
-            </div>
-            <div className={styles.styleOption}>
-              <input
-                type="radio"
-                id="style-normal"
-                name="style"
-                value="Normal"
-                checked={style === 'Normal'}
-                onChange={() => handleStyleChange('Normal')}
-              />
-              <label htmlFor="style-normal">Normal</label>
-            </div>
-          </div>
-
-          <div className={styles.dropdownContainer}>
-            <label htmlFor="material">Select Material:</label>
-            <select
-              id="material"
-              value={material}
-              onChange={(e) => setMaterial(e.target.value)}
-            >
-              <option value="Wood">Wood</option>
-              <option value="Metal">Metal</option>
-              <option value="Glass">Glass</option>
-            </select>
-          </div>
-
-          <div className={styles.promptGuidelines}>
-            <h4>Guidelines for 3D-style rendering:</h4>
-            <ul>
-              <li>Front-facing and centered</li>
-              <li>Neutral background (plain or transparent)</li>
-              <li>Clear, sharp edges and geometry</li>
-              <li>No people, clutter, or background scenery</li>
-              <li>Well-lit, ideally with flat lighting</li>
-              <li>Stylized for 3D interpretation (think clean modeling references)</li>
-            </ul>
-          </div>
 
           <div className={styles.promptArea}>
             <label>

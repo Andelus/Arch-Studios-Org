@@ -10,7 +10,6 @@ import CreditDisplay from '@/components/CreditDisplay';
 import Image from 'next/image';
 
 const ARCHITECTURAL_STYLES = [
-  '3D',
   'Modern',
   'Contemporary',
   'Brutalist',
