@@ -168,7 +168,8 @@ export async function POST(req: Request) {
         } : {})
       };
 
-      console.log('Generating image with params:', {
+      // Enhanced logging for prompt debugging
+      console.log('Generation details:', {
         style,
         material,
         is3DOptimized: style === '3D-Optimized',
@@ -177,7 +178,19 @@ export async function POST(req: Request) {
         inferenceSteps,
         guidanceScale,
         finalPrompt,
-        fluxInput
+        backgroundSettings: cleanBackground ? {
+          prompt_injections: [
+            '[ultra white background: RGB(255,255,255)]',
+            '[remove all shadows]',
+            '[pure white environment]',
+            '[studio background: #FFFFFF]',
+            '[high-key lighting]',
+            '[white void]'
+          ],
+          negative_prompt: fluxInput.negative_prompt,
+          guidance_scale: guidanceScale,
+          inference_steps: inferenceSteps
+        } : 'standard background'
       });
 
       const result = await fal.subscribe("fal-ai/flux/dev", {
