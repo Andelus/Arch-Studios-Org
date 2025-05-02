@@ -12,8 +12,18 @@ if (falApiKey) {
   });
 }
 
-const generatePrompt = (style: string, material: string) => {
-  return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio.`;
+const generatePrompt = (style: string, material: string, cleanBackground: boolean = false) => {
+  let prompt = '';
+  const backgroundModifier = cleanBackground ? 
+    ', pure white background, no environmental elements or context, clean isolated presentation' : '';
+
+  if (style === '3D-Optimized') {
+    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. The image must have a pure white background, clean lighting, soft shadows, simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling. No environmental elements or background details.`;
+  }
+
+  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. The image should be suitable for a luxury architectural portfolio.`;
+
+  return prompt;
 };
 
 interface SubscriptionPlan {
@@ -99,9 +109,9 @@ export async function POST(req: Request) {
       });
     }
 
-    const { prompt, style, material, size } = await req.json();
+    const { prompt: userPrompt, style, material, size, cleanBackground } = await req.json();
 
-    if (!prompt && (!style || !material)) {
+    if (!userPrompt && (!style || !material)) {
       return NextResponse.json({ 
         success: false,
         error: 'Invalid input',
@@ -110,7 +120,11 @@ export async function POST(req: Request) {
       });
     }
 
-    const finalPrompt = style && material ? generatePrompt(style, material) : prompt;
+    const finalPrompt = style && material ? generatePrompt(style, material, cleanBackground) : userPrompt;
+
+    // Adjust parameters for 3D-optimized style
+    const inferenceSteps = style === '3D-Optimized' ? 45 : (cleanBackground ? 42 : 40);
+    const guidanceScale = style === '3D-Optimized' ? 8.5 : (cleanBackground ? 8.0 : 7.5);
 
     // Generate image with Fal AI Flux
     const controller = new AbortController();
@@ -126,12 +140,21 @@ export async function POST(req: Request) {
                        size === '1792x1024' ? 'landscape_16_9' : 
                        'square_hd'; // Default to square_hd for better architectural detail
 
+      console.log('Generating image with params:', {
+        style,
+        material,
+        is3DOptimized: style === '3D-Optimized',
+        imageSize,
+        inferenceSteps,
+        guidanceScale
+      });
+
       const result = await fal.subscribe("fal-ai/flux/dev", {
         input: {
           prompt: finalPrompt,
           image_size: imageSize,
-          num_inference_steps: 40, // Increased for better architectural detail
-          guidance_scale: 7.5, // Increased for more precise architectural adherence
+          num_inference_steps: inferenceSteps,
+          guidance_scale: guidanceScale,
           num_images: 1,
           enable_safety_checker: true
         },

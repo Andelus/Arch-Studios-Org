@@ -9,7 +9,14 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import CreditDisplay from '@/components/CreditDisplay';
 import Image from 'next/image';
 
+interface StyleModifier {
+  promptPrefix?: string;
+  promptSuffix?: string;
+  renderingModifiers?: string;
+}
+
 const ARCHITECTURAL_STYLES = [
+  '3D-Optimized',
   'Modern',
   'Contemporary',
   'Brutalist',
@@ -35,6 +42,14 @@ const MATERIALS = [
   'Bamboo'
 ] as const;
 
+const styleModifiers: Record<string, StyleModifier> = {
+  '3D-Optimized': {
+    promptPrefix: 'Professional architectural visualization in isometric view of',
+    promptSuffix: 'with clear geometry, minimal details, and high contrast edges. The model should be perfectly centered with clean lines and precise architectural proportions.',
+    renderingModifiers: 'pure white background, clean lighting, soft shadows, simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, architectural visualization'
+  }
+};
+
 type ArchitecturalStyle = typeof ARCHITECTURAL_STYLES[number];
 type Material = typeof MATERIALS[number];
 
@@ -50,6 +65,7 @@ export default function ImageGeneration() {
   const [showStyleDropdown, setShowStyleDropdown] = useState<boolean>(false);
   const [showMaterialDropdown, setShowMaterialDropdown] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [cleanBackground, setCleanBackground] = useState(false);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -78,7 +94,9 @@ export default function ImageGeneration() {
       console.log('Starting image generation with params:', {
         prompt: prompt.trim() || '(empty)',
         style: selectedStyle || '(none)',
-        material: selectedMaterial || '(none)'
+        material: selectedMaterial || '(none)',
+        cleanBackground,
+        is3DOptimized: selectedStyle === '3D-Optimized'
       });
       
       const response = await fetch('/api/generate-image', {
@@ -90,6 +108,7 @@ export default function ImageGeneration() {
           prompt: prompt.trim(),
           style: selectedStyle,
           material: selectedMaterial,
+          cleanBackground
         }),
       });
       
@@ -267,6 +286,25 @@ export default function ImageGeneration() {
               </div>
             )}
           </div>
+
+          {selectedStyle && (
+            <div className={styles.optionContainer}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={cleanBackground}
+                  onChange={(e) => setCleanBackground(e.target.checked)}
+                  className={styles.checkbox}
+                />
+                <span>Clean White Background</span>
+              </label>
+              <div className={styles.optionHint}>
+                {selectedStyle === '3D-Optimized' 
+                  ? 'Generates image with pure white background, perfect for 3D modeling'
+                  : 'Removes environmental elements for a clean architectural presentation'}
+              </div>
+            </div>
+          )}
 
           <div className={styles.dropdownContainer}>
             <div 

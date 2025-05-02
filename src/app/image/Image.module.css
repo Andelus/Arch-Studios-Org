@@ -406,6 +406,35 @@
   color: #ff3b30;
 }
 
+.optionContainer {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+  accent-color: #4a90e2;
+}
+
+.optionHint {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.5rem;
+  margin-left: 2rem;
+}
+
 /* Mobile-specific styles */
 @media (max-width: 768px) {
   .header {
