@@ -15,15 +15,15 @@ if (falApiKey) {
 const generatePrompt = (style: string, material: string, cleanBackground: boolean = false) => {
   let prompt = '';
   
-  // Enhanced background modifiers to explicitly specify white background
+  // Enhanced background modifiers with stronger prompt injection
   const backgroundModifier = cleanBackground ? 
-    ', on white background RGB(255,255,255), white clean background with no other elements, white clean studio background, white environment' : '';
+    ', [ultra white background: RGB(255,255,255)], [remove all shadows], [pure white environment], [studio background: #FFFFFF], [high-key lighting], [white void]' : '';
 
   if (style === '3D-Optimized') {
-    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? 'Generate on white background RGB(255,255,255), pure white clean background. Create with white studio background, clean white environment, white backdrop.' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
+    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? '[white background: RGB(255,255,255)], [background: pure white], [remove background details], [studio lighting setup], [white void background], [high key], [no shadows on background], [crisp edges], [perfect isolation]' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
   }
 
-  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. ${cleanBackground ? 'Create with white background RGB(255,255,255), clean white studio background. The background must be pure white and clean.' : ''} The image should be suitable for a luxury architectural portfolio.`;
+  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. ${cleanBackground ? '[white background: RGB(255,255,255)], [background: pure white], [perfect isolation], [product photography], [commercial studio]' : ''} The image should be suitable for a luxury architectural portfolio.`;
 
   return prompt;
 };
