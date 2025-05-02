@@ -15,15 +15,15 @@ if (falApiKey) {
 const generatePrompt = (style: string, material: string, cleanBackground: boolean = false) => {
   let prompt = '';
   
-  // Enhanced background modifiers for cleaner results
+  // Enhanced background modifiers to explicitly specify white background
   const backgroundModifier = cleanBackground ? 
-    ', on pure white background (RGB 255,255,255), absolutely no environmental elements, no shadows or reflections on the background, crisp isolation of the building, studio lighting setup, high-key photography style' : '';
+    ', on white background RGB(255,255,255), white clean background with no other elements, white clean studio background, white environment' : '';
 
   if (style === '3D-Optimized') {
-    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? 'The image MUST have a pure white (RGB 255,255,255) background with absolutely no shadows, reflections, or environmental elements. The building should be perfectly isolated like a technical drawing. Use studio lighting setup with crisp edges and high-key photography style.' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
+    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? 'Generate on white background RGB(255,255,255), pure white clean background. Create with white studio background, clean white environment, white backdrop.' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
   }
 
-  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. ${cleanBackground ? 'Ensure the background is completely pure white (RGB 255,255,255) with no gradients or shadows.' : ''} The image should be suitable for a luxury architectural portfolio.`;
+  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. ${cleanBackground ? 'Create with white background RGB(255,255,255), clean white studio background. The background must be pure white and clean.' : ''} The image should be suitable for a luxury architectural portfolio.`;
 
   return prompt;
 };
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
         enable_safety_checker: true,
         ...(cleanBackground ? {
           seed: 42,
-          negative_prompt: 'background details, shadows on background, gradients, environment, context, terrain, sky, clouds, trees, landscape, ground, floor shadows, ambient occlusion, atmospheric effects, any background elements'
+          negative_prompt: 'background details, shadows on background, gradients, ambient occlusion, environment, context, terrain, sky, clouds, trees, landscape, ground, floor shadows, atmospheric effects, any background elements, shadow bleeding, soft edges, environmental reflections, background texture, depth markers, perspective lines, ground plane, surface contact, ambient lighting effects, color bleeding, atmospheric perspective, background noise, environmental interaction, background patterns, backdrop, scene context, surrounding elements, environmental shadows, background blur, depth of field, environmental lighting, background gradients, light scatter, atmospheric haze, background detail, environmental detail, depth cues, scene setting, contextual elements'
         } : {})
       };
 

@@ -300,8 +300,8 @@ export default function ImageGeneration() {
               </label>
               <div className={styles.optionHint}>
                 {selectedStyle === '3D-Optimized' 
-                  ? 'Generates image with pure white background, perfect for 3D modeling'
-                  : 'Removes environmental elements for a clean architectural presentation'}
+                  ? 'Creates a pure white (RGB 255,255,255) background with perfect isolation, ideal for 3D modeling'
+                  : 'Removes all environmental elements and creates a pure white studio background'}
               </div>
             </div>
           )}
