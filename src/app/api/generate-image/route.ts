@@ -1,29 +1,19 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
+import { fal } from "@fal-ai/client";
 
-// Initialize OpenAI client if API key is available
-const openaiApiKey = process.env.OPENAI_API_KEY;
+// Initialize Fal AI client if API key is available
+const falApiKey = process.env.FAL_KEY || process.env.FAL_AI_API_KEY;
 
-let openai: OpenAI;
-if (openaiApiKey) {
-  openai = new OpenAI({
-    apiKey: openaiApiKey,
+if (falApiKey) {
+  fal.config({
+    credentials: falApiKey
   });
-} else {
-  console.warn('OPENAI_API_KEY is not set in environment variables');
-  openai = {
-    images: {
-      generate: () => {
-        throw new Error('OPENAI_API_KEY is not set in environment variables');
-      }
-    }
-  } as unknown as OpenAI;
 }
 
 const generatePrompt = (style: string, material: string) => {
-  return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio. The image should be suitable for a 3D rendering.`;
+  return `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details. The image should be suitable for a luxury architectural portfolio.`;
 };
 
 interface SubscriptionPlan {
@@ -109,7 +99,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const { prompt, style, material, size = '1024x1024' } = await req.json();
+    const { prompt, style, material, size } = await req.json();
 
     if (!prompt && (!style || !material)) {
       return NextResponse.json({ 
@@ -122,31 +112,46 @@ export async function POST(req: Request) {
 
     const finalPrompt = style && material ? generatePrompt(style, material) : prompt;
 
-    // Generate image with OpenAI
+    // Generate image with Fal AI Flux
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     try {
-      const response = await openai.images.generate({
-        model: "dall-e-3",
-        prompt: finalPrompt,
-        n: 1,
-        size: size as "1024x1024" | "1024x1792" | "1792x1024",
-        quality: "standard",
-        style: "natural",
-      }, { 
-        signal: controller.signal as AbortSignal 
+      if (!falApiKey) {
+        throw new Error('FAL_KEY is not configured');
+      }
+
+      // Map the size to Flux's image_size options - optimized for architecture
+      const imageSize = size === '1024x1792' ? 'portrait_16_9' : 
+                       size === '1792x1024' ? 'landscape_16_9' : 
+                       'square_hd'; // Default to square_hd for better architectural detail
+
+      const result = await fal.subscribe("fal-ai/flux/dev", {
+        input: {
+          prompt: finalPrompt,
+          image_size: imageSize,
+          num_inference_steps: 40, // Increased for better architectural detail
+          guidance_scale: 7.5, // Increased for more precise architectural adherence
+          num_images: 1,
+          enable_safety_checker: true
+        },
+        logs: true,
+        onQueueUpdate: (update: any) => {
+          if (update.status === "IN_PROGRESS") {
+            console.log('Generation progress:', update.logs?.map((log: any) => log.message));
+          }
+        }
       });
 
       clearTimeout(timeoutId);
 
-      if (!response.data?.[0]?.url) {
+      if (!result.data?.images?.[0]?.url) {
         throw new Error('No image URL in response');
       }
 
-      const imageUrl = response.data[0].url;
+      const imageUrl = result.data.images[0].url;
 
-      // Verify and process the image
+      // Verify the image URL is accessible
       try {
         const imageResponse = await fetch(imageUrl, {
           signal: AbortSignal.timeout(10000)
@@ -155,12 +160,6 @@ export async function POST(req: Request) {
         if (!imageResponse.ok) {
           throw new Error('Generated image URL is not accessible');
         }
-
-        // Always convert OpenAI URLs to data URLs to prevent expiration issues
-        const imageData = await imageResponse.arrayBuffer();
-        const base64Data = Buffer.from(imageData).toString('base64');
-        const contentType = imageResponse.headers.get('content-type') || 'image/png';
-        const dataUrl = `data:${contentType};base64,${base64Data}`;
 
         // Update credits and record transaction atomically
         const { error: dbError } = await supabase.rpc('process_image_generation', {
@@ -183,7 +182,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           success: true,
-          url: dataUrl,
+          url: imageUrl,
           status: 200
         });
 
@@ -192,11 +191,11 @@ export async function POST(req: Request) {
         throw new Error('Failed to process generated image');
       }
 
-    } catch (openaiError: any) {
+    } catch (falError: any) {
       clearTimeout(timeoutId);
-      console.error('OpenAI error:', openaiError);
+      console.error('Fal AI error:', falError);
 
-      if (openaiError.name === 'AbortError') {
+      if (falError.name === 'AbortError') {
         return NextResponse.json({
           success: false,
           error: 'Request timeout',
@@ -208,8 +207,8 @@ export async function POST(req: Request) {
       const errorResponse = {
         success: false,
         error: 'Generation failed',
-        status: openaiError.status === 429 ? 429 : 500,
-        message: openaiError.status === 429 
+        status: falError.status === 429 ? 429 : 500,
+        message: falError.status === 429 
           ? 'The service is currently busy. Please try again in a moment.'
           : 'Failed to generate image. Please try again.'
       };
