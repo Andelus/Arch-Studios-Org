@@ -193,10 +193,14 @@
 .imageContainer {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  min-height: 500px;
   background: #1a1a1a;
   border-radius: 8px;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
 }
 
 .imageContainer.loading::before {
@@ -222,12 +226,12 @@
 }
 
 .generatedImage {
-  object-fit: contain !important;
-  padding: 0 !important;
+  max-width: 100%;
+  max-height: calc(100vh - 200px);
+  object-fit: contain;
   border-radius: 8px;
-  position: relative !important;
-  height: unset !important;
-  max-height: 100%;
+  display: block;
+  margin: 0 auto;
 }
 
 .loadingContainer {

@@ -143,53 +143,73 @@ export async function POST(req: Request) {
         }
       });
 
-      clearTimeout(timeoutId);
+      console.log('Raw Flux response:', JSON.stringify(result, null, 2));
 
       if (!result.data?.images?.[0]?.url) {
+        console.error('Invalid Flux response structure:', result);
         throw new Error('No image URL in response');
       }
 
       const imageUrl = result.data.images[0].url;
+      console.log('Generated image URL:', imageUrl);
 
-      // Verify the image URL is accessible
-      try {
-        const imageResponse = await fetch(imageUrl, {
-          signal: AbortSignal.timeout(10000)
-        });
+      // Verify the image URL is accessible with retries
+      let imageAccessible = false;
+      let attempts = 0;
+      const maxAttempts = 3;
 
-        if (!imageResponse.ok) {
-          throw new Error('Generated image URL is not accessible');
+      while (!imageAccessible && attempts < maxAttempts) {
+        try {
+          const imageResponse = await fetch(imageUrl, {
+            signal: AbortSignal.timeout(10000),
+            headers: {
+              'Accept': 'image/jpeg,image/png,image/*'
+            }
+          });
+
+          if (imageResponse.ok) {
+            imageAccessible = true;
+            const contentType = imageResponse.headers.get('content-type');
+            console.log('Image verification successful:', { status: imageResponse.status, contentType });
+          } else {
+            console.warn(`Image verification attempt ${attempts + 1} failed:`, 
+              { status: imageResponse.status, statusText: imageResponse.statusText });
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          }
+        } catch (error) {
+          console.error(`Image verification attempt ${attempts + 1} error:`, error);
         }
-
-        // Update credits and record transaction atomically
-        const { error: dbError } = await supabase.rpc('process_image_generation', {
-          p_user_id: userId,
-          p_credit_cost: creditCost,
-          p_is_trial: profile.subscription_status === 'TRIAL'
-        });
-
-        if (dbError) {
-          console.error('Database error during credit deduction:', dbError);
-          throw new Error(`Failed to process credit deduction: ${dbError.message}`);
-        }
-
-        // Log successful transaction
-        console.log('Successfully processed image generation and deducted credits:', {
-          userId,
-          creditCost,
-          newBalance: profile.credits_balance - creditCost
-        });
-
-        return NextResponse.json({
-          success: true,
-          url: imageUrl,
-          status: 200
-        });
-
-      } catch (processError) {
-        console.error('Image processing error:', processError);
-        throw new Error('Failed to process generated image');
+        attempts++;
       }
+
+      if (!imageAccessible) {
+        throw new Error('Generated image URL is not accessible after multiple attempts');
+      }
+
+      // Update credits and record transaction atomically
+      const { error: dbError } = await supabase.rpc('process_image_generation', {
+        p_user_id: userId,
+        p_credit_cost: creditCost,
+        p_is_trial: profile.subscription_status === 'TRIAL'
+      });
+
+      if (dbError) {
+        console.error('Database error during credit deduction:', dbError);
+        throw new Error(`Failed to process credit deduction: ${dbError.message}`);
+      }
+
+      // Log successful transaction
+      console.log('Successfully processed image generation and deducted credits:', {
+        userId,
+        creditCost,
+        newBalance: profile.credits_balance - creditCost
+      });
+
+      return NextResponse.json({
+        success: true,
+        url: imageUrl,
+        status: 200
+      });
 
     } catch (falError: any) {
       clearTimeout(timeoutId);

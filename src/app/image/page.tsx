@@ -323,28 +323,33 @@ export default function ImageGeneration() {
             ) : generatedImages.length > 0 ? (
               <>
                 <div className={styles.imageContainer}>
-                  <Image 
-                    key={`img-${currentImageIndex}-${Date.now()}`}
-                    src={generatedImages[currentImageIndex]} 
-                    alt={`Generated image from: ${prompt || 'architectural design'}`} 
-                    className={styles.generatedImage}
-                    fill
-                    priority
-                    quality={100}
-                    onError={(e) => {
-                      console.error('Image load error');
-                      setError('Failed to load the generated image. Please try generating again.');
-                    }}
-                    style={{
-                      opacity: 0,
-                      transition: 'opacity 0.3s ease-in-out'
-                    }}
-                    onLoad={(e) => {
-                      const imgElement = e.currentTarget as HTMLImageElement;
-                      imgElement.style.opacity = '1';
-                      setError(null);
-                    }}
-                  />
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <img
+                      src={generatedImages[currentImageIndex]}
+                      alt={`Generated image from: ${prompt || 'architectural design'}`}
+                      className={styles.generatedImage}
+                      loading="eager"
+                      decoding="sync"
+                      onError={(e) => {
+                        console.error('Image load error for URL:', generatedImages[currentImageIndex]);
+                        setError('Failed to load the generated image. Please try generating again.');
+                      }}
+                      style={{
+                        opacity: 0,
+                        transition: 'opacity 0.3s ease-in-out'
+                      }}
+                      onLoad={(e) => {
+                        const imgElement = e.currentTarget;
+                        imgElement.style.opacity = '1';
+                        setError(null);
+                        console.log('Image loaded successfully:', {
+                          width: imgElement.naturalWidth,
+                          height: imgElement.naturalHeight,
+                          src: imgElement.src
+                        });
+                      }}
+                    />
+                  </div>
                 </div>
                 {generatedImages.length > 1 && (
                   <div className={styles.imageCounter}>
