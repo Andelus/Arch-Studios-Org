@@ -14,14 +14,16 @@ if (falApiKey) {
 
 const generatePrompt = (style: string, material: string, cleanBackground: boolean = false) => {
   let prompt = '';
+  
+  // Enhanced background modifiers for cleaner results
   const backgroundModifier = cleanBackground ? 
-    ', pure white background, no environmental elements or context, clean isolated presentation' : '';
+    ', on pure white background (RGB 255,255,255), absolutely no environmental elements, no shadows or reflections on the background, crisp isolation of the building, studio lighting setup, high-key photography style' : '';
 
   if (style === '3D-Optimized') {
-    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. The image must have a pure white background, clean lighting, soft shadows, simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling. No environmental elements or background details.`;
+    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? 'The image MUST have a pure white (RGB 255,255,255) background with absolutely no shadows, reflections, or environmental elements. The building should be perfectly isolated like a technical drawing. Use studio lighting setup with crisp edges and high-key photography style.' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
   }
 
-  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. The image should be suitable for a luxury architectural portfolio.`;
+  prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. ${cleanBackground ? 'Ensure the background is completely pure white (RGB 255,255,255) with no gradients or shadows.' : ''} The image should be suitable for a luxury architectural portfolio.`;
 
   return prompt;
 };
@@ -35,6 +37,19 @@ interface UserProfile {
   current_plan_id: string | null;
   subscription_status: string;
   subscription_plan?: SubscriptionPlan;
+}
+
+type ImageSize = 'square_hd' | 'square' | 'portrait_4_3' | 'portrait_16_9' | 'landscape_4_3' | 'landscape_16_9';
+
+interface FluxRequestInput {
+  prompt: string;
+  image_size: ImageSize;
+  num_inference_steps: number;
+  guidance_scale: number;
+  num_images: number;
+  enable_safety_checker: boolean;
+  seed?: number;
+  negative_prompt?: string;
 }
 
 export async function POST(req: Request) {
@@ -122,9 +137,9 @@ export async function POST(req: Request) {
 
     const finalPrompt = style && material ? generatePrompt(style, material, cleanBackground) : userPrompt;
 
-    // Adjust parameters for 3D-optimized style
-    const inferenceSteps = style === '3D-Optimized' ? 45 : (cleanBackground ? 42 : 40);
-    const guidanceScale = style === '3D-Optimized' ? 8.5 : (cleanBackground ? 8.0 : 7.5);
+    // Adjust parameters for clean background
+    const inferenceSteps = cleanBackground ? 50 : (style === '3D-Optimized' ? 45 : 40); // More steps for cleaner edges
+    const guidanceScale = cleanBackground ? 9.0 : (style === '3D-Optimized' ? 8.5 : 7.5); // Higher guidance for precise background control
 
     // Generate image with Fal AI Flux
     const controller = new AbortController();
@@ -136,28 +151,37 @@ export async function POST(req: Request) {
       }
 
       // Map the size to Flux's image_size options - optimized for architecture
-      const imageSize = size === '1024x1792' ? 'portrait_16_9' : 
+      const imageSize: ImageSize = size === '1024x1792' ? 'portrait_16_9' : 
                        size === '1792x1024' ? 'landscape_16_9' : 
                        'square_hd'; // Default to square_hd for better architectural detail
+
+      const fluxInput: FluxRequestInput = {
+        prompt: finalPrompt,
+        image_size: imageSize,
+        num_inference_steps: inferenceSteps,
+        guidance_scale: guidanceScale,
+        num_images: 1,
+        enable_safety_checker: true,
+        ...(cleanBackground ? {
+          seed: 42,
+          negative_prompt: 'background details, shadows on background, gradients, environment, context, terrain, sky, clouds, trees, landscape, ground, floor shadows, ambient occlusion, atmospheric effects, any background elements'
+        } : {})
+      };
 
       console.log('Generating image with params:', {
         style,
         material,
         is3DOptimized: style === '3D-Optimized',
+        cleanBackground,
         imageSize,
         inferenceSteps,
-        guidanceScale
+        guidanceScale,
+        finalPrompt,
+        fluxInput
       });
 
       const result = await fal.subscribe("fal-ai/flux/dev", {
-        input: {
-          prompt: finalPrompt,
-          image_size: imageSize,
-          num_inference_steps: inferenceSteps,
-          guidance_scale: guidanceScale,
-          num_images: 1,
-          enable_safety_checker: true
-        },
+        input: fluxInput,
         logs: true,
         onQueueUpdate: (update: any) => {
           if (update.status === "IN_PROGRESS") {
