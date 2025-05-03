@@ -17,6 +17,7 @@ interface StyleModifier {
 
 const ARCHITECTURAL_STYLES = [
   '3D-Optimized',
+  'Technical Drawing',
   'Modern',
   'Contemporary',
   'Brutalist',
@@ -47,6 +48,11 @@ const styleModifiers: Record<string, StyleModifier> = {
     promptPrefix: 'Professional architectural visualization in isometric view of',
     promptSuffix: 'with clear geometry, minimal details, and high contrast edges. The model should be perfectly centered with clean lines and precise architectural proportions.',
     renderingModifiers: 'pure white background, clean lighting, soft shadows, simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, architectural visualization'
+  },
+  'Technical Drawing': {
+    promptPrefix: 'Detailed architectural line drawing of',
+    promptSuffix: 'in precise technical illustration style with fine line work. Show the facade with architectural details, window frames, and ornamental elements.',
+    renderingModifiers: 'black and white technical drawing, pure white background, clean architectural lines, no shading, precise geometric details, professional architectural illustration style, high contrast line work, perfectly straight lines, crisp details'
   }
 };
 
