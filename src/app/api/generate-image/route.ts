@@ -12,6 +12,25 @@ if (falApiKey) {
   });
 }
 
+interface StyleModifier {
+  promptPrefix?: string;
+  promptSuffix?: string;
+  renderingModifiers?: string;
+}
+
+const styleModifiers: Record<string, StyleModifier> = {
+  '3D-Optimized': {
+    promptPrefix: 'Professional architectural visualization in isometric view of',
+    promptSuffix: 'with clear geometry, minimal details, and high contrast edges. The model should be perfectly centered with clean lines and precise architectural proportions.',
+    renderingModifiers: 'pure white background, clean lighting, soft shadows, simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, architectural visualization'
+  },
+  'Technical Drawing': {
+    promptPrefix: 'Detailed architectural line drawing of',
+    promptSuffix: 'in precise technical illustration style with fine line work. Show the facade with architectural details, window frames, and ornamental elements.',
+    renderingModifiers: 'black and white technical drawing, pure white background, clean architectural lines, no shading, precise geometric details, professional architectural illustration style, high contrast line work, perfectly straight lines, crisp details'
+  }
+};
+
 const generatePrompt = (style: string, material: string, cleanBackground: boolean = false) => {
   let prompt = '';
   
@@ -19,10 +38,10 @@ const generatePrompt = (style: string, material: string, cleanBackground: boolea
   const backgroundModifier = cleanBackground ? 
     ', [ultra white background: RGB(255,255,255)], [remove all shadows], [pure white environment], [studio background: #FFFFFF], [high-key lighting], [white void]' : '';
 
-  if (style === '3D-Optimized') {
-    return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? '[white background: RGB(255,255,255)], [background: pure white], [remove background details], [studio lighting setup], [white void background], [high key], [no shadows on background], [crisp edges], [perfect isolation]' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
-  } else if (style === 'Technical Drawing') {
-    return `Detailed architectural line drawing of a building crafted from ${material.toLowerCase()} in precise technical illustration style. Create a professional architectural drawing with fine line work, showing the facade with clear architectural details, window frames, and ornamental elements${backgroundModifier}. The drawing should be in black and white with clean architectural lines, no shading, precise geometric details, perfectly straight lines, and crisp details${cleanBackground ? ', [pure white background: RGB(255,255,255)], [perfect isolation], [architectural drawing], [technical illustration], [line art only]' : ''}.`;
+  const modifier = styleModifiers[style];
+  if (modifier) {
+    const { promptPrefix, promptSuffix, renderingModifiers } = modifier;
+    return `${promptPrefix} a building crafted from ${material.toLowerCase()} ${promptSuffix}${backgroundModifier}. ${renderingModifiers}${cleanBackground ? ', [perfect isolation], [pure white background: RGB(255,255,255)]' : ''}`;
   }
   
   // Default prompt for other styles
