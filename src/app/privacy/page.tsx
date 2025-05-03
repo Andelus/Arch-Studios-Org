@@ -12,7 +12,8 @@ export default function PrivacyPolicy() {
 
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>1. Introduction</h2>
-          <p className={styles.paragraph}>Welcome to Arch Studios. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.</p>
+          <p className={styles.paragraph}>At Châteaux AI, we are committed to protecting your privacy and handling your personal data with transparency and care. This Privacy Policy outlines how we collect, use, store, disclose, and protect the personal information you provide when using our services, including our website, web application, mobile interfaces, and other related tools (collectively, the "Services").</p>
+          <p className={styles.paragraph}>By accessing or using our Services, you agree to the collection and use of your information in accordance with this Privacy Policy.</p>
         </section>
 
         <section className={styles.section}>

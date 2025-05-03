@@ -42,7 +42,12 @@ export default function TermsOfService() {
             lineHeight: '1.6',
             marginBottom: '1rem',
             color: '#e0e0e0'
-          }}>By accessing and using Arch Studios, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>
+          }}>These Terms and Conditions ("Terms") contained on this webpage constitute a legal agreement between you, as a prospective user of Châteaux AI's services, and Châteaux AI. These Terms govern your access to and use of Châteaux AI's services, which include all features of the Châteaux AI platform, website, web and mobile applications, and any other related products and services (collectively referred to as the "Services").</p>
+          <p style={{
+            lineHeight: '1.6',
+            marginBottom: '1rem',
+            color: '#e0e0e0'
+          }}>These Terms apply in full force and effect to your use of the Services. By accessing or using any part of the Services, you expressly agree to be bound by these Terms and our Privacy Policy in full, without limitation or qualification. If you do not agree with any part of these Terms, you must not use the Services.</p>
         </section>
 
         <section style={{ marginBottom: '2rem' }}>
