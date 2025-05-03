@@ -21,8 +21,11 @@ const generatePrompt = (style: string, material: string, cleanBackground: boolea
 
   if (style === '3D-Optimized') {
     return `Professional architectural visualization in isometric view of a building crafted from ${material.toLowerCase()}. The design must have clear geometry, minimal details, and high contrast edges, perfectly centered with clean lines and precise architectural proportions. ${cleanBackground ? '[white background: RGB(255,255,255)], [background: pure white], [remove background details], [studio lighting setup], [white void background], [high key], [no shadows on background], [crisp edges], [perfect isolation]' : 'Use clean lighting and soft shadows for depth.'} The design should have simplified geometry, minimal clutter, neutral colors, photorealistic materials, centered composition, and be suitable for 3D modeling.`;
+  } else if (style === 'Technical Drawing') {
+    return `Detailed architectural line drawing of a building crafted from ${material.toLowerCase()} in precise technical illustration style. Create a professional architectural drawing with fine line work, showing the facade with clear architectural details, window frames, and ornamental elements${backgroundModifier}. The drawing should be in black and white with clean architectural lines, no shading, precise geometric details, perfectly straight lines, and crisp details${cleanBackground ? ', [pure white background: RGB(255,255,255)], [perfect isolation], [architectural drawing], [technical illustration], [line art only]' : ''}.`;
   }
-
+  
+  // Default prompt for other styles
   prompt = `A stunning architectural visualization of a ${style.toLowerCase()} building crafted from ${material.toLowerCase()}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic. The building is presented in a professional architectural style with perfect composition, high-end rendering quality, and a focus on architectural details${backgroundModifier}. ${cleanBackground ? '[white background: RGB(255,255,255)], [background: pure white], [perfect isolation], [product photography], [commercial studio]' : ''} The image should be suitable for a luxury architectural portfolio.`;
 
   return prompt;
