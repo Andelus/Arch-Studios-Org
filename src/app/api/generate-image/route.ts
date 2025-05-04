@@ -184,8 +184,8 @@ export async function POST(req: Request) {
         guidance_scale: guidanceScale,
         num_images: 1,
         enable_safety_checker: true,
+        seed: Math.floor(Math.random() * 999899999) + 100000, // Always use a random high seed
         ...(cleanBackground ? {
-          seed: 42,
           negative_prompt: 'background details, shadows on background, gradients, ambient occlusion, environment, context, terrain, sky, clouds, trees, landscape, ground, floor shadows, atmospheric effects, any background elements, shadow bleeding, soft edges, environmental reflections, background texture, depth markers, perspective lines, ground plane, surface contact, ambient lighting effects, color bleeding, atmospheric perspective, background noise, environmental interaction, background patterns, backdrop, scene context, surrounding elements, environmental shadows, background blur, depth of field, environmental lighting, background gradients, light scatter, atmospheric haze, background detail, environmental detail, depth cues, scene setting, contextual elements'
         } : {})
       };
