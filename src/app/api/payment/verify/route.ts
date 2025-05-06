@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { verifyPayment } from '@/lib/flutterwave';
 import { getAuth } from '@clerk/nextjs/server';
 import { NextRequest } from 'next/server';
-import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {

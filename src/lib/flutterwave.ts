@@ -20,7 +20,7 @@ export const initializePayment = async (data: PaymentData) => {
         tx_ref: `chateaux-${Date.now()}`,
         amount: data.amount,
         currency: 'USD',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription?success=true`,
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/verify/callback`,
         customer: {
           email: data.email,
         },
@@ -66,4 +66,4 @@ export const verifyPayment = async (transactionId: string) => {
     console.error('Error verifying payment:', error);
     throw error;
   }
-}; 
+};

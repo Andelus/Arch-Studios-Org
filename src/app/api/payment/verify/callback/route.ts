@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyPayment } from '@/lib/flutterwave';
 import { NextRequest } from 'next/server';
-import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
