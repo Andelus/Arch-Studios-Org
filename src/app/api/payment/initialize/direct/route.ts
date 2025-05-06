@@ -58,6 +58,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!process.env.FLUTTERWAVE_SECRET_KEY) {
+      console.error('Flutterwave configuration missing');
+      return NextResponse.json({ 
+        error: 'Payment service unavailable',
+        details: 'Missing payment configuration'
+      }, { status: 500 });
+    }
+
     // Initialize Flutterwave payment
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
@@ -66,16 +74,18 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        tx_ref: `plan-direct-${Date.now()}`,
+        tx_ref: `chateaux-${Date.now()}`,
         amount: plan.price,
         currency: 'USD',
+        payment_type: 'card',
         redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
         customer: {
           email: userEmail,
         },
         customizations: {
-          title: 'Arch Studios AI Subscription',
-          description: `Subscription to ${plan.name}`,
+          title: 'Chateaux AI',
+          description: `Subscribe to ${plan.name} plan`,
+          logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.svg`,
         },
         meta: {
           planId: plan.id,
@@ -92,8 +102,9 @@ export async function POST(req: NextRequest) {
       console.error('Flutterwave error:', data);
       return NextResponse.json({ 
         error: 'Payment initialization failed',
-        details: data.message || 'Unknown error'
-      }, { status: 400 });
+        details: data.message || 'Unknown error',
+        code: data.code || 'UNKNOWN'
+      }, { status: response.status });
     }
 
     return NextResponse.json({ paymentUrl: data.data.link });

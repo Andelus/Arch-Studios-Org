@@ -13,6 +13,10 @@ interface PaymentData {
 }
 
 export const initializePayment = async (data: PaymentData) => {
+  if (!FLUTTERWAVE_PUBLIC_KEY || !FLUTTERWAVE_SECRET_KEY) {
+    throw new Error('Flutterwave configuration missing');
+  }
+
   try {
     const response = await axios.post(
       'https://api.flutterwave.com/v3/payments',
@@ -20,14 +24,15 @@ export const initializePayment = async (data: PaymentData) => {
         tx_ref: `chateaux-${Date.now()}`,
         amount: data.amount,
         currency: 'USD',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription?success=true`,
+        payment_type: 'card',
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
         customer: {
           email: data.email,
         },
         customizations: {
           title: 'Chateaux AI',
-          description: `Purchase ${data.plan} plan`,
-          logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`,
+          description: `Subscribe to ${data.plan} plan`,
+          logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.svg`,
         },
         meta: {
           plan: data.plan,
@@ -51,6 +56,10 @@ export const initializePayment = async (data: PaymentData) => {
 };
 
 export const verifyPayment = async (transactionId: string) => {
+  if (!FLUTTERWAVE_SECRET_KEY) {
+    throw new Error('Flutterwave configuration missing');
+  }
+
   try {
     const response = await axios.get(
       `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
@@ -66,4 +75,4 @@ export const verifyPayment = async (transactionId: string) => {
     console.error('Error verifying payment:', error);
     throw error;
   }
-}; 
+};
