@@ -13,6 +13,9 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up',
   '/coming-soon',
   '/credit-subscription',
+  '/credit-subscription/verify',
+  '/api/payment/verify',
+  '/api/payment/verify/callback',
   // Static paths
   '/_next/static/(.*)',
   '/_next/image/(.*)',

@@ -4,8 +4,6 @@ import { NextRequest } from 'next/server';
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -13,18 +11,16 @@ export async function GET(request: NextRequest) {
     const transaction_id = searchParams.get('transaction_id');
 
     if (!transaction_id) {
-      return redirect('/credit-subscription?error=payment_failed');
+      return NextResponse.redirect(new URL('/credit-subscription?error=payment_failed', request.url));
     }
 
     if (status === 'successful') {
-      // Verify payment with Flutterwave
       const verificationResponse = await verifyPayment(transaction_id);
 
       if (verificationResponse.status === 'successful') {
         const { amount, meta } = verificationResponse.data;
         const { planId, userId, autoBuy } = meta;
 
-        // Get plan details from database
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
           .select('*')
@@ -33,10 +29,9 @@ export async function GET(request: NextRequest) {
 
         if (planError || !planData) {
           console.error('Error fetching plan details:', planError);
-          return redirect('/credit-subscription?error=invalid_plan');
+          return NextResponse.redirect(new URL('/credit-subscription?error=invalid_plan', request.url));
         }
 
-        // Update subscription and credits
         const { error: dbError } = await supabase.rpc('handle_payment_verification', {
           p_user_id: userId,
           p_transaction_id: transaction_id,
@@ -48,16 +43,16 @@ export async function GET(request: NextRequest) {
 
         if (dbError) {
           console.error('Database Error:', dbError);
-          return redirect('/credit-subscription?error=payment_processing');
+          return NextResponse.redirect(new URL('/credit-subscription?error=payment_processing', request.url));
         }
 
-        return redirect('/credit-subscription?success=true');
+        return NextResponse.redirect(new URL('/credit-subscription?success=true', request.url));
       }
     }
 
-    return redirect('/credit-subscription?error=payment_failed');
+    return NextResponse.redirect(new URL('/credit-subscription?error=payment_failed', request.url));
   } catch (error) {
     console.error('Payment verification error:', error);
-    return redirect('/credit-subscription?error=payment_failed');
+    return NextResponse.redirect(new URL('/credit-subscription?error=payment_failed', request.url));
   }
 }

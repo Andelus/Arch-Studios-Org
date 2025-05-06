@@ -13,19 +13,17 @@ export default async function VerifyPayment({ searchParams }: { searchParams: an
   const transaction_id = searchParams['transaction_id'];
 
   if (!transaction_id || typeof transaction_id !== 'string') {
-    redirect('/credit-subscription?error=payment_failed');
+    return redirect('/credit-subscription?error=payment_failed');
   }
 
   if (status === 'successful') {
     try {
-      // Verify payment with Flutterwave
       const verificationResponse = await verifyPayment(transaction_id);
 
       if (verificationResponse.status === 'successful') {
         const { amount, meta } = verificationResponse.data;
         const { planId, userId, autoBuy } = meta;
 
-        // Get plan details from database
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
           .select('*')
@@ -34,10 +32,9 @@ export default async function VerifyPayment({ searchParams }: { searchParams: an
 
         if (planError || !planData) {
           console.error('Error fetching plan details:', planError);
-          redirect('/credit-subscription?error=invalid_plan');
+          return redirect('/credit-subscription?error=invalid_plan');
         }
 
-        // Update subscription and credits
         const { error: dbError } = await supabase.rpc('handle_payment_verification', {
           p_user_id: userId,
           p_transaction_id: transaction_id,
@@ -49,15 +46,15 @@ export default async function VerifyPayment({ searchParams }: { searchParams: an
 
         if (dbError) {
           console.error('Database Error:', dbError);
-          redirect('/credit-subscription?error=payment_processing');
+          return redirect('/credit-subscription?error=payment_processing');
         }
 
-        redirect('/credit-subscription?success=true');
+        return redirect('/credit-subscription?success=true');
       }
     } catch (error) {
       console.error('Payment verification error:', error);
     }
   }
 
-  redirect('/credit-subscription?error=payment_failed');
+  return redirect('/credit-subscription?error=payment_failed');
 }
