@@ -13,9 +13,6 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up',
   '/coming-soon',
   '/credit-subscription',
-  '/credit-subscription/verify',
-  '/api/payment/verify',
-  '/api/payment/verify/callback',
   // Static paths
   '/_next/static/(.*)',
   '/_next/image/(.*)',
@@ -36,7 +33,6 @@ export default clerkMiddleware((auth, req) => {
   auth.protect();
 });
 
-// Ensure profile API endpoint is matched
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico).*)",
