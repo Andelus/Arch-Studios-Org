@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize Flutterwave payment
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.chateauxai.com';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
     const redirectUrl = `${baseUrl}/credit-subscription/verify`;
 
     const response = await fetch('https://api.flutterwave.com/v3/payments', {

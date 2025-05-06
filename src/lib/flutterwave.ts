@@ -18,7 +18,7 @@ export const initializePayment = async (data: PaymentData) => {
   }
 
   // Ensure we have a valid base URL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.chateauxai.com';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
   const redirectUrl = `${baseUrl}/credit-subscription/verify`;
 
   try {
