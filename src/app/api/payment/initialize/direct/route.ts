@@ -31,16 +31,31 @@ export async function POST(req: NextRequest) {
       console.error('Failed to fetch user from Clerk:', error);
       // Continue with default email
     }
-
-    // Get plan details from database
-    const { data: plan, error: planError } = await supabase
-      .from('subscription_plans')
-      .select('*')
-      .eq('name', planName)
-      .single();
-
-    if (planError || !plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+    
+    // Find plan by name or use default values
+    let plan = {
+      id: 'default-plan-id',
+      name: planName || 'Standard Plan',
+      price: 29.99
+    };
+    
+    // Try to find the plan in the database by name
+    if (planName) {
+      const { data: planData } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .ilike('name', planName)
+        .limit(1);
+      
+      if (planData && planData.length > 0) {
+        // Ensure the plan data has all required properties
+        const dbPlan = planData[0];
+        plan = {
+          id: typeof dbPlan.id === 'string' ? dbPlan.id : 'default-plan-id',
+          name: typeof dbPlan.name === 'string' ? dbPlan.name : (planName || 'Standard Plan'),
+          price: typeof dbPlan.price === 'number' ? dbPlan.price : 29.99
+        };
+      }
     }
 
     // Initialize Flutterwave payment
@@ -54,7 +69,7 @@ export async function POST(req: NextRequest) {
         tx_ref: `plan-direct-${Date.now()}`,
         amount: plan.price,
         currency: 'USD',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/verify/callback`,
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
         customer: {
           email: userEmail,
         },

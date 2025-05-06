@@ -33,6 +33,7 @@ export default clerkMiddleware((auth, req) => {
   auth.protect();
 });
 
+// Ensure profile API endpoint is matched
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico).*)",

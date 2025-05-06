@@ -3,6 +3,8 @@ import { getAuth } from '@clerk/nextjs/server';
 import { NextRequest } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = getAuth(req);
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fetch plan details from database
+    // Fetch plan details from database (even when bypassing, we need plan details)
     const { data: planData, error: planError } = await supabase
       .from('subscription_plans')
       .select('*')
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
         tx_ref: `plan-${planId}-${Date.now()}`,
         amount: plan.price,
         currency: 'USD',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/verify/callback`,
+        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
         customer: {
           email: profile.email,
         },

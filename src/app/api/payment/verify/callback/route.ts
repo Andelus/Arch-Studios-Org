@@ -4,6 +4,8 @@ import { NextRequest } from 'next/server';
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -15,12 +17,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (status === 'successful') {
+      // Verify payment with Flutterwave
       const verificationResponse = await verifyPayment(transaction_id);
 
       if (verificationResponse.status === 'successful') {
         const { amount, meta } = verificationResponse.data;
         const { planId, userId, autoBuy } = meta;
 
+        // Get plan details from database
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
           .select('*')
@@ -32,6 +36,7 @@ export async function GET(request: NextRequest) {
           return redirect('/credit-subscription?error=invalid_plan');
         }
 
+        // Update subscription and credits
         const { error: dbError } = await supabase.rpc('handle_payment_verification', {
           p_user_id: userId,
           p_transaction_id: transaction_id,
