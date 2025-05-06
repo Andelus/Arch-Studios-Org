@@ -32,31 +32,22 @@ export async function POST(req: NextRequest) {
       // Continue with default email
     }
     
-    // Find plan by name or use default values
-    let plan = {
-      id: 'default-plan-id',
-      name: planName || 'Standard Plan',
-      price: 29.99
-    };
+    // Find plan by name
+    const { data: planData, error: planError } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .ilike('name', planName)
+      .limit(1);
     
-    // Try to find the plan in the database by name
-    if (planName) {
-      const { data: planData } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .ilike('name', planName)
-        .limit(1);
-      
-      if (planData && planData.length > 0) {
-        // Ensure the plan data has all required properties
-        const dbPlan = planData[0];
-        plan = {
-          id: typeof dbPlan.id === 'string' ? dbPlan.id : 'default-plan-id',
-          name: typeof dbPlan.name === 'string' ? dbPlan.name : (planName || 'Standard Plan'),
-          price: typeof dbPlan.price === 'number' ? dbPlan.price : 29.99
-        };
-      }
+    if (planError || !planData || planData.length === 0) {
+      console.error('Error fetching plan:', planError);
+      return NextResponse.json({ 
+        error: 'Invalid plan',
+        details: 'Could not find the specified plan'
+      }, { status: 400 });
     }
+
+    const plan = planData[0];
 
     if (!process.env.FLUTTERWAVE_SECRET_KEY) {
       console.error('Flutterwave configuration missing');

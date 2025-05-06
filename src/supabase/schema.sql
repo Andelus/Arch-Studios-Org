@@ -18,7 +18,7 @@ drop function if exists update_updated_at_column cascade;
 -- Create subscription_plans table
 create table subscription_plans (
     id uuid default uuid_generate_v4() primary key,
-    name text not null,
+    name text not null unique,  -- Added unique constraint
     total_credits integer not null,
     price decimal(10,2) not null,
     image_credit_cost integer not null,
@@ -501,7 +501,18 @@ begin
 end;
 $$;
 
+-- Clean existing plans before inserting
+delete from subscription_plans where name in ('STANDARD', 'PRO');
+
 -- Initial subscription plans
-insert into subscription_plans (name, total_credits, price, image_credit_cost, model_credit_cost, features) values
+insert into subscription_plans (name, total_credits, price, image_credit_cost, model_credit_cost, features) 
+values
     ('STANDARD', 2000, 5.00, 100, 100, '["Privacy mode", "Auto-buy option"]'::jsonb),
-    ('PRO', 5000, 15.00, 142, 142, '["Privacy mode", "Auto-buy option", "Early access to new features"]'::jsonb);
+    ('PRO', 5000, 15.00, 142, 142, '["Privacy mode", "Auto-buy option", "Early access to new features"]'::jsonb)
+on conflict (name) do update set
+    total_credits = EXCLUDED.total_credits,
+    price = EXCLUDED.price,
+    image_credit_cost = EXCLUDED.image_credit_cost,
+    model_credit_cost = EXCLUDED.model_credit_cost,
+    features = EXCLUDED.features,
+    updated_at = now();

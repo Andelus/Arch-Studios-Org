@@ -76,15 +76,14 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (planError || !planData) {
-      console.warn('Plan not found, using default values');
-      plan = {
-        name: 'Standard Plan',
-        price: 29.99,
-        id: planId
-      };
-    } else {
-      plan = planData;
+      console.error('Error fetching plan:', planError);
+      return NextResponse.json({ 
+        error: 'Invalid plan',
+        details: 'Could not find the specified plan'
+      }, { status: 400 });
     }
+
+    plan = planData;
 
     // Ensure proper URL formatting for live mode
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
