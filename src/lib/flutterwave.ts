@@ -17,6 +17,10 @@ export const initializePayment = async (data: PaymentData) => {
     throw new Error('Flutterwave configuration missing');
   }
 
+  // Ensure we have a valid base URL
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.chateauxai.com';
+  const redirectUrl = `${baseUrl}/credit-subscription/verify`;
+
   try {
     const response = await axios.post(
       'https://api.flutterwave.com/v3/payments',
@@ -25,14 +29,14 @@ export const initializePayment = async (data: PaymentData) => {
         amount: data.amount,
         currency: 'USD',
         payment_type: 'card',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
+        redirect_url: redirectUrl,
         customer: {
           email: data.email,
         },
         customizations: {
           title: 'Chateaux AI',
           description: `Subscribe to ${data.plan} plan`,
-          logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.svg`,
+          logo: `${baseUrl}/logo.svg`,
         },
         meta: {
           plan: data.plan,

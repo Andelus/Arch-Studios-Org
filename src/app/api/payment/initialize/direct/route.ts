@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize Flutterwave payment
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.chateauxai.com';
+    const redirectUrl = `${baseUrl}/credit-subscription/verify`;
+
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
       headers: {
@@ -78,14 +81,14 @@ export async function POST(req: NextRequest) {
         amount: plan.price,
         currency: 'USD',
         payment_type: 'card',
-        redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/credit-subscription/verify`,
+        redirect_url: redirectUrl,
         customer: {
           email: userEmail,
         },
         customizations: {
           title: 'Chateaux AI',
           description: `Subscribe to ${plan.name} plan`,
-          logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.svg`,
+          logo: `${baseUrl}/logo.svg`,
         },
         meta: {
           planId: plan.id,
