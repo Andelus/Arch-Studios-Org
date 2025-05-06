@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import CreditDisplay from "./CreditDisplay";
 
 export default function Navigation() {
   const [hasSubscription, setHasSubscription] = useState(false);
@@ -36,7 +37,14 @@ export default function Navigation() {
           <SignedIn>
             {!hasSubscription && (
               <div className="flex items-center space-x-4">
-                <div className="hidden sm:flex items-center space-x-3">
+                <div className="hidden sm:flex flex-col items-center">
+                  <div className="flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500/10 to-blue-500/5 dark:from-blue-400/20 dark:to-blue-400/10 text-blue-600 dark:text-blue-400 rounded-full text-sm font-medium border border-blue-500/20 dark:border-blue-400/20 transition-all duration-200 hover:scale-105">
+                    <i className="fa-solid fa-bolt text-xs mr-2 opacity-70"></i>
+                    <span className="font-medium tracking-tight">Lightning</span>
+                  </div>
+                  <CreditDisplay />
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
                   <div className="flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500/10 to-blue-500/5 dark:from-blue-400/20 dark:to-blue-400/10 text-blue-600 dark:text-blue-400 rounded-full text-sm font-medium border border-blue-500/20 dark:border-blue-400/20 transition-all duration-200 hover:scale-105">
                     <i className="fa-regular fa-image text-xs mr-2 opacity-70"></i>
                     <span className="font-medium tracking-tight">1 Free Image</span>
