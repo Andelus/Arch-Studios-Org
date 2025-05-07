@@ -483,7 +483,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
           </a>
           
           <a
-            href="https://discord.gg/dqkXkrNK"
+            href="https://discord.gg/ZZgugQJZ"
             className={styles.discordButton}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
