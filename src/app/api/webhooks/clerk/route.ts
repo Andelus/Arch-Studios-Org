@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         .insert({
           id: id,
           email: primaryEmail,
-          credits_balance: 250, // Give initial trial credits
+          credits_balance: 1000, // Give initial trial credits
           auto_buy_enabled: false,
           subscription_status: 'TRIAL',
           current_plan_id: null,
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
         .from('credit_transactions')
         .insert({
           user_id: id,
-          amount: 250,
+          amount: 1000,
           type: 'INITIAL_TRIAL_CREDIT',
           description: 'Initial trial credits',
           created_at: new Date().toISOString()
