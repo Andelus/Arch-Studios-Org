@@ -394,7 +394,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
             <div className={`${styles.trialInfo} ${credits <= 0 ? styles.trialInfoWarning : ''}`}>
               {credits > 0 ? (
                 <>
-                  <p>Get started with your remaining {credits} trial credits! Generate images for 100 credits each or 3D models for 100 credits each.</p>
+                  <p>Get started with your remaining {credits} trial credits! Generate images or 3D models for 100 credits each.</p>
                   <p>Subscribe to a plan below to continue after your trial credits are used.</p>
                 </>
               ) : (
@@ -442,7 +442,7 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               price="$5"
               onSelect={() => selectPlan('Standard')}
               features={[
-                { highlight: '250', text: 'free trial credits' },
+                { highlight: '1000', text: 'free trial credits' },
                 { highlight: '2,000', text: 'monthly credits' },
                 { highlight: '100', text: 'credits for images' },
                 { highlight: '100', text: 'credits for 3D' },
@@ -457,10 +457,10 @@ export default function CreditSubscriptionClient({ initialPlans }: CreditSubscri
               price="$15"
               onSelect={() => selectPlan('Pro')}
               features={[
-                { highlight: '250', text: 'free trial credits' },
+                { highlight: '1000', text: 'free trial credits' },
                 { highlight: '5,000', text: 'monthly credits' },
-                { highlight: '142', text: 'credits for images' },
-                { highlight: '142', text: 'credits for 3D' },
+                { highlight: '100', text: 'credits for images' },
+                { highlight: '100', text: 'credits for 3D' },
                 { text: 'Privacy mode' },
                 { text: 'Priority support' },
                 { text: 'Early access to new features' }

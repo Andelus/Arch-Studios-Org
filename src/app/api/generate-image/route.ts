@@ -133,9 +133,9 @@ export async function POST(req: Request) {
     }
 
     // Calculate credit cost
-    const creditCost = profile.subscription_status === 'TRIAL' ? 125 :
+    const creditCost = profile.subscription_status === 'TRIAL' ? 100 :
       profile.subscription_plan?.image_credit_cost ?? 
-      (profile.current_plan_id?.toLowerCase().includes('pro') ? 142 : 100);
+      (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
 
     if (profile.credits_balance < creditCost) {
       return NextResponse.json({ 
