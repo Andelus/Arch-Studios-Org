@@ -337,7 +337,7 @@ export default function ImageGeneration() {
           <button 
             className={styles.generateBtn} 
             onClick={generateImages}
-            disabled={isGenerating || (!prompt.trim() && (!selectedStyle || !selectedMaterial))}
+            disabled={isGenerating || (!prompt.trim() && !cleanBackground && !selectedStyle && !selectedMaterial)}
           >
             {isGenerating ? 'Generating...' : 'Generate Images'}
           </button>

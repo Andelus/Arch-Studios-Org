@@ -148,16 +148,30 @@ export async function POST(req: Request) {
 
     const { prompt: userPrompt, style, material, size, cleanBackground } = await req.json();
 
-    if (!userPrompt && (!style || !material)) {
+    if (!userPrompt && !style && !material) {
       return NextResponse.json({ 
         success: false,
         error: 'Invalid input',
-        message: 'A prompt or style/material combination is required',
+        message: 'Please provide either a prompt or at least one style or material selection',
         status: 400
       });
     }
 
-    const finalPrompt = style && material ? generatePrompt(style, material, cleanBackground) : userPrompt;
+    let finalPrompt;
+    if (style && material) {
+      finalPrompt = generatePrompt(style, material, cleanBackground);
+    } else {
+      // Handle partial selections
+      const styleBase = style ? `a ${style.toLowerCase()} architectural design` : 'an architectural design';
+      const materialBase = material ? ` crafted from ${material.toLowerCase()}` : '';
+      const basePrompt = userPrompt || `${styleBase}${materialBase}`;
+      
+      // Add clean background modifiers if enabled
+      const backgroundModifier = cleanBackground ? 
+        ' [ultra white background: RGB(255,255,255)], [remove all shadows], [pure white environment], [studio background: #FFFFFF], [high-key lighting], [white void], [perfect isolation], [product photography], [commercial studio]' : '';
+
+      finalPrompt = `${basePrompt}${backgroundModifier}`;
+    }
 
     // Adjust parameters for clean background
     const inferenceSteps = cleanBackground ? 50 : (style === '3D-Optimized' ? 45 : 40); // More steps for cleaner edges
