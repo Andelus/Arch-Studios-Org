@@ -293,24 +293,20 @@ export default function ImageGeneration() {
             )}
           </div>
 
-          {selectedStyle && (
-            <div className={styles.optionContainer}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={cleanBackground}
-                  onChange={(e) => setCleanBackground(e.target.checked)}
-                  className={styles.checkbox}
-                />
-                <span>Clean White Background</span>
-              </label>
-              <div className={styles.optionHint}>
-                {selectedStyle === '3D-Optimized' 
-                  ? 'Creates a pure white (RGB 255,255,255) background with perfect isolation, ideal for 3D modeling'
-                  : 'Removes all environmental elements and creates a pure white studio background'}
-              </div>
+          <div className={styles.optionContainer}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={cleanBackground}
+                onChange={(e) => setCleanBackground(e.target.checked)}
+                className={styles.checkbox}
+              />
+              <span>Clean White Background</span>
+            </label>
+            <div className={styles.optionHint}>
+              Creates a pure white (RGB 255,255,255) background with perfect isolation, removing all environmental elements and shadows
             </div>
-          )}
+          </div>
 
           <div className={styles.dropdownContainer}>
             <div 
