@@ -159,12 +159,28 @@ export async function POST(req: Request) {
 
     let finalPrompt;
     if (style && material) {
+      // Full style + material prompt
       finalPrompt = generatePrompt(style, material, cleanBackground);
     } else {
-      // Handle partial selections
-      const styleBase = style ? `a ${style.toLowerCase()} architectural design` : 'an architectural design';
-      const materialBase = material ? ` crafted from ${material.toLowerCase()}` : '';
-      const basePrompt = userPrompt || `${styleBase}${materialBase}`;
+      // Handle individual modifiers
+      let basePrompt = userPrompt || 'an architectural design';
+      
+      if (style) {
+        // Apply style modifiers if available
+        const modifier = styleModifiers[style];
+        if (modifier) {
+          const { promptPrefix, promptSuffix, renderingModifiers } = modifier;
+          basePrompt = `${promptPrefix} ${basePrompt} ${promptSuffix}. ${renderingModifiers}`;
+        } else {
+          basePrompt = `A ${style.toLowerCase()} architectural visualization of ${basePrompt}. The design showcases clean lines, dramatic lighting, and a minimalist aesthetic, with perfect composition and high-end rendering quality`;
+        }
+      }
+      
+      if (material) {
+        basePrompt = basePrompt.includes('crafted from') ? 
+          basePrompt.replace(/crafted from [\w\s]+/, `crafted from ${material.toLowerCase()}`) : 
+          `${basePrompt}, crafted from ${material.toLowerCase()}`;
+      }
       
       // Add clean background modifiers if enabled
       const backgroundModifier = cleanBackground ? 
