@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { Document, NodeIO, Root, Primitive, Accessor } from '@gltf-transform/core';
-import draco3d from 'draco3dgltf';
+import { KHRDracoMeshCompression } from '@gltf-transform/extensions';
+import draco3d from 'draco3d';
 
 function optimizeGeometry(primitive: Primitive, document: Document): void {
   const positions = primitive.getAttribute('POSITION');
@@ -71,7 +72,13 @@ export async function POST(req: Request) {
       const modelData = await response.arrayBuffer();
       
       // Initialize GLTF transformer with Draco compression
-      const io = new NodeIO().registerExtensions([draco3d]);
+      const io = new NodeIO()
+        .registerExtensions([KHRDracoMeshCompression])
+        .registerDependencies({
+          'draco3d.decoder': await draco3d.createDecoderModule(),
+          'draco3d.encoder': await draco3d.createEncoderModule(),
+        });
+
       const document = await io.readBinary(new Uint8Array(modelData));
 
       // Apply optimizations
