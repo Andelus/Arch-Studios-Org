@@ -1,14 +1,53 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { NodeIO } from '@gltf-transform/core';
+import { Document, NodeIO, Root, Primitive, Accessor } from '@gltf-transform/core';
 import draco3d from 'draco3dgltf';
-import { 
-  dedup,
-  prune,
-  weld,
-  simplify 
-} from '@gltf-transform/functions';
-import { meshopt } from '@gltf-transform/functions';
+
+function optimizeGeometry(primitive: Primitive, document: Document): void {
+  const positions = primitive.getAttribute('POSITION');
+  const indices = primitive.getIndices();
+  
+  if (!positions || !indices) return;
+
+  const posArray = positions.getArray();
+  const idxArray = indices.getArray();
+  
+  if (!posArray || !idxArray) return;
+
+  // Create a map to track unique vertices
+  const uniqueVertices = new Map<string, number>();
+  const newIndices: number[] = [];
+  const newPositions: number[] = [];
+  let nextIndex = 0;
+
+  // Iterate through each vertex
+  for (let i = 0; i < idxArray.length; i++) {
+    const idx = idxArray[i];
+    const x = posArray[idx * 3];
+    const y = posArray[idx * 3 + 1];
+    const z = posArray[idx * 3 + 2];
+    
+    // Use a higher precision for vertex identification
+    const key = `${Math.round(x * 10000)},${Math.round(y * 10000)},${Math.round(z * 10000)}`;
+
+    if (!uniqueVertices.has(key)) {
+      uniqueVertices.set(key, nextIndex);
+      newPositions.push(x, y, z);
+      nextIndex++;
+    }
+    newIndices.push(uniqueVertices.get(key)!);
+  }
+
+  // Update positions with optimized data
+  positions.setArray(new Float32Array(newPositions));
+  
+  // Create new indices accessor
+  const newIndicesAccessor = document.createAccessor()
+    .setType('SCALAR')
+    .setArray(new Uint32Array(newIndices));
+  
+  primitive.setIndices(newIndicesAccessor);
+}
 
 export async function POST(req: Request) {
   try {
@@ -31,31 +70,47 @@ export async function POST(req: Request) {
       
       const modelData = await response.arrayBuffer();
       
-      // Initialize GLTF transformer with Draco support
+      // Initialize GLTF transformer with Draco compression
       const io = new NodeIO().registerExtensions([draco3d]);
       const document = await io.readBinary(new Uint8Array(modelData));
 
       // Apply optimizations
-      await document.transform(
-        // Remove unused resources
-        prune(),
-        
-        // Remove duplicate vertices and similar materials
-        dedup(),
-        
-        // Weld vertices that share position/normal/etc.
-        weld(),
+      const root = document.getRoot();
+      const scene = root.getDefaultScene() || root.listScenes()[0];
+      
+      if (scene) {
+        // Optimize each mesh in the scene
+        for (const mesh of root.listMeshes()) {
+          for (const primitive of mesh.listPrimitives()) {
+            // Step 1: Remove unnecessary attributes
+            const attributes = primitive.listAttributes();
+            for (const attribute of attributes) {
+              if (!['POSITION', 'NORMAL', 'TEXCOORD_0'].includes(attribute.getName())) {
+                primitive.setAttribute(attribute.getName(), null);
+              }
+            }
+            
+            // Step 2: Optimize geometry (remove duplicate vertices)
+            optimizeGeometry(primitive, document);
+            
+            // Step 3: Quantize vertex positions for better compression
+            const pos = primitive.getAttribute('POSITION');
+            if (pos) {
+              const arr = pos.getArray();
+              if (arr) {
+                const quantized = new Float32Array(arr.length);
+                for (let i = 0; i < arr.length; i++) {
+                  // Quantize to millimeter precision
+                  quantized[i] = Math.round(arr[i] * 1000) / 1000;
+                }
+                pos.setArray(quantized);
+              }
+            }
+          }
+        }
+      }
 
-        // Simplify mesh geometry
-        simplify({
-          simplifier: meshopt,
-          ratio: 0.5,        // Reduce to 50% of original vertex count
-          error: 0.01,       // Maximum deviation from original mesh
-          lockBorder: true   // Preserve mesh boundaries
-        })
-      );
-
-      // Convert back to binary
+      // Convert back to binary with Draco compression
       const optimizedBuffer = await io.writeBinary(document);
 
       // Return the optimized model
