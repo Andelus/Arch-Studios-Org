@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { Document, NodeIO, Root, Primitive, Accessor } from '@gltf-transform/core';
-import { KHRDracoMeshCompression } from '@gltf-transform/extensions';
 
 interface Vector3 {
   x: number;
@@ -170,9 +169,7 @@ export async function POST(req: Request) {
       
       const modelData = await response.arrayBuffer();
       
-      // Initialize GLTF transformer
-      const io = new NodeIO()
-        .registerExtensions([KHRDracoMeshCompression]);
+      const io = new NodeIO();
       const document = await io.readBinary(new Uint8Array(modelData));
 
       // Apply optimizations
@@ -193,11 +190,25 @@ export async function POST(req: Request) {
             
             // Step 2: Optimize geometry (remove duplicate vertices)
             optimizeGeometry(primitive, document);
+            
+            // Step 3: Apply quantization to further reduce size
+            const pos = primitive.getAttribute('POSITION');
+            if (pos) {
+              const arr = pos.getArray();
+              if (arr) {
+                const quantized = new Float32Array(arr.length);
+                for (let i = 0; i < arr.length; i++) {
+                  // Quantize to millimeter precision
+                  quantized[i] = Math.round(arr[i] * 1000) / 1000;
+                }
+                pos.setArray(quantized);
+              }
+            }
           }
         }
       }
 
-      // Convert back to binary with compression
+      // Convert back to binary
       const optimizedBuffer = await io.writeBinary(document);
 
       // Return the optimized model
