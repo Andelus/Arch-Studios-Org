@@ -42,6 +42,17 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
   
   if (!posArray || !idxArray) return;
 
+  // Safety check for valid arrays
+  if (posArray.length % 3 !== 0) {
+    console.error('Invalid position array length:', posArray.length);
+    return;
+  }
+
+  if (idxArray.length % 3 !== 0) {
+    console.error('Invalid index array length:', idxArray.length);
+    return;
+  }
+
   // Convert TypedArrays to regular arrays for processing
   const positionArray = Array.from(posArray);
   const normalArray = normArray ? Array.from(normArray) : null;
@@ -88,7 +99,7 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
 
   // Keep track of removed vertices
   const removedVertices = new Set<number>();
-  const targetCount = Math.floor(sortedVertices.length * 0.3); // Reduce to only 30% for better quality
+  const targetCount = Math.floor(sortedVertices.length * 0.15); // Only remove 15% of vertices for better stability
   
   // Remove low-cost vertices
   for (const vertex of sortedVertices) {
@@ -164,6 +175,27 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
       }
       newIndices.push(indexMap.get(oldIndex)!);
     });
+  }
+
+  // Validate new arrays
+  if (newPositions.length % 3 !== 0) {
+    console.error('Invalid optimized position array length:', newPositions.length);
+    return;
+  }
+
+  if (newIndices.length % 3 !== 0) {
+    console.error('Invalid optimized index array length:', newIndices.length);
+    return;
+  }
+
+  if (newNormals.length > 0 && newNormals.length !== newPositions.length) {
+    console.error('Normal array length mismatch:', newNormals.length, 'vs', newPositions.length);
+    return;
+  }
+
+  if (newTexcoords.length > 0 && newTexcoords.length !== (newPositions.length / 3) * 2) {
+    console.error('Texture coordinate array length mismatch:', newTexcoords.length);
+    return;
   }
 
   // Update geometry with optimized data
@@ -250,11 +282,26 @@ export async function POST(req: Request) {
       // Convert back to binary
       const optimizedBuffer = await io.writeBinary(document);
 
+      // Validate the optimized buffer
+      try {
+        // Verify the optimized buffer is valid by attempting to read it
+        await NodeIO.prototype.readBinary(new Uint8Array(optimizedBuffer));
+      } catch (validationError) {
+        console.error('Validation error:', validationError);
+        return NextResponse.json({ 
+          error: 'Generated model is invalid',
+          details: validationError instanceof Error ? validationError.message : 'Unknown validation error'
+        }, { status: 500 });
+      }
+
       // Return the optimized model
       return new NextResponse(optimizedBuffer, {
         headers: {
           'Content-Type': 'model/gltf-binary',
-          'Content-Disposition': 'attachment; filename="cleaned_model.glb"'
+          'Content-Disposition': 'attachment; filename="cleaned_model.glb"',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
     } catch (error) {
