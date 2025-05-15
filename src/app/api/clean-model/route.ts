@@ -6,8 +6,7 @@ import {
   dedup,
   prune,
   weld,
-  resample,
-  simplify
+  simplify 
 } from '@gltf-transform/functions';
 import { meshopt } from '@gltf-transform/functions';
 
@@ -46,9 +45,6 @@ export async function POST(req: Request) {
         
         // Weld vertices that share position/normal/etc.
         weld(),
-        
-        // Resample animations if present
-        resample(),
 
         // Simplify mesh geometry
         simplify({
