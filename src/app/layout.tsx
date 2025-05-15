@@ -13,12 +13,13 @@ export const metadata: Metadata = {
     shortcut: '/new-favicon.jpg',
     apple: '/new-favicon.jpg',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

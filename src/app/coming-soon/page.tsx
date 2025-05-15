@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,7 +9,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import CreditDisplay from '@/components/CreditDisplay';
 import DrawingCanvas from './components/DrawingCanvas';
 
-export default function ImageEditor() {
+function ImageEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'edit' | 'render'>(
@@ -588,5 +588,17 @@ export default function ImageEditor() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ImageEditor() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <ImageEditorContent />
+    </Suspense>
   );
 }
