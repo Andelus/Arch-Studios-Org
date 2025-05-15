@@ -6,8 +6,10 @@ import {
   dedup,
   prune,
   weld,
-  resample
+  resample,
+  simplify
 } from '@gltf-transform/functions';
+import { meshopt } from '@gltf-transform/functions';
 
 export async function POST(req: Request) {
   try {
@@ -46,7 +48,16 @@ export async function POST(req: Request) {
         weld(),
         
         // Resample animations if present
-        resample()
+        resample(),
+
+        // Simplify mesh geometry
+        simplify({
+          simplifier: meshopt,
+          ratio: 0.5,        // Reduce to 50% of original vertex count
+          error: 0.01,       // Maximum deviation from original mesh
+          lockBorder: true,  // Preserve mesh boundaries
+          ratio: 0.5        // Target ratio of vertices to keep
+        })
       );
 
       // Convert back to binary
