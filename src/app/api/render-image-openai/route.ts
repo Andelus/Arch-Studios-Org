@@ -168,8 +168,7 @@ export async function POST(request: Request) {
         prompt: enhancedPrompt,
         n: 1,
         quality: qualitySettings[quality].quality,
-        size: "1024x1024", // Default square size
-        response_format: "b64_json"
+        size: "1024x1024" // Default square size
       } as const;
 
       // If there's a reference image, use it for variation/editing

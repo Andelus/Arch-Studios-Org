@@ -181,8 +181,7 @@ export async function POST(request: Request) {
         prompt: enhancedPrompt,
         n: 1,
         size: "1024x1024",
-        quality: drawAssist === 'major' ? 'high' : 'medium',
-        response_format: "b64_json"
+        quality: drawAssist === 'major' ? 'high' : 'medium'
       });
 
       // Get the edited image base64
