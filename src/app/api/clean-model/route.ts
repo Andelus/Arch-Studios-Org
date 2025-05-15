@@ -2,7 +2,31 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { Document, NodeIO, Root, Primitive, Accessor } from '@gltf-transform/core';
 import { KHRDracoMeshCompression } from '@gltf-transform/extensions';
-import draco3d from 'draco3d';
+
+interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+// Calculate edge collapse cost (how much visual impact removing this vertex would have)
+function calculateEdgeCost(v1: Vector3, v2: Vector3, v3: Vector3): number {
+  // Calculate normal of the triangle
+  const dx1 = v2.x - v1.x;
+  const dy1 = v2.y - v1.y;
+  const dz1 = v2.z - v1.z;
+  const dx2 = v3.x - v1.x;
+  const dy2 = v3.y - v1.y;
+  const dz2 = v3.z - v1.z;
+  
+  // Cross product to get normal
+  const nx = dy1 * dz2 - dz1 * dy2;
+  const ny = dz1 * dx2 - dx1 * dz2;
+  const nz = dx1 * dy2 - dy1 * dx2;
+  
+  // Length of normal (area of parallelogram)
+  return Math.sqrt(nx * nx + ny * ny + nz * nz);
+}
 
 function optimizeGeometry(primitive: Primitive, document: Document): void {
   const positions = primitive.getAttribute('POSITION');
@@ -15,34 +39,109 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
   
   if (!posArray || !idxArray) return;
 
-  // Create a map to track unique vertices
-  const uniqueVertices = new Map<string, number>();
-  const newIndices: number[] = [];
-  const newPositions: number[] = [];
-  let nextIndex = 0;
+  // Convert TypedArrays to regular arrays for processing
+  const positionArray = Array.from(posArray);
+  const indexArray = Array.from(idxArray);
 
-  // Iterate through each vertex
-  for (let i = 0; i < idxArray.length; i++) {
-    const idx = idxArray[i];
-    const x = posArray[idx * 3];
-    const y = posArray[idx * 3 + 1];
-    const z = posArray[idx * 3 + 2];
+  // Create a map to track vertex costs
+  const vertexCosts = new Map<number, number>();
+  
+  // Calculate cost for each vertex based on connected triangles
+  for (let i = 0; i < indexArray.length; i += 3) {
+    const v1 = indexArray[i];
+    const v2 = indexArray[i + 1];
+    const v3 = indexArray[i + 2];
     
-    // Use a higher precision for vertex identification
-    const key = `${Math.round(x * 10000)},${Math.round(y * 10000)},${Math.round(z * 10000)}`;
-
-    if (!uniqueVertices.has(key)) {
-      uniqueVertices.set(key, nextIndex);
-      newPositions.push(x, y, z);
-      nextIndex++;
-    }
-    newIndices.push(uniqueVertices.get(key)!);
+    const p1 = {
+      x: positionArray[v1 * 3],
+      y: positionArray[v1 * 3 + 1],
+      z: positionArray[v1 * 3 + 2]
+    };
+    const p2 = {
+      x: positionArray[v2 * 3],
+      y: positionArray[v2 * 3 + 1],
+      z: positionArray[v2 * 3 + 2]
+    };
+    const p3 = {
+      x: positionArray[v3 * 3],
+      y: positionArray[v3 * 3 + 1],
+      z: positionArray[v3 * 3 + 2]
+    };
+    
+    const cost = calculateEdgeCost(p1, p2, p3);
+    
+    // Add cost to each vertex
+    [v1, v2, v3].forEach(v => {
+      vertexCosts.set(v, (vertexCosts.get(v) || 0) + cost);
+    });
   }
 
-  // Update positions with optimized data
+  // Sort vertices by cost
+  const sortedVertices = Array.from(vertexCosts.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([vertex]) => vertex);
+
+  // Keep track of removed vertices
+  const removedVertices = new Set<number>();
+  const targetCount = Math.floor(sortedVertices.length * 0.5); // Target 50% reduction
+  
+  // Remove low-cost vertices
+  for (const vertex of sortedVertices) {
+    if (removedVertices.size >= targetCount) break;
+    
+    // Don't remove vertices that would create degenerate triangles
+    let canRemove = true;
+    for (let i = 0; i < indexArray.length; i += 3) {
+      const v1 = indexArray[i];
+      const v2 = indexArray[i + 1];
+      const v3 = indexArray[i + 2];
+      
+      if ([v1, v2, v3].filter(v => !removedVertices.has(v)).length <= 2) {
+        canRemove = false;
+        break;
+      }
+    }
+    
+    if (canRemove) {
+      removedVertices.add(vertex);
+    }
+  }
+
+  // Create new position and index arrays without removed vertices
+  const newPositions: number[] = [];
+  const newIndices: number[] = [];
+  const indexMap = new Map<number, number>();
+  let nextIndex = 0;
+
+  // Build new arrays excluding removed vertices
+  for (let i = 0; i < indexArray.length; i += 3) {
+    const v1 = indexArray[i];
+    const v2 = indexArray[i + 1];
+    const v3 = indexArray[i + 2];
+    
+    // Skip triangles with removed vertices
+    if (removedVertices.has(v1) || removedVertices.has(v2) || removedVertices.has(v3)) {
+      continue;
+    }
+
+    // Map old indices to new ones
+    [v1, v2, v3].forEach(oldIndex => {
+      if (!indexMap.has(oldIndex)) {
+        indexMap.set(oldIndex, nextIndex);
+        newPositions.push(
+          positionArray[oldIndex * 3],
+          positionArray[oldIndex * 3 + 1],
+          positionArray[oldIndex * 3 + 2]
+        );
+        nextIndex++;
+      }
+      newIndices.push(indexMap.get(oldIndex)!);
+    });
+  }
+
+  // Update geometry with optimized data
   positions.setArray(new Float32Array(newPositions));
   
-  // Create new indices accessor
   const newIndicesAccessor = document.createAccessor()
     .setType('SCALAR')
     .setArray(new Uint32Array(newIndices));
@@ -71,14 +170,9 @@ export async function POST(req: Request) {
       
       const modelData = await response.arrayBuffer();
       
-      // Initialize GLTF transformer with Draco compression
+      // Initialize GLTF transformer
       const io = new NodeIO()
-        .registerExtensions([KHRDracoMeshCompression])
-        .registerDependencies({
-          'draco3d.decoder': await draco3d.createDecoderModule(),
-          'draco3d.encoder': await draco3d.createEncoderModule(),
-        });
-
+        .registerExtensions([KHRDracoMeshCompression]);
       const document = await io.readBinary(new Uint8Array(modelData));
 
       // Apply optimizations
@@ -99,25 +193,11 @@ export async function POST(req: Request) {
             
             // Step 2: Optimize geometry (remove duplicate vertices)
             optimizeGeometry(primitive, document);
-            
-            // Step 3: Quantize vertex positions for better compression
-            const pos = primitive.getAttribute('POSITION');
-            if (pos) {
-              const arr = pos.getArray();
-              if (arr) {
-                const quantized = new Float32Array(arr.length);
-                for (let i = 0; i < arr.length; i++) {
-                  // Quantize to millimeter precision
-                  quantized[i] = Math.round(arr[i] * 1000) / 1000;
-                }
-                pos.setArray(quantized);
-              }
-            }
           }
         }
       }
 
-      // Convert back to binary with Draco compression
+      // Convert back to binary with compression
       const optimizedBuffer = await io.writeBinary(document);
 
       // Return the optimized model

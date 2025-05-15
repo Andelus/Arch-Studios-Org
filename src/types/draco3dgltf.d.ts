@@ -1,4 +1,10 @@
 declare module 'draco3dgltf' {
-  const draco3d: any;
-  export default draco3d;
+  import type { Extension } from '@gltf-transform/core';
+
+  interface DracoExtension extends Extension {
+    EXTENSION_NAME: 'KHR_draco_mesh_compression';
+  }
+
+  const draco: DracoExtension;
+  export default draco;
 }
