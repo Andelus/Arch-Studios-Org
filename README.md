@@ -34,3 +34,43 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## System Requirements
+
+### Core Requirements
+
+- Node.js 14.0 or later
+- npm 5.6 or later
+
+### 3D Model Processing Requirements
+
+#### Blender Installation
+
+The application requires Blender for 3D model processing functionality. To install Blender:
+
+##### macOS
+
+```bash
+brew install blender
+```
+
+##### Ubuntu/Debian
+
+```bash
+sudo apt update
+sudo apt install blender
+```
+
+##### Windows
+
+1. Download Blender from [blender.org](https://www.blender.org/download/)
+2. Run the installer
+3. Add Blender to your system PATH
+
+To verify the installation, run:
+
+```bash
+blender --version
+```
+
+Note: The model cleaning functionality requires Blender version 2.8 or higher.
