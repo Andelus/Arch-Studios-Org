@@ -29,17 +29,23 @@ function calculateEdgeCost(v1: Vector3, v2: Vector3, v3: Vector3): number {
 
 function optimizeGeometry(primitive: Primitive, document: Document): void {
   const positions = primitive.getAttribute('POSITION');
+  const normals = primitive.getAttribute('NORMAL');
+  const texcoords = primitive.getAttribute('TEXCOORD_0');
   const indices = primitive.getIndices();
   
   if (!positions || !indices) return;
 
   const posArray = positions.getArray();
+  const normArray = normals?.getArray();
+  const texArray = texcoords?.getArray();
   const idxArray = indices.getArray();
   
   if (!posArray || !idxArray) return;
 
   // Convert TypedArrays to regular arrays for processing
   const positionArray = Array.from(posArray);
+  const normalArray = normArray ? Array.from(normArray) : null;
+  const texcoordArray = texArray ? Array.from(texArray) : null;
   const indexArray = Array.from(idxArray);
 
   // Create a map to track vertex costs
@@ -82,7 +88,7 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
 
   // Keep track of removed vertices
   const removedVertices = new Set<number>();
-  const targetCount = Math.floor(sortedVertices.length * 0.5); // Target 50% reduction
+  const targetCount = Math.floor(sortedVertices.length * 0.3); // Reduce to only 30% for better quality
   
   // Remove low-cost vertices
   for (const vertex of sortedVertices) {
@@ -106,8 +112,10 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
     }
   }
 
-  // Create new position and index arrays without removed vertices
+  // Create new arrays without removed vertices
   const newPositions: number[] = [];
+  const newNormals: number[] = [];
+  const newTexcoords: number[] = [];
   const newIndices: number[] = [];
   const indexMap = new Map<number, number>();
   let nextIndex = 0;
@@ -127,11 +135,31 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
     [v1, v2, v3].forEach(oldIndex => {
       if (!indexMap.has(oldIndex)) {
         indexMap.set(oldIndex, nextIndex);
+        
+        // Add positions
         newPositions.push(
           positionArray[oldIndex * 3],
           positionArray[oldIndex * 3 + 1],
           positionArray[oldIndex * 3 + 2]
         );
+
+        // Add normals if they exist
+        if (normalArray) {
+          newNormals.push(
+            normalArray[oldIndex * 3],
+            normalArray[oldIndex * 3 + 1],
+            normalArray[oldIndex * 3 + 2]
+          );
+        }
+
+        // Add texture coordinates if they exist
+        if (texcoordArray) {
+          newTexcoords.push(
+            texcoordArray[oldIndex * 2],
+            texcoordArray[oldIndex * 2 + 1]
+          );
+        }
+
         nextIndex++;
       }
       newIndices.push(indexMap.get(oldIndex)!);
@@ -140,6 +168,14 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
 
   // Update geometry with optimized data
   positions.setArray(new Float32Array(newPositions));
+  
+  if (normals && newNormals.length > 0) {
+    normals.setArray(new Float32Array(newNormals));
+  }
+  
+  if (texcoords && newTexcoords.length > 0) {
+    texcoords.setArray(new Float32Array(newTexcoords));
+  }
   
   const newIndicesAccessor = document.createAccessor()
     .setType('SCALAR')
@@ -180,26 +216,29 @@ export async function POST(req: Request) {
         // Optimize each mesh in the scene
         for (const mesh of root.listMeshes()) {
           for (const primitive of mesh.listPrimitives()) {
-            // Step 1: Remove unnecessary attributes
+            // Step 1: Keep only essential attributes for rendering
             const attributes = primitive.listAttributes();
+            const requiredAttributes = new Set(['POSITION', 'NORMAL', 'TEXCOORD_0', 'COLOR_0']);
+
             for (const attribute of attributes) {
-              if (!['POSITION', 'NORMAL', 'TEXCOORD_0'].includes(attribute.getName())) {
-                primitive.setAttribute(attribute.getName(), null);
+              const name = attribute.getName();
+              if (!requiredAttributes.has(name)) {
+                primitive.setAttribute(name, null);
               }
             }
             
-            // Step 2: Optimize geometry (remove duplicate vertices)
+            // Step 2: Optimize geometry while preserving attributes
             optimizeGeometry(primitive, document);
             
-            // Step 3: Apply quantization to further reduce size
+            // Step 3: Apply conservative quantization
             const pos = primitive.getAttribute('POSITION');
             if (pos) {
               const arr = pos.getArray();
               if (arr) {
                 const quantized = new Float32Array(arr.length);
                 for (let i = 0; i < arr.length; i++) {
-                  // Quantize to millimeter precision
-                  quantized[i] = Math.round(arr[i] * 1000) / 1000;
+                  // Use centimeter precision instead of millimeter for stability
+                  quantized[i] = Math.round(arr[i] * 100) / 100;
                 }
                 pos.setArray(quantized);
               }
