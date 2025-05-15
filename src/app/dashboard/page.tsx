@@ -162,11 +162,6 @@ export default function DashboardPage() {
         <div className={styles.contentArea}>
           <div className={styles.pulse}></div>
           <canvas ref={canvasRef} id="animation-canvas"></canvas>
-          <div className={styles.contentText}>
-            <div className={styles.tagline}>Architectural Intelligence Platform</div>
-            <h2>Welcome to Châteaux AI</h2>
-            <p>Where architectural vision meets artificial intelligence. Design, iterate, and visualize your projects with unprecedented speed and precision.</p>
-          </div>
         </div>
       </div>
     </div>
