@@ -43,8 +43,6 @@ function ThreeDModelingContent() {
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'original' | 'cleaned'>('original');
-  const [cleanedModelUrl, setCleanedModelUrl] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -505,40 +503,6 @@ function ThreeDModelingContent() {
     }
   };
 
-  const handleCleanModel = async () => {
-    if (!generatedModels[currentModelIndex]?.url) {
-      setError('No model available to clean');
-      return;
-    }
-
-    setMessage('Cleaning model...');
-    try {
-      const response = await fetch('/api/clean-model', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          modelUrl: generatedModels[currentModelIndex].url
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to clean model');
-      }
-
-      const blob = await response.blob();
-      const cleanedUrl = URL.createObjectURL(blob);
-      setCleanedModelUrl(cleanedUrl);
-      setViewMode('cleaned');
-      await loadModel(cleanedUrl);
-      setMessage('Model cleaned successfully!');
-    } catch (error) {
-      console.error('Error cleaning model:', error);
-      setError('Failed to clean model. Please try again.');
-    }
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -715,31 +679,13 @@ function ThreeDModelingContent() {
           
           {isModelLoaded && generatedModels.length > 0 && (
             <>
-              <div className={styles.modelControls}>
-                <button 
-                  className={`${styles.viewButton} ${viewMode === 'original' ? styles.active : ''}`}
-                  onClick={() => {
-                    setViewMode('original');
-                    loadModel(generatedModels[currentModelIndex].url);
-                  }}
-                >
-                  🔘 View Original
-                </button>
-                <button 
-                  className={`${styles.viewButton} ${viewMode === 'cleaned' ? styles.active : ''}`}
-                  onClick={handleCleanModel}
-                  disabled={viewMode === 'cleaned'}
-                >
-                  🔘 Clean Model
-                </button>
-                <button 
-                  className={styles.downloadBtn}
-                  onClick={() => downloadModel()}
-                >
-                  <i className="fa-solid fa-download"></i>
-                  <span>Download {viewMode === 'cleaned' ? 'Cleaned' : ''} Model</span>
-                </button>
-              </div>
+              <button 
+                className={styles.downloadBtn}
+                onClick={() => downloadModel()}
+              >
+                <i className="fa-solid fa-download"></i>
+                <span>Download Model</span>
+              </button>
               
               {generatedModels.length > 1 && (
                 <div className={styles.modelNavigation}>
