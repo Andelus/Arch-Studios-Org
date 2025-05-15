@@ -73,6 +73,20 @@ export default function ImageGeneration() {
   const [error, setError] = useState<string | null>(null);
   const [cleanBackground, setCleanBackground] = useState(false);
 
+  const handleActionClick = (action: 'edit' | '3d' | 'render', image: string) => {
+    switch (action) {
+      case 'edit':
+        router.push(`/coming-soon?mode=edit&image=${encodeURIComponent(image)}`);
+        break;
+      case '3d':
+        router.push(`/3d?image=${encodeURIComponent(image)}`);
+        break;
+      case 'render':
+        router.push(`/coming-soon?mode=render&image=${encodeURIComponent(image)}`);
+        break;
+    }
+  };
+
   // Check authentication on component mount
   useEffect(() => {
     if (!isSignedIn) {
@@ -244,7 +258,7 @@ export default function ImageGeneration() {
       <div className={styles.header}>
         <div className={styles.logoSection}>
           <span className={styles.logoText}>Arch Studios</span>
-          <span className={styles.beta}>BETA</span>
+          <span className={styles.indie}>indie</span>
         </div>
         <Link href="/dashboard" className={styles.backButton}>
           <i className="fa-solid fa-arrow-left"></i>
@@ -394,6 +408,35 @@ export default function ImageGeneration() {
                 {generatedImages.length > 1 && (
                   <div className={styles.imageCounter}>
                     {currentImageIndex + 1} / {generatedImages.length}
+                  </div>
+                )}
+                {generatedImages[currentImageIndex] && (
+                  <div className={styles.generatedImageActions}>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = generatedImages[currentImageIndex];
+                        link.download = 'arch-studios-generated.png';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                    >
+                      <i className="fa-solid fa-download"></i> Download
+                    </button>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={() => handleActionClick('edit', generatedImages[currentImageIndex])}
+                    >
+                      <i className="fa-solid fa-pen-to-square"></i> Edit
+                    </button>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={() => handleActionClick('3d', generatedImages[currentImageIndex])}
+                    >
+                      <i className="fa-solid fa-cube"></i> Make 3D
+                    </button>
                   </div>
                 )}
               </>

@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { fal } from "@fal-ai/client";
 import styles from './ThreeD.module.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import CreditDisplay from '@/components/CreditDisplay';
@@ -32,6 +33,8 @@ function ThreeDModelingContent() {
   const imageUrl = searchParams?.get('imageUrl') ?? null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [activeTab, setActiveTab] = useState<'single' | 'multi'>('single');
+  const [multiImages, setMultiImages] = useState<Array<{ url: string; view: string }>>([]);
   const [prompt, setPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedModels, setGeneratedModels] = useState<Array<{url: string; sourceImage?: string}>>([]);
@@ -39,6 +42,7 @@ function ThreeDModelingContent() {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string>('');
   
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -101,8 +105,6 @@ function ThreeDModelingContent() {
       console.log('Initializing new Three.js scene');
       initializeScene();
     }
-
-   
 
     setIsModelLoaded(false);
     setMessage('Loading 3D model...');
@@ -388,9 +390,6 @@ function ThreeDModelingContent() {
     }
   };
 
-  // Add a message state for user feedback
-  const [message, setMessage] = useState<string>('');
-  
   const downloadModel = async () => {
     const currentModel = generatedModels[currentModelIndex];
     if (currentModel?.url) {
@@ -427,12 +426,89 @@ function ThreeDModelingContent() {
     }
   };
 
+  const handleMultiImageUpload = (viewType: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setMultiImages(prev => {
+            // Remove existing image with same view type if it exists
+            const filtered = prev.filter(img => img.view !== viewType);
+            return [...filtered, { url: e.target?.result as string, view: viewType }];
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeMultiImage = (viewType: string) => {
+    setMultiImages(prev => prev.filter(img => img.view !== viewType));
+  };
+
+  const generateFromMultiImages = async () => {
+    if (multiImages.length < 2) {
+      setError('Please upload at least 2 images from different views');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const result = await fal.subscribe("fal-ai/trellis/multi", {
+        input: {
+          image_urls: multiImages.map(img => img.url),
+          ss_guidance_strength: 7.5,
+          ss_sampling_steps: 12,
+          slat_guidance_strength: 3,
+          slat_sampling_steps: 12,
+          mesh_simplify: 0.95,
+          texture_size: 1024,
+          multiimage_algo: "stochastic"
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            setMessage(update.logs[update.logs.length - 1]?.message || 'Processing...');
+          }
+        },
+      });
+
+      if (result.data?.model_mesh?.url) {
+        const newModel = {
+          url: result.data.model_mesh.url,
+          sourceImage: multiImages[0].url
+        };
+
+        setGeneratedModels(prev => {
+          const newModels = [...prev];
+          if (newModels.length >= 3) {
+            newModels.shift();
+          }
+          newModels.push(newModel);
+          return newModels;
+        });
+
+        setCurrentModelIndex(prev => prev + 1);
+        await loadModel(result.data.model_mesh.url);
+      }
+    } catch (error) {
+      console.error('Error generating 3D model:', error);
+      setError('Failed to generate 3D model. Please try again.');
+    } finally {
+      setIsGenerating(false);
+      setMessage('');
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.logoSection}>
           <span className={styles.logoText}>Arch Studios</span>
-          <span className={styles.beta}>BETA</span>
+          <span className={styles.indie}>indie</span>
         </div>
         <Link href="/dashboard" className={styles.backButton}>
           <i className="fa-solid fa-arrow-left"></i>
@@ -442,56 +518,135 @@ function ThreeDModelingContent() {
 
       <div className={styles.mainContent}>
         <div className={styles.sidebar}>
-          {sourceImage ? (
-            <div className={styles.sourceImageContainer}>
-              <h3>Source Image</h3>
-              <img 
-                src={sourceImage} 
-                alt="Source for 3D generation" 
-                className={styles.sourceImagePreview} 
-              />
-            </div>
-          ) : (
-            <div 
-              className={styles.dropArea}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => fileInputRef.current?.click()}
+          <div className={styles.tabs}>
+            <button 
+              className={`${styles.tab} ${activeTab === 'single' ? styles.active : ''}`}
+              onClick={() => setActiveTab('single')}
             >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileInputChange}
-                accept="image/*"
-                style={{ display: 'none' }}
-              />
-              <i className="fa-solid fa-upload fa-2x"></i>
-              <div>Drag and drop images here</div>
-              <div>or</div>
-              <div>Click anywhere in this area<br/>to select files from your computer</div>
-            </div>
-          )}
-
-          <div className={styles.promptArea}>
-            <label>
-              <span>Additional Details (Optional)</span>
-              <i className="fa-solid fa-circle-info"></i>
-            </label>
-            <textarea 
-              className={styles.promptInput} 
-              placeholder="Describe any additional details for your 3D model..." 
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            ></textarea>
+              Single Image
+            </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'multi' ? styles.active : ''}`}
+              onClick={() => setActiveTab('multi')}
+            >
+              Multi View
+            </button>
           </div>
 
-          <button 
-            className={styles.generateBtn} 
-            onClick={generate3DModel}
-            disabled={isGenerating || (!sourceImage && !prompt.trim())}
-          >
-            {isGenerating ? 'Generating 3D Model...' : 'Generate 3D Model'}
-          </button>
+          {activeTab === 'single' ? (
+            <>
+              {sourceImage ? (
+                <div className={styles.sourceImageContainer}>
+                  <h3>Source Image</h3>
+                  <img 
+                    src={sourceImage} 
+                    alt="Source for 3D generation" 
+                    className={styles.sourceImagePreview} 
+                  />
+                </div>
+              ) : (
+                <div 
+                  className={styles.dropArea}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInputChange}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+                  <i className="fa-solid fa-upload fa-2x"></i>
+                  <div>Drag and drop images here</div>
+                  <div>or</div>
+                  <div>Click anywhere in this area<br/>to select files from your computer</div>
+                </div>
+              )}
+
+              <div className={styles.promptArea}>
+                <label>
+                  <span>Additional Details (Optional)</span>
+                  <i className="fa-solid fa-circle-info"></i>
+                </label>
+                <textarea 
+                  className={styles.promptInput} 
+                  placeholder="Describe any additional details for your 3D model..." 
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                ></textarea>
+              </div>
+
+              <button 
+                className={styles.generateBtn} 
+                onClick={generate3DModel}
+                disabled={isGenerating || (!sourceImage && !prompt.trim())}
+              >
+                {isGenerating ? 'Generating 3D Model...' : 'Generate 3D Model'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className={styles.multiImageUpload}>
+                {[
+                  { view: 'front', label: 'Front View' },
+                  { view: 'back', label: 'Back View' },
+                  { view: 'left', label: 'Left View' }
+                ].map(({ view, label }) => {
+                  const uploadedImage = multiImages.find(img => img.view === view);
+                  return (
+                    <div 
+                      key={view}
+                      className={styles.imageUploadBox}
+                      onClick={() => {
+                        if (!uploadedImage) {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = (e) => handleMultiImageUpload(view)(e as any);
+                          input.click();
+                        }
+                      }}
+                    >
+                      {uploadedImage ? (
+                        <>
+                          <img src={uploadedImage.url} alt={`${view} view`} />
+                          <button 
+                            className={styles.removeBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeMultiImage(view);
+                            }}
+                          >
+                            <i className="fa-solid fa-times"></i>
+                          </button>
+                          <div className={styles.viewLabel}>{label}</div>
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa-solid fa-upload fa-2x"></i>
+                          <div className={styles.imageUploadLabel}>{label}</div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button 
+                className={styles.generateBtn} 
+                onClick={generateFromMultiImages}
+                disabled={isGenerating || multiImages.length < 2}
+              >
+                {isGenerating ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Generating 3D Model...</>
+                ) : (
+                  <><i className="fa-solid fa-cube"></i> Generate from Multiple Views</>
+                )}
+              </button>
+            </>
+          )}
         </div>
 
         <div className={styles.canvasArea}>

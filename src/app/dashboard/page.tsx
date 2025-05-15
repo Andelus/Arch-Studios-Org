@@ -136,7 +136,7 @@ export default function DashboardPage() {
       <header className={styles.header}>
         <h1>
           <span className={styles.logoText}>Arch Studios</span> 
-          <span className={styles.beta}>BETA</span>
+          <span className={styles.indie}>indie</span>
         </h1>
       </header>
       
