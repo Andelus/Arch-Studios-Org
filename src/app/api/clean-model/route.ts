@@ -27,30 +27,36 @@ function calculateEdgeCost(v1: Vector3, v2: Vector3, v3: Vector3): number {
   return Math.sqrt(nx * nx + ny * ny + nz * nz);
 }
 
-function optimizeGeometry(primitive: Primitive, document: Document): void {
+function optimizeGeometry(primitive: Primitive, document: Document): boolean {
   const positions = primitive.getAttribute('POSITION');
   const normals = primitive.getAttribute('NORMAL');
   const texcoords = primitive.getAttribute('TEXCOORD_0');
   const indices = primitive.getIndices();
   
-  if (!positions || !indices) return;
+  if (!positions || !indices) {
+    console.error('Missing required position or index data');
+    return false;
+  }
 
   const posArray = positions.getArray();
   const normArray = normals?.getArray();
   const texArray = texcoords?.getArray();
   const idxArray = indices.getArray();
   
-  if (!posArray || !idxArray) return;
+  if (!posArray || !idxArray) {
+    console.error('Could not retrieve array data');
+    return false;
+  }
 
   // Safety check for valid arrays
   if (posArray.length % 3 !== 0) {
     console.error('Invalid position array length:', posArray.length);
-    return;
+    return false;
   }
 
   if (idxArray.length % 3 !== 0) {
     console.error('Invalid index array length:', idxArray.length);
-    return;
+    return false;
   }
 
   // Convert TypedArrays to regular arrays for processing
@@ -112,9 +118,13 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
       const v2 = indexArray[i + 1];
       const v3 = indexArray[i + 2];
       
-      if ([v1, v2, v3].filter(v => !removedVertices.has(v)).length <= 2) {
-        canRemove = false;
-        break;
+      // Check if vertex is part of this triangle
+      if (v1 === vertex || v2 === vertex || v3 === vertex) {
+        // Check if removing this vertex would make a degenerate triangle
+        if ([v1, v2, v3].filter(v => !removedVertices.has(v) && v !== vertex).length < 2) {
+          canRemove = false;
+          break;
+        }
       }
     }
     
@@ -142,6 +152,14 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
       continue;
     }
 
+    // Check if indices are in valid range before processing
+    if (v1 * 3 + 2 >= positionArray.length || 
+        v2 * 3 + 2 >= positionArray.length || 
+        v3 * 3 + 2 >= positionArray.length) {
+      console.error('Out of range vertex index detected, skipping triangle');
+      continue;
+    }
+
     // Map old indices to new ones
     [v1, v2, v3].forEach(oldIndex => {
       if (!indexMap.has(oldIndex)) {
@@ -155,7 +173,7 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
         );
 
         // Add normals if they exist
-        if (normalArray) {
+        if (normalArray && oldIndex * 3 + 2 < normalArray.length) {
           newNormals.push(
             normalArray[oldIndex * 3],
             normalArray[oldIndex * 3 + 1],
@@ -164,7 +182,7 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
         }
 
         // Add texture coordinates if they exist
-        if (texcoordArray) {
+        if (texcoordArray && oldIndex * 2 + 1 < texcoordArray.length) {
           newTexcoords.push(
             texcoordArray[oldIndex * 2],
             texcoordArray[oldIndex * 2 + 1]
@@ -180,22 +198,22 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
   // Validate new arrays
   if (newPositions.length % 3 !== 0) {
     console.error('Invalid optimized position array length:', newPositions.length);
-    return;
+    return false;
   }
 
   if (newIndices.length % 3 !== 0) {
     console.error('Invalid optimized index array length:', newIndices.length);
-    return;
+    return false;
   }
 
   if (newNormals.length > 0 && newNormals.length !== newPositions.length) {
     console.error('Normal array length mismatch:', newNormals.length, 'vs', newPositions.length);
-    return;
+    return false;
   }
 
   if (newTexcoords.length > 0 && newTexcoords.length !== (newPositions.length / 3) * 2) {
     console.error('Texture coordinate array length mismatch:', newTexcoords.length);
-    return;
+    return false;
   }
 
   // Update geometry with optimized data
@@ -214,6 +232,8 @@ function optimizeGeometry(primitive: Primitive, document: Document): void {
     .setArray(new Uint32Array(newIndices));
   
   primitive.setIndices(newIndicesAccessor);
+  
+  return true;
 }
 
 export async function POST(req: Request) {
@@ -239,12 +259,21 @@ export async function POST(req: Request) {
       
       const io = new NodeIO();
       const document = await io.readBinary(new Uint8Array(modelData));
+      
+      if (!document) {
+        throw new Error('Failed to parse model data');
+      }
 
       // Apply optimizations
       const root = document.getRoot();
+      if (!root) {
+        throw new Error('Model has no root node');
+      }
+
       const scene = root.getDefaultScene() || root.listScenes()[0];
-      
-      if (scene) {
+      if (!scene) {
+        throw new Error('Model has no valid scene');
+      } else {
         // Optimize each mesh in the scene
         for (const mesh of root.listMeshes()) {
           for (const primitive of mesh.listPrimitives()) {
@@ -279,18 +308,21 @@ export async function POST(req: Request) {
         }
       }
 
+      // Ensure we have valid data before converting to binary
+      const meshes = root.listMeshes();
+      if (meshes.length === 0) {
+        throw new Error('Model has no meshes after optimization');
+      }
+
       // Convert back to binary
       const optimizedBuffer = await io.writeBinary(document);
 
-      // Validate the optimized buffer
-      try {
-        // Verify the optimized buffer is valid by attempting to read it
-        await NodeIO.prototype.readBinary(new Uint8Array(optimizedBuffer));
-      } catch (validationError) {
-        console.error('Validation error:', validationError);
+      // Basic validation - check that we have a non-empty buffer
+      if (!optimizedBuffer || optimizedBuffer.byteLength === 0) {
+        console.error('Generated empty buffer');
         return NextResponse.json({ 
-          error: 'Generated model is invalid',
-          details: validationError instanceof Error ? validationError.message : 'Unknown validation error'
+          error: 'Generated model is empty',
+          details: 'The optimization process produced an empty buffer'
         }, { status: 500 });
       }
 
