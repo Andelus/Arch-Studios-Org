@@ -17,8 +17,9 @@ interface RenderRequest {
   drawAssist: string;     // none, minor, major - for quality control
 }
 
-interface UserData {
-  credits: number;
+interface UserProfile {
+  credits_balance: number;
+  subscription_status: string;
   id: string;
 }
 
@@ -41,22 +42,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check user's credits
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits')
+    // Check user's credits and subscription
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits_balance, subscription_status')
       .eq('id', userId)
-      .single() as { data: UserData | null; error: any };
+      .single() as { data: UserProfile | null; error: any };
 
-    if (userError || !userData) {
-      console.error('Error fetching user credits:', userError);
+    if (profileError || !profile) {
+      console.error('Error fetching user profile:', profileError);
       return NextResponse.json(
-        { error: 'Failed to fetch user data' },
+        { error: 'Failed to fetch user profile' },
         { status: 500 }
       );
     }
 
-    if (userData.credits < 1) {
+    // Check subscription status
+    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Your subscription has expired. Please renew to continue.' },
+        { status: 403 }
+      );
+    }
+
+    if (profile.credits_balance < 1) {
       return NextResponse.json(
         { error: 'Insufficient credits' },
         { status: 402 }
@@ -135,8 +144,8 @@ Style: ${styleModifiers[style as keyof typeof styleModifiers]}`;
 
       // Deduct 1 credit from the user
       const { error: creditError } = await supabase
-        .from('users')
-        .update({ credits: userData.credits - 1 })
+        .from('profiles')
+        .update({ credits_balance: profile.credits_balance - 1 })
         .eq('id', userId);
 
       if (creditError) {
@@ -150,7 +159,7 @@ Style: ${styleModifiers[style as keyof typeof styleModifiers]}`;
       // Return the processed image
       return NextResponse.json({ 
         image: generatedImageBase64,
-        creditsRemaining: userData.credits - 1
+        creditsRemaining: profile.credits_balance - 1
       });
 
     } catch (error: any) {

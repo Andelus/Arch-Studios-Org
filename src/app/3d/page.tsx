@@ -394,6 +394,32 @@ function ThreeDModelingContent() {
     const currentModel = generatedModels[currentModelIndex];
     if (currentModel?.url) {
       try {
+        // Validate the model URL first
+        if (!currentModel.url.trim() || !currentModel.url.includes('://')) {
+          throw new Error('Invalid model URL format');
+        }
+        
+        setMessage('Preparing model for download...');
+        
+        try {
+          // Verify the model URL is accessible before downloading
+          const modelResponse = await fetch(currentModel.url, {
+            method: 'HEAD',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+
+          if (!modelResponse.ok) {
+            throw new Error(`Model URL not accessible: ${modelResponse.status}`);
+          }
+        } catch (fetchError) {
+          console.error('Error verifying model URL:', fetchError);
+          // Continue with download attempt anyway
+        }
+
         // Create a direct download link to the model URL
         const link = document.createElement('a');
         link.href = currentModel.url;
@@ -407,7 +433,7 @@ function ThreeDModelingContent() {
         setTimeout(() => setMessage(''), 3000);
       } catch (error) {
         console.error('Error downloading model:', error);
-        setError('Failed to download model. Please try again.');
+        setError('Failed to download model. The model URL might be invalid or expired.');
       }
     } else {
       setError('No model URL available for download.');
@@ -428,16 +454,28 @@ function ThreeDModelingContent() {
 
   const handleMultiImageUpload = (viewType: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && file.type.startsWith('image/')) {
+      // Validate file size
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        setError('Image file size is too large. Please use an image smaller than 10MB.');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
+          const dataUrl = e.target.result as string;
+          console.log(`Loaded image for ${viewType} view, size: ${Math.round(dataUrl.length / 1024)}KB`);
+          
           setMultiImages(prev => {
             // Remove existing image with same view type if it exists
             const filtered = prev.filter(img => img.view !== viewType);
-            return [...filtered, { url: e.target?.result as string, view: viewType }];
+            return [...filtered, { url: dataUrl, view: viewType }];
           });
         }
+      };
+      reader.onerror = () => {
+        setError('Failed to read image file. Please try another image.');
       };
       reader.readAsDataURL(file);
     }
@@ -453,12 +491,23 @@ function ThreeDModelingContent() {
       return;
     }
 
+    // Validate that we have valid images
+    const invalidImages = multiImages.filter(img => !img.url || (typeof img.url === 'string' && img.url.trim() === ''));
+    if (invalidImages.length > 0) {
+      setError(`${invalidImages.length} invalid image(s) detected. Please re-upload these images.`);
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setMessage('Generating 3D model from multiple images...');
     
-    // Log the number of images for debugging
+    // Log detailed information for debugging
     console.log(`Attempting to generate 3D model from ${multiImages.length} images`);
+    console.log('Image sizes in KB:', multiImages.map(img => ({
+      view: img.view,
+      size: Math.round((img.url?.length || 0) / 1024)
+    })));
 
     try {
       const response = await fetch('/api/generate-3d-multi', {

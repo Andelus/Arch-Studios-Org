@@ -103,16 +103,45 @@ export async function POST(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 2-minute timeout
 
     try {
+      // Log the length of each URL to help debug (without exposing actual content)
+      console.log(`Processing ${imageUrls.length} images with lengths:`, 
+        imageUrls.map(url => url ? url.length : 0));
+
+      // Process data URLs if needed - FAL API might have issues with direct data URLs
+      const processedUrls = imageUrls.map(url => {
+        if (url && url.startsWith('data:image/')) {
+          // For now, we'll use the URLs as-is, but log that we're sending data URLs
+          console.log('Sending data URL to FAL API');
+          return url;
+        }
+        return url;
+      });
+
+      // Make sure we have valid URLs
+      if (processedUrls.some(url => !url)) {
+        console.error('Null or undefined URL detected after processing');
+        return NextResponse.json(
+          { error: 'One or more images could not be processed properly' },
+          { status: 400 }
+        );
+      }
+
       const result = await fal.subscribe("fal-ai/trellis/multi", {
         input: {
-          image_urls: imageUrls,
+          image_urls: processedUrls,
           ss_guidance_strength: 7.5,
           ss_sampling_steps: 12,
           slat_guidance_strength: 3,
           slat_sampling_steps: 12,
           mesh_simplify: 0.95,
           texture_size: 1024,
-          multiimage_algo: "multi_diffusion"
+          multiimage_algo: "multidiffusion" // Fixed: changed from "multi_diffusion" to "multidiffusion" as per documentation
+        },
+        logs: true, // Enable logs for better debugging
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            console.log(`Processing update: ${update.logs[update.logs.length - 1]?.message || 'Processing...'}`);
+          }
         }
       });
 
