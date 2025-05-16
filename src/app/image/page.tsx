@@ -66,8 +66,6 @@ export default function ImageGeneration() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
-  // Maximum number of stored images (set to 5 as per requirements)
-  const MAX_IMAGES = 5;
   const [selectedStyle, setSelectedStyle] = useState<ArchitecturalStyle | ''>('');
   const [selectedMaterial, setSelectedMaterial] = useState<Material | ''>('');
   const [showStyleDropdown, setShowStyleDropdown] = useState<boolean>(false);
@@ -155,17 +153,12 @@ export default function ImageGeneration() {
 
       // Add the new image to the collection
       const newImages = [...generatedImages];
-      if (newImages.length >= MAX_IMAGES) {
-        // Remove the oldest image when reaching the limit
+      if (newImages.length >= 3) {
         newImages.shift();
       }
       newImages.push(data.url);
       setGeneratedImages(newImages);
       setCurrentImageIndex(newImages.length - 1);
-      
-      // Save the image to user assets
-      saveImageToAssets(data.url, prompt.trim());
-      
       setIsGenerating(false);
 
     } catch (error) {
@@ -195,98 +188,11 @@ export default function ImageGeneration() {
     setCurrentImageIndex(generatedImages.length - 1);
   };
 
-  const downloadImage = () => {
-    if (generatedImages[currentImageIndex]) {
-      try {
-        console.log('Downloading image from URL:', generatedImages[currentImageIndex]);
-        
-        // Create a canvas to handle potential CORS issues
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new window.Image();
-        
-        img.crossOrigin = 'anonymous'; // Handle CORS
-        img.onload = () => {
-          // Set canvas dimensions to match the image
-          canvas.width = img.width;
-          canvas.height = img.height;
-          
-          // Draw image on canvas
-          if (ctx) {
-            ctx.drawImage(img, 0, 0);
-            
-            // Convert to blob and download
-            canvas.toBlob((blob) => {
-              if (blob) {
-                // Create download link
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `architectural_design_${Date.now()}.png`;
-                document.body.appendChild(link);
-                link.click();
-                
-                // Clean up
-                setTimeout(() => {
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                }, 100);
-              }
-            });
-          }
-        };
-        
-        img.onerror = (e) => {
-          console.error('Error loading image for download:', e);
-          alert('Failed to download image. Please try again.');
-        };
-        
-        // Start loading the image
-        img.src = generatedImages[currentImageIndex];
-      } catch (error) {
-        console.error('Download error:', error);
-        alert('Failed to download image. Please try again.');
-      }
-    }
-  };
+  // Removed downloadImage function as its functionality is now in the generatedImageActions buttons
 
-  const handle3DGeneration = () => {
-    if (generatedImages[currentImageIndex]) {
-      router.push(`/3d?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`);
-    }
-  };
+  // Removed handle3DGeneration function as its functionality is now in the generatedImageActions buttons
 
-  const handleEdit = () => {
-    router.push(`/image/edit?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`);
-  };
-
-  // Function to save the generated image to user assets
-  const saveImageToAssets = async (imageUrl: string, promptText: string) => {
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'save_asset',
-          asset_url: imageUrl,
-          asset_type: 'image',
-          prompt: promptText || 'Architectural design',
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        console.error('Failed to save asset to user profile:', data.message || data.error);
-      } else {
-        console.log('Asset successfully saved to user profile');
-      }
-    } catch (error) {
-      console.error('Error saving asset to profile:', error);
-    }
-  };
+  // Removed handleEdit function as its functionality is now in the generatedImageActions buttons
 
   return (
     <div className={styles.container}>
@@ -454,44 +360,14 @@ export default function ImageGeneration() {
                   </div>
                 </div>
                 {generatedImages.length > 1 && (
-                  <div className={styles.imageNavigation}>
-                    <button 
-                      className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
-                      onClick={handleFirstImage}
-                      disabled={currentImageIndex === 0}
-                    >
-                      <i className="fa-solid fa-angles-left"></i>
-                    </button>
-                    <button 
-                      className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
-                      onClick={handlePrevImage}
-                      disabled={currentImageIndex === 0}
-                    >
-                      <i className="fa-solid fa-angle-left"></i>
-                    </button>
-                    <div className={styles.imageCounter}>
-                      {currentImageIndex + 1} / {generatedImages.length}
-                    </div>
-                    <button 
-                      className={`${styles.navButton} ${currentImageIndex === generatedImages.length - 1 ? styles.navButtonDisabled : ''}`}
-                      onClick={handleNextImage}
-                      disabled={currentImageIndex === generatedImages.length - 1}
-                    >
-                      <i className="fa-solid fa-angle-right"></i>
-                    </button>
-                    <button 
-                      className={`${styles.navButton} ${currentImageIndex === generatedImages.length - 1 ? styles.navButtonDisabled : ''}`}
-                      onClick={handleLastImage}
-                      disabled={currentImageIndex === generatedImages.length - 1}
-                    >
-                      <i className="fa-solid fa-angles-right"></i>
-                    </button>
+                  <div className={styles.imageCounter}>
+                    {currentImageIndex + 1} / {generatedImages.length}
                   </div>
                 )}
                 {generatedImages[currentImageIndex] && (
                   <div className={styles.generatedImageActions}>
                     <button 
-                      className={`${styles.canvasBtn} ${styles.downloadBtn}`}
+                      className={styles.actionButton}
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = generatedImages[currentImageIndex];
@@ -501,29 +377,31 @@ export default function ImageGeneration() {
                         document.body.removeChild(link);
                       }}
                     >
-                      <i className="fa-solid fa-download"></i>
-                      <span>Download</span>
+                      <i className="fa-solid fa-download"></i> Download
                     </button>
                     <button 
-                      className={`${styles.canvasBtn} ${styles.editBtn}`}
-                      onClick={() => handleActionClick('edit', generatedImages[currentImageIndex])}
+                      className={styles.actionButton}
+                      onClick={() => router.push(`/coming-soon?mode=edit&image=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
                     >
-                      <i className="fa-solid fa-pen-to-square"></i>
-                      <span>Edit</span>
+                      <i className="fa-solid fa-pen-to-square"></i> Edit
                     </button>
                     <button 
-                      className={`${styles.canvasBtn} ${styles.make3dBtn}`}
-                      onClick={() => handleActionClick('3d', generatedImages[currentImageIndex])}
+                      className={styles.actionButton}
+                      onClick={() => router.push(`/3d?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
                     >
-                      <i className="fa-solid fa-cube"></i>
-                      <span>Make 3D</span>
+                      <i className="fa-solid fa-cube"></i> Make 3D
                     </button>
                     <button 
-                      className={`${styles.canvasBtn}`}
-                      onClick={() => router.push(`/image/multi-view?refImage=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
+                      className={styles.actionButton}
+                      onClick={() => router.push(`/image/multi-view?referenceImage=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
                     >
-                      <i className="fa-solid fa-images"></i>
-                      <span>Create Multi-View</span>
+                      <i className="fa-solid fa-images"></i> Create Multi-View
+                    </button>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={() => router.push(`/coming-soon?mode=render&image=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
+                    >
+                      <i className="fa-solid fa-wand-magic-sparkles"></i> Render
                     </button>
                   </div>
                 )}
@@ -531,7 +409,8 @@ export default function ImageGeneration() {
             ) : (
               <div className={styles.imageContainer} />
             )}
-            {/* Buttons moved to generatedImageActions to avoid duplication */}
+            
+            {/* Canvas buttons removed and functionality merged with generatedImageActions */}
           </div>
         </div>
       </div>

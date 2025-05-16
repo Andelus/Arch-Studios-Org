@@ -27,18 +27,12 @@ const VIEWS = [
   { id: 'isometric', name: 'Isometric View', icon: 'fa-cube' },
 ];
 
-// Define type for generated images
-interface GeneratedImage {
-  view: string;
-  image: string;
-}
-
 export default function MultiViewGeneration() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const [prompt, setPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [generatedImages, setGeneratedImages] = useState<{view: string, image: string}[]>([]);
   const [selectedViews, setSelectedViews] = useState<string[]>([]);
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [quality, setQuality] = useState<'none' | 'minor' | 'major'>('none');
@@ -59,14 +53,6 @@ export default function MultiViewGeneration() {
     if (!isSignedIn) {
       router.push('/');
       return;
-    }
-
-    // Get reference image from URL if available
-    const params = new URLSearchParams(window.location.search);
-    const refImage = params.get('refImage');
-    
-    if (refImage) {
-      setReferenceImage(refImage);
     }
 
     const fetchSubscription = async () => {
@@ -145,34 +131,6 @@ export default function MultiViewGeneration() {
     }
   };
 
-  // Save each generated image to user assets
-  const saveImageToAssets = async (imageUrl: string, promptText: string, viewType: string) => {
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'save_asset',
-          asset_url: imageUrl,
-          asset_type: 'multi_view',
-          prompt: `${promptText} (${viewType})`,
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        console.error('Failed to save multi-view asset to user profile:', data.message || data.error);
-      } else {
-        console.log('Multi-view asset successfully saved to user profile');
-      }
-    } catch (error) {
-      console.error('Error saving multi-view asset to profile:', error);
-    }
-  };
-
   // Generate multi-view images
   const generateImages = async () => {
     if (isGenerating) return;
@@ -219,24 +177,14 @@ export default function MultiViewGeneration() {
       }
 
       if (data.images && Array.isArray(data.images)) {
-        // Format the images with their respective views
-        const formattedImages = data.images.map((image: string, index: number) => ({
-          view: selectedViews[index] || 'view-' + (index + 1),
-          image
-        }));
-        setGeneratedImages(formattedImages);
-        
-        // Save each image to user assets as multi_view type
-        formattedImages.forEach((item: GeneratedImage) => {
-          saveImageToAssets(item.image, prompt.trim(), item.view);
-        });
+        setGeneratedImages(data.images);
         
         // Show success notification
         const notification = document.createElement('div');
         notification.className = styles.notification;
         notification.innerHTML = `
           <i class="fa-solid fa-check-circle"></i> 
-          Images successfully generated and saved to your assets! (${data.creditsRemaining} credits remaining)
+          Images successfully generated! (${data.creditsRemaining} credits remaining)
         `;
         document.body.appendChild(notification);
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
+import { saveUserAsset } from '@/lib/asset-manager';
 
 interface FalAIClient {
   subscribe: (model: string, options: any) => Promise<any>;
@@ -212,6 +213,31 @@ export async function POST(req: Request) {
       if (transactionError) {
         console.error('Failed to process credit transaction:', transactionError);
         throw new Error('Failed to process credit transaction');
+      }
+      
+      // Save the 3D model to user_assets table
+      try {
+        const assetSaveResult = await saveUserAsset({
+          userId,
+          assetType: '3d',
+          assetUrl: modelUrl,
+          prompt: prompt || 'Generated from image',
+          metadata: {
+            sourceImageUrl: imageUrl,
+            modelFormat: 'glb',
+            generatedAt: new Date().toISOString()
+          }
+        });
+
+        if (!assetSaveResult.success) {
+          // Log the error but don't fail the request
+          console.error('Failed to save 3D asset:', assetSaveResult.error);
+        } else {
+          console.log('Successfully saved 3D asset:', assetSaveResult.data?.id);
+        }
+      } catch (assetError) {
+        // Log the error but don't fail the request
+        console.error('Exception saving 3D asset:', assetError);
       }
 
       return NextResponse.json({ modelUrl });

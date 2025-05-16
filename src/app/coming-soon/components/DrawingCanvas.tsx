@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import styles from '../ComingSoon.module.css';
 
 interface DrawingCanvasProps {
-  selectedImage: string | null;
+  selectedImage: string;
   onMaskCreate: (maskData: string) => void;
   drawMode: 'pen' | 'eraser';
 }
@@ -25,7 +25,7 @@ export default function DrawingCanvas({ selectedImage, onMaskCreate, drawMode }:
     // Load the image
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = selectedImage; // TypeScript already checked selectedImage is non-null here
+    img.src = selectedImage;
     img.onload = () => {
       // Calculate aspect ratio preserving dimensions
       const aspectRatio = img.width / img.height;
@@ -129,7 +129,7 @@ export default function DrawingCanvas({ selectedImage, onMaskCreate, drawMode }:
   };
 
   const clearCanvas = () => {
-    if (!canvasRef.current || !ctxRef.current || !selectedImage) return;
+    if (!canvasRef.current || !ctxRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;

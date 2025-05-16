@@ -1,261 +1,399 @@
-'use client';
+"use client";
 
+// filepath: /Users/Shared/VScode/Arch Studios/src/app/assets/AssetsClient.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
-import Image from 'next/image';
-import Link from 'next/link';
-import ModelViewer from '@/components/ModelViewer';
-import { supabase } from '@/lib/supabase';
 import styles from './Assets.module.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
+import { getUserAssets, deleteUserAsset, AssetType, UserAsset } from '@/lib/asset-manager';
+import SimpleModelViewer from '@/components/SimpleModelViewer';
 
-// Define the Asset interface
-interface Asset {
-  id: string;
-  user_id: string;
-  asset_url: string;
-  asset_type: 'image' | '3d' | 'multi_view';
-  prompt?: string;
-  created_at: string;
+interface AssetsClientProps {
+  userId: string;
 }
 
-// Asset type constants
-const ASSET_TYPES = {
-  ALL: 'all',
-  IMAGE: 'image',
-  MULTI_VIEW: 'multi_view',
-  THREE_D: '3d',
-};
-
-export default function AssetsClient() {
-  const { user, isSignedIn, isLoaded } = useUser();
-  const router = useRouter();
-  const [assets, setAssets] = useState<Asset[]>([]);
+export default function AssetsClient({ userId }: AssetsClientProps) {
+  const [assets, setAssets] = useState<UserAsset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(ASSET_TYPES.ALL);
-  
-  // Fetch assets when the component mounts or when the active tab changes
+  const [filter, setFilter] = useState<AssetType | 'all'>('all');
+  const [selectedAsset, setSelectedAsset] = useState<UserAsset | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const router = useRouter();
+
+  // Fetch assets whenever userId or filter changes
   useEffect(() => {
-    if (!isLoaded) return;
-    
-    if (!isSignedIn) {
-      router.push('/sign-in');
-      return;
-    }
+    const fetchAssets = async () => {
+      setLoading(true);
+      try {
+        const { success, data, error } = await getUserAssets(
+          userId, 
+          filter !== 'all' ? filter as AssetType : undefined
+        );
+        
+        if (success && data) {
+          // Make sure each item has the required fields from UserAsset interface
+          const typedAssets = Array.isArray(data) ? data.map(item => ({
+            id: String(item.id || ''),
+            user_id: String(item.user_id || ''),
+            asset_type: (item.asset_type as AssetType) || 'image',
+            asset_url: String(item.asset_url || ''),
+            prompt: item.prompt !== undefined ? String(item.prompt) : null,
+            created_at: String(item.created_at || ''),
+            metadata: item.metadata || {}
+          } as UserAsset)) : [];
+          
+          setAssets(typedAssets);
+        } else {
+          console.error('Error fetching assets:', error);
+          setAssets([]);
+        }
+      } catch (error) {
+        console.error('Exception fetching assets:', error);
+        setAssets([]);
+      } finally {
+        setLoading(false);
+      }
+    };
     
     fetchAssets();
-  }, [isLoaded, isSignedIn, activeTab, user?.id]);
-  
-  // Function to fetch assets from Supabase
-  const fetchAssets = async () => {
-    setLoading(true);
+  }, [userId, filter]);
+
+  // Apply filter change
+  const handleFilterChange = (newFilter: AssetType | 'all') => {
+    setFilter(newFilter);
+  };
+
+  // Delete an asset
+  const handleDeleteAsset = async () => {
+    if (!selectedAsset) return;
     
     try {
-      if (!user?.id) {
-        console.error('User ID is not available');
-        return;
+      const { success, error } = await deleteUserAsset(userId, selectedAsset.id);
+      
+      if (success) {
+        // Remove the asset from the local state
+        setAssets(assets.filter(asset => asset.id !== selectedAsset.id));
+        setShowDeleteModal(false);
+        setSelectedAsset(null);
+      } else {
+        console.error('Error deleting asset:', error);
+        // You may want to show an error message to the user
       }
-
-      let query = supabase
-        .from('user_assets')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      // Apply filter if not on the "All" tab
-      if (activeTab !== ASSET_TYPES.ALL) {
-        query = query.eq('asset_type', activeTab);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching assets:', error);
-        console.error('Error details:', JSON.stringify(error));
-        return;
-      }
-      
-      // Properly map the unknown data to the Asset type
-      const typedData = Array.isArray(data) 
-        ? data.map(item => ({
-            id: String(item.id),
-            user_id: String(item.user_id),
-            asset_url: String(item.asset_url),
-            asset_type: String(item.asset_type) as 'image' | '3d' | 'multi_view',
-            prompt: item.prompt ? String(item.prompt) : undefined,
-            created_at: String(item.created_at)
-          })) 
-        : [];
-      
-      setAssets(typedData);
-    } catch (err) {
-      console.error('Failed to fetch assets:', err);
-      console.error('Error details:', err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Exception deleting asset:', error);
     }
   };
-  
-  // Function to format date in a readable way
-  const formatDate = (dateString: string): string => {
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      year: 'numeric'
     });
   };
-  
-  // Get the asset type CSS class
-  const getAssetTypeClass = (assetType: string): string => {
-    switch (assetType) {
+
+  // Handle clicking on an asset to view/use it
+  const handleAssetClick = (asset: UserAsset) => {
+    setSelectedAsset(asset);
+    setShowViewModal(true);
+  };
+
+  // Use an asset in a different page
+  const useAssetInApp = (asset: UserAsset) => {
+    if (!asset) return;
+
+    // Different actions depending on asset type
+    switch (asset.asset_type) {
       case 'image':
-        return styles.typeImage;
+        router.push(`/image?referenceImage=${encodeURIComponent(asset.asset_url)}`);
+        break;
       case '3d':
-        return styles.type3d;
+        router.push(`/3d?imageUrl=${encodeURIComponent(asset.asset_url)}`);
+        break;
       case 'multi_view':
-        return styles.typeMultiView;
+        // For multi-view we need to reconstruct the multi-view format expected by the page
+        const multiViewData = asset.metadata?.viewImages || [];
+        if (multiViewData.length > 0) {
+          router.push(`/image/multi-view?data=${encodeURIComponent(JSON.stringify(multiViewData))}`);
+        }
+        break;
+    }
+  };
+
+  // Get the appropriate style for asset type label
+  const getAssetTypeStyle = (type: AssetType) => {
+    switch (type) {
+      case 'image':
+        return styles.assetTypeImage;
+      case '3d':
+        return styles.assetType3d;
+      case 'multi_view':
+        return styles.assetTypeMultiView;
       default:
         return '';
     }
   };
-  
-  // Function to get asset type display name
-  const getAssetTypeDisplayName = (assetType: string): string => {
-    switch (assetType) {
-      case 'image':
-        return 'Image';
-      case '3d':
-        return '3D Model';
-      case 'multi_view':
-        return 'Multi View';
-      default:
-        return assetType;
-    }
-  };
-  
-  // Handle opening an asset 
-  const handleOpenAsset = (asset: Asset): void => {
-    if (asset.asset_type === 'image') {
-      router.push(`/image?url=${encodeURIComponent(asset.asset_url)}`);
-    } else if (asset.asset_type === 'multi_view') {
-      router.push(`/coming-soon?url=${encodeURIComponent(asset.asset_url)}`);
-    } else if (asset.asset_type === '3d') {
-      router.push(`/3d?url=${encodeURIComponent(asset.asset_url)}`);
-    }
-  };
-  
-  // Truncate the prompt text if needed
-  const getTruncatedPrompt = (prompt: string | undefined, maxLength = 100): string => {
-    if (!prompt) return '';
-    return prompt.length > maxLength ? `${prompt.substring(0, maxLength)}...` : prompt;
-  };
-  
-  // Render empty state when no assets are found
-  const renderEmptyState = () => (
-    <div className={styles.emptyState}>
-      <div className={styles.emptyStateIcon}>📁</div>
-      <h3 className={styles.emptyStateTitle}>No assets found</h3>
-      <p>Generate some images or 3D models to see them here.</p>
-    </div>
-  );
-  
-  // Render the asset grid
-  const renderAssetGrid = () => {
+
+  // Render the list of assets as cards
+  const renderAssets = () => {
     if (loading) {
       return (
-        <div className="flex justify-center items-center min-h-[400px]">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          <span className="ml-2">Loading...</span>
+        <div className={styles.loadingState}>
+          <i className="fas fa-circle-notch fa-spin fa-3x"></i>
         </div>
       );
     }
-    
+
     if (assets.length === 0) {
-      return renderEmptyState();
+      return (
+        <div className={styles.emptyState}>
+          <i className="fas fa-folder-open"></i>
+          <h3 className={styles.emptyStateTitle}>No assets found</h3>
+          <p className={styles.emptyStateDesc}>
+            {filter !== 'all' 
+              ? `You don't have any ${filter} assets yet.`
+              : "You haven't created any assets yet. Generate some images, 3D models, or multi-views to see them here."}
+          </p>
+          <button 
+            onClick={() => router.push('/image')} 
+            className={styles.emptyStateButton}
+          >
+            Generate Something
+          </button>
+        </div>
+      );
     }
-    
+
     return (
-      <div className={styles.grid}>
+      <div className={styles.assetGrid}>
         {assets.map((asset) => (
-          <div key={asset.id} className={styles.asset}>
-            <div className={styles.assetImageContainer}>
+          <div key={asset.id} className={styles.assetCard}>
+            <div onClick={() => handleAssetClick(asset)} style={{ cursor: 'pointer' }}>
               {asset.asset_type === '3d' ? (
-                <div className={styles.modelViewer}>
-                  <ModelViewer originalModelUrl={asset.asset_url} />
+                <div className={styles.assetImage}>
+                  <SimpleModelViewer
+                    src={asset.asset_url}
+                    alt="3D Model Viewer"
+                    style={{ height: '180px' }}
+                    autoRotate
+                    cameraControls={false}
+                    ar={false}
+                  />
                 </div>
               ) : (
-                <Image
-                  src={asset.asset_url}
-                  alt={asset.prompt || 'Generated asset'}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className={styles.assetImage}
+                <img 
+                  src={asset.asset_url} 
+                  alt={asset.prompt || 'Generated asset'} 
+                  className={styles.assetImage} 
                 />
               )}
-            </div>
-            <div className={styles.assetContent}>
-              <div className={styles.assetTitle}>
-                <span>{getAssetTypeDisplayName(asset.asset_type)}</span>
-                <span className={`${styles.assetType} ${getAssetTypeClass(asset.asset_type)}`}>
-                  {asset.asset_type === 'multi_view' ? 'Multi' : asset.asset_type}
+              <div className={styles.assetInfo}>
+                <span className={`${styles.assetType} ${getAssetTypeStyle(asset.asset_type)}`}>
+                  {asset.asset_type === 'multi_view' ? 'Multi-View' : asset.asset_type.toUpperCase()}
                 </span>
+                <p className={styles.assetPrompt}>
+                  {asset.prompt || 'Generated asset'}
+                </p>
+                <div className={styles.assetDate}>
+                  {formatDate(asset.created_at)}
+                </div>
               </div>
-              <div className={styles.assetDate}>{formatDate(asset.created_at)}</div>
-              {asset.prompt && (
-                <div className={styles.assetPrompt}>{getTruncatedPrompt(asset.prompt)}</div>
-              )}
-              <div className={styles.assetActions}>
-                <button 
-                  className={styles.assetButton}
-                  onClick={() => handleOpenAsset(asset)}
-                >
-                  Open
-                </button>
-              </div>
+            </div>
+
+            <div className={styles.assetActions}>
+              <button 
+                className={styles.actionButton}
+                onClick={() => useAssetInApp(asset)}
+              >
+                <i className="fas fa-pencil-alt"></i> Use
+              </button>
+              <button 
+                className={`${styles.actionButton} ${styles.deleteButton}`}
+                onClick={() => {
+                  setSelectedAsset(asset);
+                  setShowDeleteModal(true);
+                }}
+              >
+                <i className="fas fa-trash-alt"></i> Delete
+              </button>
             </div>
           </div>
         ))}
       </div>
     );
   };
-  
+
+  // Render the delete confirmation modal
+  const renderDeleteModal = () => {
+    if (!showDeleteModal) return null;
+
+    return (
+      <div className={styles.modalOverlay}>
+        <div className={styles.modal}>
+          <div className={styles.modalHeader}>
+            <h3 className={styles.modalTitle}>Delete Asset</h3>
+            <button className={styles.closeButton} onClick={() => setShowDeleteModal(false)}>×</button>
+          </div>
+          <div className={styles.modalContent}>
+            <p>Are you sure you want to delete this asset? This action cannot be undone.</p>
+          </div>
+          <div className={styles.modalFooter}>
+            <button className={styles.buttonSecondary} onClick={() => setShowDeleteModal(false)}>Cancel</button>
+            <button className={`${styles.buttonPrimary} ${styles.deleteButton}`} onClick={handleDeleteAsset}>Delete</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render the asset view modal
+  const renderViewModal = () => {
+    if (!showViewModal || !selectedAsset) return null;
+
+    return (
+      <div className={styles.modalOverlay}>
+        <div className={styles.modal}>
+          <div className={styles.modalHeader}>
+            <h3 className={styles.modalTitle}>
+              {selectedAsset.asset_type === 'multi_view' ? 'Multi-View' : 
+               selectedAsset.asset_type === '3d' ? '3D Model' : 'Image'}
+            </h3>
+            <button className={styles.closeButton} onClick={() => {
+              setShowViewModal(false);
+              setSelectedAsset(null);
+            }}>×</button>
+          </div>
+          <div className={styles.modalContent}>
+            {selectedAsset.asset_type === '3d' ? (
+              <SimpleModelViewer
+                src={selectedAsset.asset_url}
+                alt="3D Model"
+                className={styles.modelViewer}
+                autoRotate
+                cameraControls
+              />
+            ) : selectedAsset.asset_type === 'multi_view' ? (
+              <div className={styles.multiViewGrid}>
+                {/* Render multiple views if available in metadata */}
+                {selectedAsset.metadata?.viewImages?.length > 0 ? (
+                  selectedAsset.metadata.viewImages.map((view: any, index: number) => {
+                    // Try to extract the first part of the base64 image preview
+                    const imageUrl = view.imagePreview?.startsWith('data:image') ? 
+                      selectedAsset.asset_url : // Use full image if we can't use the preview
+                      view.imagePreview;
+                    
+                    return (
+                      <div key={index}>
+                        <p>{view.view}</p>
+                        <img 
+                          src={imageUrl}
+                          alt={`${view.view} view`} 
+                          style={{ width: '100%', borderRadius: '8px' }} 
+                        />
+                      </div>
+                    );
+                  })
+                ) : (
+                  // Fallback if no view images in metadata
+                  <div>
+                    <p>Main Image</p>
+                    <img 
+                      src={selectedAsset.asset_url}
+                      alt="Multi-view image" 
+                      style={{ width: '100%', borderRadius: '8px' }} 
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <img 
+                src={selectedAsset.asset_url} 
+                alt={selectedAsset.prompt || 'Generated image'} 
+                style={{ width: '100%', borderRadius: '8px' }} 
+              />
+            )}
+            
+            {selectedAsset.prompt && (
+              <div style={{ marginTop: '15px' }}>
+                <h4 style={{ marginBottom: '5px', color: '#e0e0e0' }}>Prompt</h4>
+                <p style={{ color: '#bbb', fontSize: '14px' }}>{selectedAsset.prompt}</p>
+              </div>
+            )}
+          </div>
+          <div className={styles.modalFooter}>
+            <button
+              className={styles.buttonSecondary}
+              onClick={() => {
+                setShowViewModal(false);
+                setSelectedAsset(null);
+              }}
+            >
+              Close
+            </button>
+            <button
+              className={styles.buttonPrimary}
+              onClick={() => {
+                useAssetInApp(selectedAsset);
+                setShowViewModal(false);
+              }}
+            >
+              Use in App
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>My Assets</h1>
+      <div className={styles.content}>
+        <div className={styles.title}>
+          <div className={styles.titleSection}>
+            <button 
+              onClick={() => router.push('/dashboard')} 
+              className={styles.backButton}
+            >
+              <i className="fas fa-arrow-left"></i>
+            </button>
+            <h1>Your Assets</h1>
+          </div>
+        </div>
+
+        <div className={styles.filterBar}>
+          <button 
+            className={`${styles.filterButton} ${filter === 'all' ? styles.filterButtonActive : ''}`}
+            onClick={() => handleFilterChange('all')}
+          >
+            All
+          </button>
+          <button 
+            className={`${styles.filterButton} ${filter === 'image' ? styles.filterButtonActive : ''}`}
+            onClick={() => handleFilterChange('image')}
+          >
+            Images
+          </button>
+          <button 
+            className={`${styles.filterButton} ${filter === '3d' ? styles.filterButtonActive : ''}`}
+            onClick={() => handleFilterChange('3d')}
+          >
+            3D Models
+          </button>
+          <button 
+            className={`${styles.filterButton} ${filter === 'multi_view' ? styles.filterButtonActive : ''}`}
+            onClick={() => handleFilterChange('multi_view')}
+          >
+            Multi-Views
+          </button>
+        </div>
+
+        {renderAssets()}
+        {renderDeleteModal()}
+        {renderViewModal()}
       </div>
-      
-      <div className={styles.tabs}>
-        <div 
-          className={`${styles.tab} ${activeTab === ASSET_TYPES.ALL ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab(ASSET_TYPES.ALL)}
-        >
-          All
-        </div>
-        <div 
-          className={`${styles.tab} ${activeTab === ASSET_TYPES.IMAGE ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab(ASSET_TYPES.IMAGE)}
-        >
-          Images
-        </div>
-        <div 
-          className={`${styles.tab} ${activeTab === ASSET_TYPES.THREE_D ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab(ASSET_TYPES.THREE_D)}
-        >
-          3D Models
-        </div>
-        <div 
-          className={`${styles.tab} ${activeTab === ASSET_TYPES.MULTI_VIEW ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab(ASSET_TYPES.MULTI_VIEW)}
-        >
-          Multi View
-        </div>
-      </div>
-      
-      {renderAssetGrid()}
     </div>
   );
 }

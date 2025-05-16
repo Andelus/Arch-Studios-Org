@@ -31,6 +31,7 @@ interface GLTFResult {
 function ThreeDModelingContent() {
   const searchParams = useSearchParams();
   const imageUrl = searchParams?.get('imageUrl') ?? null;
+  const multiViewParam = searchParams?.get('multiView') ?? null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState<'single' | 'multi'>('single');
@@ -39,8 +40,6 @@ function ThreeDModelingContent() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedModels, setGeneratedModels] = useState<Array<{url: string; sourceImage?: string}>>([]);
   const [currentModelIndex, setCurrentModelIndex] = useState<number>(0);
-  // Maximum number of stored models (set to 5 as per requirements)
-  const MAX_MODELS = 5;
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +51,37 @@ function ThreeDModelingContent() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
 
-  // Handle incoming image URL
+  // Handle incoming image URL or multi-view images
   useEffect(() => {
-    if (imageUrl) {
+    if (multiViewParam) {
+      try {
+        // Parse and set multiple images from multi-view page
+        const decodedMultiView = decodeURIComponent(multiViewParam);
+        const parsedMultiView = JSON.parse(decodedMultiView);
+        
+        if (Array.isArray(parsedMultiView) && parsedMultiView.length > 0) {
+          // Convert from multi-view format (with 'image' property) to 3D page format (with 'url' property)
+          const convertedImages = parsedMultiView.map(img => ({
+            url: img.image,
+            view: img.view
+          }));
+          
+          setMultiImages(convertedImages);
+          setActiveTab('multi');
+          
+          // Also set the first image as source image for single view tab
+          if (parsedMultiView[0]?.image) {
+            setSourceImage(parsedMultiView[0].image);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing multiView parameter:', error);
+        setError('Failed to load multi-view images');
+      }
+    } else if (imageUrl) {
       setSourceImage(decodeURIComponent(imageUrl));
     }
-  }, [imageUrl]);
+  }, [imageUrl, multiViewParam]);
 
   // Handle model loading when current model changes
   useEffect(() => {
@@ -367,7 +391,7 @@ function ThreeDModelingContent() {
         // Update state in a single batch to ensure synchronization
         setGeneratedModels(prevModels => {
           const newModels = [...prevModels];
-          if (newModels.length >= MAX_MODELS) {
+          if (newModels.length >= 3) {
             newModels.shift(); // Remove the oldest model
           }
           newModels.push({
@@ -565,7 +589,7 @@ function ThreeDModelingContent() {
 
         setGeneratedModels(prev => {
           const newModels = [...prev];
-          if (newModels.length >= MAX_MODELS) {
+          if (newModels.length >= 3) {
             newModels.shift();
           }
           newModels.push(newModel);
@@ -588,49 +612,6 @@ function ThreeDModelingContent() {
     } finally {
       setIsGenerating(false);
       setMessage('');
-    }
-  };
-
-  // Save asset to user profile
-  const saveAssetToProfile = async (assetUrl: string, promptText: string, assetType: '3d' | 'image' | 'multi_view') => {
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'save_asset',
-          asset_url: assetUrl,
-          asset_type: assetType,
-          prompt: promptText || 'Architectural design',
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        console.error('Failed to save asset to user profile:', data.message || data.error);
-      } else {
-        console.log(`${assetType} asset successfully saved to user assets`);
-        // Show success notification
-        const notification = document.createElement('div');
-        notification.className = styles.notification;
-        notification.innerHTML = `
-          <i class="fa-solid fa-check-circle"></i> 
-          ${assetType === '3d' ? '3D model' : 'Image'} saved to your assets!
-        `;
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-          notification.classList.add(styles.fadeOut);
-          setTimeout(() => {
-            document.body.removeChild(notification);
-          }, 500);
-        }, 3000);
-      }
-    } catch (error) {
-      console.error(`Error saving ${assetType} to assets:`, error);
     }
   };
 
@@ -847,49 +828,6 @@ function ThreeDModelingContent() {
   );
 }
 
-// Save asset to user profile (shared function for all components)
-const saveAssetToProfile = async (assetUrl: string, promptText: string, assetType: '3d' | 'image' | 'multi_view') => {
-  try {
-    const response = await fetch('/api/profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'save_asset',
-        asset_url: assetUrl,
-        asset_type: assetType,
-        prompt: promptText || 'Architectural design',
-      }),
-    });
-
-    const data = await response.json();
-    
-    if (!data.success) {
-      console.error('Failed to save asset to user profile:', data.message || data.error);
-    } else {
-      console.log(`${assetType} asset successfully saved to user assets`);
-      // Show success notification
-      const notification = document.createElement('div');
-      notification.className = styles.notification;
-      notification.innerHTML = `
-        <i class="fa-solid fa-check-circle"></i> 
-        ${assetType === '3d' ? '3D model' : 'Image'} saved to your assets!
-      `;
-      document.body.appendChild(notification);
-
-      setTimeout(() => {
-        notification.classList.add(styles.fadeOut);
-        setTimeout(() => {
-          document.body.removeChild(notification);
-        }, 500);
-      }, 3000);
-    }
-  } catch (error) {
-    console.error(`Error saving ${assetType} to assets:`, error);
-  }
-};
-
 export default function ThreeDModeling() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -951,9 +889,6 @@ export default function ThreeDModeling() {
       
       if (data.modelUrl) {
         setModelUrl(data.modelUrl);
-        
-        // Save the 3D model to user assets
-        saveAssetToProfile(data.modelUrl, prompt.trim(), '3d');
       }
     } catch (error) {
       setError('Failed to generate 3D model. Please try again.');

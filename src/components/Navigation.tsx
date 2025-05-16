@@ -31,6 +31,9 @@ export default function Navigation() {
             <Link href="/" className="flex items-center">
               <span className="text-lg sm:text-xl font-bold">Chateaux AI</span>
             </Link>
+            <div className="ml-10 hidden sm:flex space-x-8">
+              {/* Navigation links can be added here */}
+            </div>
           </div>
           
           <SignedIn>

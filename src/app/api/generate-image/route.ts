@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import { fal } from "@fal-ai/client";
+import { saveUserAsset } from '@/lib/asset-manager';
 
 // Initialize Fal AI client if API key is available
 const falApiKey = process.env.FAL_KEY || process.env.FAL_AI_API_KEY;
@@ -309,24 +310,6 @@ export async function POST(req: Request) {
         console.error('Database error during credit deduction:', dbError);
         throw new Error(`Failed to process credit deduction: ${dbError.message}`);
       }
-      
-      // Save the generated image to user asset history
-      await supabase
-        .from('user_assets')
-        .insert({
-          user_id: userId,
-          asset_type: 'image',
-          asset_url: imageUrl,
-          prompt: finalPrompt,
-          metadata: {
-            style,
-            material,
-            size: imageSize,
-            cleanBackground,
-            inferenceSteps,
-            guidanceScale
-          }
-        });
 
       // Log successful transaction
       console.log('Successfully processed image generation and deducted credits:', {
@@ -334,6 +317,32 @@ export async function POST(req: Request) {
         creditCost,
         newBalance: profile.credits_balance - creditCost
       });
+
+      // Save the generated asset to the user_assets table
+      try {
+        const assetSaveResult = await saveUserAsset({
+          userId,
+          assetType: 'image',
+          assetUrl: imageUrl,
+          prompt: finalPrompt,
+          metadata: {
+            style,
+            material,
+            cleanBackground,
+            size: imageSize
+          }
+        });
+
+        if (!assetSaveResult.success) {
+          // Log the error but don't fail the request
+          console.error('Failed to save user asset:', assetSaveResult.error);
+        } else {
+          console.log('Successfully saved user asset:', assetSaveResult.data?.id);
+        }
+      } catch (assetError) {
+        // Log the error but don't fail the request
+        console.error('Exception saving user asset:', assetError);
+      }
 
       return NextResponse.json({
         success: true,

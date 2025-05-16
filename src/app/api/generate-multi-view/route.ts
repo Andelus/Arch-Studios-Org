@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import OpenAI from 'openai';
+import { saveUserAsset } from '@/lib/asset-manager';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -205,22 +206,42 @@ export async function POST(request: Request) {
         throw new Error(`Failed to process credit deduction: ${dbError.message}`);
       }
       
-      // Save each generated image to user's asset history
-      for (const generatedImage of generatedImages) {
-        const imageData = `data:image/png;base64,${generatedImage.image}`;
-        await supabase
-          .from('user_assets')
-          .insert({
-            user_id: userId,
-            asset_type: 'multi_view',
-            asset_url: imageData,
-            prompt: `${prompt} (${generatedImage.view} view)`,
+      // Save the multi-view images to user_assets table
+      try {
+        // Create a condensed version of the images for storage (we'll store one asset record for the whole set)
+        // For the asset URL, use the first image but include all in metadata
+        const firstImageBase64 = generatedImages[0]?.image;
+        if (firstImageBase64) {
+          const firstImageDataUrl = `data:image/png;base64,${firstImageBase64}`;
+          
+          const assetSaveResult = await saveUserAsset({
+            userId,
+            assetType: 'multi_view',
+            assetUrl: firstImageDataUrl,
+            prompt,
             metadata: {
-              view: generatedImage.view,
               quality,
-              generate3D
+              views: views,
+              imageCount: generatedImages.length,
+              generatedAt: new Date().toISOString(),
+              viewImages: generatedImages.map(img => ({ 
+                view: img.view, 
+                // Store just references to prevent excessive duplication
+                imagePreview: `data:image/png;base64,${img.image.substring(0, 100)}...` 
+              }))
             }
           });
+
+          if (!assetSaveResult.success) {
+            // Log the error but don't fail the request
+            console.error('Failed to save multi-view asset:', assetSaveResult.error);
+          } else {
+            console.log('Successfully saved multi-view asset:', assetSaveResult.data?.id);
+          }
+        }
+      } catch (assetError) {
+        // Log the error but don't fail the request
+        console.error('Exception saving multi-view asset:', assetError);
       }
 
       // Return success with images and remaining credits
