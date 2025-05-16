@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/api/webhooks/clerk',
   '/api/webhooks/flutterwave',
+  '/api/payment/verify/callback',
   '/privacy',
   '/terms',
   '/about',
