@@ -39,6 +39,8 @@ function ThreeDModelingContent() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedModels, setGeneratedModels] = useState<Array<{url: string; sourceImage?: string}>>([]);
   const [currentModelIndex, setCurrentModelIndex] = useState<number>(0);
+  // Maximum number of stored models (set to 5 as per requirements)
+  const MAX_MODELS = 5;
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -365,7 +367,7 @@ function ThreeDModelingContent() {
         // Update state in a single batch to ensure synchronization
         setGeneratedModels(prevModels => {
           const newModels = [...prevModels];
-          if (newModels.length >= 3) {
+          if (newModels.length >= MAX_MODELS) {
             newModels.shift(); // Remove the oldest model
           }
           newModels.push({
@@ -563,7 +565,7 @@ function ThreeDModelingContent() {
 
         setGeneratedModels(prev => {
           const newModels = [...prev];
-          if (newModels.length >= 3) {
+          if (newModels.length >= MAX_MODELS) {
             newModels.shift();
           }
           newModels.push(newModel);

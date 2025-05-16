@@ -204,6 +204,24 @@ export async function POST(request: Request) {
         console.error('Database error during credit deduction:', dbError);
         throw new Error(`Failed to process credit deduction: ${dbError.message}`);
       }
+      
+      // Save each generated image to user's asset history
+      for (const generatedImage of generatedImages) {
+        const imageData = `data:image/png;base64,${generatedImage.image}`;
+        await supabase
+          .from('user_assets')
+          .insert({
+            user_id: userId,
+            asset_type: 'multi_view',
+            asset_url: imageData,
+            prompt: `${prompt} (${generatedImage.view} view)`,
+            metadata: {
+              view: generatedImage.view,
+              quality,
+              generate3D
+            }
+          });
+      }
 
       // Return success with images and remaining credits
       return NextResponse.json({

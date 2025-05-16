@@ -154,6 +154,7 @@ export default function DashboardPage() {
               <Link href="/image">Image Generation</Link>
               <Link href="/coming-soon">Render Images</Link>
               <Link href="/3d">3D Modeling</Link>
+              <Link href="/assets">My Assets</Link>
               <Link href="/credit-subscription">Credit & Subscription</Link>
             </div>
           </div>

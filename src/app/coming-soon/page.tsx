@@ -18,7 +18,10 @@ function ImageEditorContent() {
     searchParams?.get('mode') === 'edit' ? 'edit' : 'render'
   );
   const [prompt, setPrompt] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  // Maximum number of images to store (set to 5 as per requirements)
+  const MAX_IMAGES = 5;
   const [isGenerating, setIsGenerating] = useState(false);
   const [drawAssist, setDrawAssist] = useState<'none' | 'minor' | 'major'>('none');
   const [maskImage, setMaskImage] = useState<string | null>(null);
@@ -94,7 +97,18 @@ function ImageEditorContent() {
     if (!searchParams) return;
     const imageFromUrl = searchParams.get('image');
     if (imageFromUrl) {
-      setSelectedImage(decodeURIComponent(imageFromUrl));
+      const decodedImage = decodeURIComponent(imageFromUrl);
+      setSelectedImages(prev => {
+        const newImages = [...prev];
+        if (newImages.length >= MAX_IMAGES) {
+          newImages.shift(); // Remove oldest image
+        }
+        if (!newImages.includes(decodedImage)) {
+          newImages.push(decodedImage);
+          setCurrentImageIndex(newImages.length - 1); // Set to the new image
+        }
+        return newImages;
+      });
     }
   }, [searchParams]);
 
@@ -103,7 +117,16 @@ function ImageEditorContent() {
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setSelectedImage(event.target?.result as string);
+        const imageData = event.target?.result as string;
+        setSelectedImages(prev => {
+          const newImages = [...prev];
+          if (newImages.length >= MAX_IMAGES) {
+            newImages.shift(); // Remove oldest image
+          }
+          newImages.push(imageData);
+          return newImages;
+        });
+        setCurrentImageIndex(selectedImages.length); // Set to the new image
       };
       reader.readAsDataURL(file);
     }
@@ -114,14 +137,37 @@ function ImageEditorContent() {
   };
 
   const resetCanvas = () => {
-    setSelectedImage(null);
+    setSelectedImages([]);
+    setCurrentImageIndex(0);
     setMaskImage(null);
     setOutputImage(null);
   };
+  
+  const handleNextImage = () => {
+    if (currentImageIndex < selectedImages.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
+  };
+
+  const handleFirstImage = () => {
+    setCurrentImageIndex(0);
+  };
+
+  const handleLastImage = () => {
+    setCurrentImageIndex(selectedImages.length - 1);
+  };
 
   const handleSubmit = async () => {
+    const currentImage = selectedImages[currentImageIndex];
+    
     if (activeTab === 'edit') {
-      if (!selectedImage || !maskImage || !prompt) {
+      if (!currentImage || !maskImage || !prompt) {
         alert('Please upload an image, create a mask, and enter a prompt');
         return;
       }
@@ -142,7 +188,7 @@ function ImageEditorContent() {
     try {
       const endpoint = activeTab === 'edit' ? '/api/edit-image-openai' : '/api/render-image-openai';
       const body = activeTab === 'edit' ? {
-        image: selectedImage,
+        image: currentImage,
         mask: maskImage,
         prompt,
         drawAssist
@@ -151,7 +197,7 @@ function ImageEditorContent() {
         category,
         outputType,
         renderStyle,
-        referenceImage: selectedImage,
+        referenceImage: currentImage,
         quality: drawAssist,
       };
 
@@ -178,12 +224,31 @@ function ImageEditorContent() {
       const data = await response.json();
 
       if (data.image) {
+        const generatedImageData = `data:image/png;base64,${data.image}`;
+        
         if (activeTab === 'edit') {
-          setSelectedImage(`data:image/png;base64,${data.image}`);
+          setSelectedImages(prev => {
+            const newImages = [...prev];
+            if (newImages.length >= MAX_IMAGES) {
+              newImages.shift(); // Remove oldest image
+            }
+            newImages.push(generatedImageData);
+            return newImages;
+          });
+          setCurrentImageIndex(selectedImages.length);
           setMaskImage(null);
         } else {
-          const outputImage = `data:image/png;base64,${data.image}`;
+          const outputImage = generatedImageData;
           setOutputImage(outputImage);
+          setSelectedImages(prev => {
+            const newImages = [...prev];
+            if (newImages.length >= MAX_IMAGES) {
+              newImages.shift(); // Remove oldest image
+            }
+            newImages.push(outputImage);
+            return newImages;
+          });
+          setCurrentImageIndex(selectedImages.length);
         }
 
         const notification = document.createElement('div');
@@ -338,7 +403,7 @@ function ImageEditorContent() {
                     This could be a sketch, floor plan, or similar architectural design.
                   </div>
                 </h3>
-                {!selectedImage ? (
+                {selectedImages.length === 0 ? (
                   <div className={styles.uploadPrompt}>
                     <p>Upload a reference image to start</p>
                     <label className={styles.uploadButton}>
@@ -354,10 +419,48 @@ function ImageEditorContent() {
                 ) : (
                   <>
                     <div className={styles.imagePreview}>
-                      <img src={selectedImage} alt="Reference" />
+                      <img src={selectedImages[currentImageIndex]} alt="Reference" />
                       <button onClick={resetCanvas} className={styles.resetButton}>
                         <i className="fa-solid fa-times"></i>
                       </button>
+                      
+                      {selectedImages.length > 1 && (
+                        <div className={styles.imageNavOverlay}>
+                          <div className={styles.imageNavigation}>
+                            <button 
+                              className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
+                              onClick={handleFirstImage}
+                              disabled={currentImageIndex === 0}
+                            >
+                              <i className="fa-solid fa-angles-left"></i>
+                            </button>
+                            <button 
+                              className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
+                              onClick={handlePrevImage}
+                              disabled={currentImageIndex === 0}
+                            >
+                              <i className="fa-solid fa-angle-left"></i>
+                            </button>
+                            <div className={styles.imageCounter}>
+                              {currentImageIndex + 1} / {selectedImages.length}
+                            </div>
+                            <button 
+                              className={`${styles.navButton} ${currentImageIndex === selectedImages.length - 1 ? styles.navButtonDisabled : ''}`}
+                              onClick={handleNextImage}
+                              disabled={currentImageIndex === selectedImages.length - 1}
+                            >
+                              <i className="fa-solid fa-angle-right"></i>
+                            </button>
+                            <button 
+                              className={`${styles.navButton} ${currentImageIndex === selectedImages.length - 1 ? styles.navButtonDisabled : ''}`}
+                              onClick={handleLastImage}
+                              disabled={currentImageIndex === selectedImages.length - 1}
+                            >
+                              <i className="fa-solid fa-angles-right"></i>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.renderOptions}>
@@ -459,7 +562,7 @@ function ImageEditorContent() {
           {activeTab === 'edit' ? (
             <>
               <div className={styles.sourceCanvasWrapper}>
-                {!selectedImage ? (
+                {selectedImages.length === 0 ? (
                   <div className={styles.uploadPrompt}>
                     <p>Upload an image to edit</p>
                     <label className={styles.uploadButton}>
@@ -474,9 +577,46 @@ function ImageEditorContent() {
                   </div>
                 ) : (
                   <>
-                    <div className={styles.canvasHeader}>Source Image</div>
+                    <div className={styles.canvasHeader}>
+                      Source Image
+                      {selectedImages.length > 1 && (
+                        <div className={styles.imageNavigation}>
+                          <button 
+                            className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
+                            onClick={handleFirstImage}
+                            disabled={currentImageIndex === 0}
+                          >
+                            <i className="fa-solid fa-angles-left"></i>
+                          </button>
+                          <button 
+                            className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
+                            onClick={handlePrevImage}
+                            disabled={currentImageIndex === 0}
+                          >
+                            <i className="fa-solid fa-angle-left"></i>
+                          </button>
+                          <div className={styles.imageCounter}>
+                            {currentImageIndex + 1} / {selectedImages.length}
+                          </div>
+                          <button 
+                            className={`${styles.navButton} ${currentImageIndex === selectedImages.length - 1 ? styles.navButtonDisabled : ''}`}
+                            onClick={handleNextImage}
+                            disabled={currentImageIndex === selectedImages.length - 1}
+                          >
+                            <i className="fa-solid fa-angle-right"></i>
+                          </button>
+                          <button 
+                            className={`${styles.navButton} ${currentImageIndex === selectedImages.length - 1 ? styles.navButtonDisabled : ''}`}
+                            onClick={handleLastImage}
+                            disabled={currentImageIndex === selectedImages.length - 1}
+                          >
+                            <i className="fa-solid fa-angles-right"></i>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <DrawingCanvas 
-                      selectedImage={selectedImage} 
+                      selectedImage={selectedImages[currentImageIndex]} 
                       onMaskCreate={handleMaskCreate}
                       drawMode={drawMode}
                     />
@@ -485,7 +625,7 @@ function ImageEditorContent() {
               </div>
 
               <div className={styles.outputCanvasWrapper}>
-                {!selectedImage ? (
+                {selectedImages.length === 0 ? (
                   <div className={styles.placeholderPrompt}>
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                     <p>Generated image will appear here</p>
@@ -527,20 +667,32 @@ function ImageEditorContent() {
                     className={styles.canvasActionButton}
                     onClick={() => {
                       setActiveTab('render');
-                      setSelectedImage(outputImage || selectedImage);
+                      // If there's an output image, add it to the selected images
+                      if (outputImage) {
+                        setSelectedImages(prev => {
+                          const newImages = [...prev];
+                          if (newImages.length >= MAX_IMAGES) {
+                            newImages.shift(); // Remove oldest image
+                          }
+                          newImages.push(outputImage);
+                          return newImages;
+                        });
+                        setCurrentImageIndex(selectedImages.length);
+                      }
                     }}
-                    disabled={!selectedImage}
+                    disabled={selectedImages.length === 0}
                   >
                     <i className="fa-solid fa-wand-magic-sparkles"></i> Render
                   </button>
                   <button 
                     className={styles.canvasActionButton}
                     onClick={() => {
-                      if (selectedImage) {
-                        router.push('/3d?image=' + encodeURIComponent(outputImage || selectedImage));
+                      if (selectedImages.length > 0) {
+                        const imageToUse = outputImage || selectedImages[currentImageIndex];
+                        router.push('/3d?image=' + encodeURIComponent(imageToUse));
                       }
                     }}
-                    disabled={!selectedImage}
+                    disabled={selectedImages.length === 0}
                   >
                     <i className="fa-solid fa-cube"></i> Make 3D
                   </button>
@@ -570,7 +722,17 @@ function ImageEditorContent() {
                       className={styles.canvasActionButton}
                       onClick={() => {
                         setActiveTab('edit');
-                        setSelectedImage(outputImage);
+                        if (outputImage) {
+                          setSelectedImages(prev => {
+                            const newImages = [...prev];
+                            if (newImages.length >= MAX_IMAGES) {
+                              newImages.shift(); // Remove oldest image
+                            }
+                            newImages.push(outputImage);
+                            return newImages;
+                          });
+                          setCurrentImageIndex(selectedImages.length);
+                        }
                       }}
                     >
                       <i className="fa-solid fa-pen-to-square"></i> Edit

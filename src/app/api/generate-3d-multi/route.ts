@@ -161,6 +161,20 @@ export async function POST(req: Request) {
         .from('profiles')
         .update({ credits_balance: profile.credits_balance - 100 })
         .eq('id', userId);
+        
+      // Save the generated model to user asset history
+      await supabase
+        .from('user_assets')
+        .insert({
+          user_id: userId,
+          asset_type: '3d',
+          asset_url: result.data.model_mesh.url,
+          // Use the first image URL as the prompt reference (simplified)
+          prompt: 'Multi-image 3D model generation',
+          metadata: { 
+            input_image_count: imageUrls.length 
+          }
+        });
 
       return NextResponse.json({
         modelUrl: result.data.model_mesh.url,

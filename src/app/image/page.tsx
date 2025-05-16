@@ -66,6 +66,8 @@ export default function ImageGeneration() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  // Maximum number of stored images (set to 5 as per requirements)
+  const MAX_IMAGES = 5;
   const [selectedStyle, setSelectedStyle] = useState<ArchitecturalStyle | ''>('');
   const [selectedMaterial, setSelectedMaterial] = useState<Material | ''>('');
   const [showStyleDropdown, setShowStyleDropdown] = useState<boolean>(false);
@@ -153,7 +155,8 @@ export default function ImageGeneration() {
 
       // Add the new image to the collection
       const newImages = [...generatedImages];
-      if (newImages.length >= 3) {
+      if (newImages.length >= MAX_IMAGES) {
+        // Remove the oldest image when reaching the limit
         newImages.shift();
       }
       newImages.push(data.url);
@@ -419,8 +422,38 @@ export default function ImageGeneration() {
                   </div>
                 </div>
                 {generatedImages.length > 1 && (
-                  <div className={styles.imageCounter}>
-                    {currentImageIndex + 1} / {generatedImages.length}
+                  <div className={styles.imageNavigation}>
+                    <button 
+                      className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
+                      onClick={handleFirstImage}
+                      disabled={currentImageIndex === 0}
+                    >
+                      <i className="fa-solid fa-angles-left"></i>
+                    </button>
+                    <button 
+                      className={`${styles.navButton} ${currentImageIndex === 0 ? styles.navButtonDisabled : ''}`}
+                      onClick={handlePrevImage}
+                      disabled={currentImageIndex === 0}
+                    >
+                      <i className="fa-solid fa-angle-left"></i>
+                    </button>
+                    <div className={styles.imageCounter}>
+                      {currentImageIndex + 1} / {generatedImages.length}
+                    </div>
+                    <button 
+                      className={`${styles.navButton} ${currentImageIndex === generatedImages.length - 1 ? styles.navButtonDisabled : ''}`}
+                      onClick={handleNextImage}
+                      disabled={currentImageIndex === generatedImages.length - 1}
+                    >
+                      <i className="fa-solid fa-angle-right"></i>
+                    </button>
+                    <button 
+                      className={`${styles.navButton} ${currentImageIndex === generatedImages.length - 1 ? styles.navButtonDisabled : ''}`}
+                      onClick={handleLastImage}
+                      disabled={currentImageIndex === generatedImages.length - 1}
+                    >
+                      <i className="fa-solid fa-angles-right"></i>
+                    </button>
                   </div>
                 )}
                 {generatedImages[currentImageIndex] && (

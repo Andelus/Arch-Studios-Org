@@ -477,6 +477,57 @@
   color: #ccc;
   border-bottom: 1px solid #2a2a2a;
   background-color: #262626;
+  display: flex;
+  align-items: center;
+}
+
+.imageNavigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  margin-left: 1rem;
+  z-index: 5;
+}
+
+.imageCounter {
+  padding: 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  width: 3rem;
+  text-align: center;
+}
+
+.navButton {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.7rem;
+}
+
+.navButton:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.navButtonDisabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.navButtonDisabled:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .outputCanvas {
@@ -1156,4 +1207,14 @@
   object-fit: contain;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.imageNavOverlay {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 5;
 }
