@@ -148,14 +148,15 @@ export default function DashboardPage() {
               className={`${styles.dropbtn} ${isDropdownOpen ? styles.active : ''}`}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
-              Select Tool
+              <span>Select Tool</span>
+              <i className={`fas ${isDropdownOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
             </button>
             <div className={`${styles.dropdownContent} ${isDropdownOpen ? styles.show : ''}`}>
-              <Link href="/image">Image Generation</Link>
-              <Link href="/coming-soon">Render Images</Link>
-              <Link href="/3d">3D Modeling</Link>
-              <Link href="/assets">My Assets</Link>
-              <Link href="/credit-subscription">Credit & Subscription</Link>
+              <Link href="/image" onClick={() => setIsDropdownOpen(false)}>Image Generation</Link>
+              <Link href="/coming-soon" onClick={() => setIsDropdownOpen(false)}>Render Images</Link>
+              <Link href="/3d" onClick={() => setIsDropdownOpen(false)}>3D Modeling</Link>
+              <Link href="/assets" onClick={() => setIsDropdownOpen(false)}>My Assets</Link>
+              <Link href="/credit-subscription" onClick={() => setIsDropdownOpen(false)}>Credit & Subscription</Link>
             </div>
           </div>
         </div>
@@ -167,4 +168,4 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-} 
+}

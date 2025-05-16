@@ -114,25 +114,30 @@
   transform: translateY(-1px);
 }
 
+.dropbtn:hover i {
+  color: #ffffff;
+}
+
 .dropbtn:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.dropbtn:after {
-  content: '▼';
-  font-size: 12px;
+.dropbtn i {
+  font-size: 14px;
   margin-left: 10px;
   transition: transform 0.3s ease;
+  color: #a6c1ee;
 }
 
 .dropbtn.active {
-  background-color: rgba(51, 51, 51, 0.8);
+  background-color: rgba(90, 104, 224, 0.2);
+  border: 1px solid rgba(90, 104, 224, 0.3);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-dropbtn.active:after {
-  transform: rotate(180deg);
+.dropbtn.active i {
+  color: #ffffff;
 }
 
 .dropdownContent {
@@ -148,10 +153,15 @@ dropbtn.active:after {
   backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   z-index: 10;
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .dropdownContent.show {
   display: block;
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .dropdownContent a {
@@ -172,11 +182,16 @@ dropbtn.active:after {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.9);
     width: 90%;
     max-width: 400px;
     max-height: 80vh;
     overflow-y: auto;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .dropdownContent.show {
+    transform: translate(-50%, -50%) scale(1);
   }
 
   .dropdownContent a {
