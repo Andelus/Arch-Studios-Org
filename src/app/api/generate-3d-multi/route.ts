@@ -26,11 +26,21 @@ export async function POST(req: Request) {
     // Check user's credits/subscription
     const { data: profile } = await supabase
       .from('profiles')
-      .select('credits, subscription_status')
+      .select('credits_balance, subscription_status')
       .eq('id', userId)
       .single();
+    
+    console.log(`User ${userId} has ${profile?.credits_balance || 0} credits`);
 
-    if (!profile || profile.credits < 100) {
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'User profile not found.' },
+        { status: 404 }
+      );
+    }
+    
+    // Use credits_balance instead of credits to match database schema
+    if (profile.credits_balance < 100) { 
       return NextResponse.json(
         { error: 'Insufficient credits. 3D model generation requires 100 credits. Please purchase more credits to continue.' },
         { status: 403 }
@@ -120,12 +130,12 @@ export async function POST(req: Request) {
       // Deduct credits only after successful generation
       await supabase
         .from('profiles')
-        .update({ credits: profile.credits - 100 })
+        .update({ credits_balance: profile.credits_balance - 100 })
         .eq('id', userId);
 
       return NextResponse.json({
         modelUrl: result.data.model_mesh.url,
-        creditsRemaining: profile.credits - 100
+        creditsRemaining: profile.credits_balance - 100
       });
     } catch (error) {
       // Clear the timeout to prevent memory leaks
