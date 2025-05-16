@@ -162,6 +162,10 @@ export default function ImageGeneration() {
       newImages.push(data.url);
       setGeneratedImages(newImages);
       setCurrentImageIndex(newImages.length - 1);
+      
+      // Save the image to user assets
+      saveImageToAssets(data.url, prompt.trim());
+      
       setIsGenerating(false);
 
     } catch (error) {
@@ -254,6 +258,34 @@ export default function ImageGeneration() {
 
   const handleEdit = () => {
     router.push(`/image/edit?imageUrl=${encodeURIComponent(generatedImages[currentImageIndex])}`);
+  };
+
+  // Function to save the generated image to user assets
+  const saveImageToAssets = async (imageUrl: string, promptText: string) => {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'save_asset',
+          asset_url: imageUrl,
+          asset_type: 'image',
+          prompt: promptText || 'Architectural design',
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.error('Failed to save asset to user profile:', data.message || data.error);
+      } else {
+        console.log('Asset successfully saved to user profile');
+      }
+    } catch (error) {
+      console.error('Error saving asset to profile:', error);
+    }
   };
 
   return (
@@ -459,7 +491,7 @@ export default function ImageGeneration() {
                 {generatedImages[currentImageIndex] && (
                   <div className={styles.generatedImageActions}>
                     <button 
-                      className={styles.actionButton}
+                      className={`${styles.canvasBtn} ${styles.downloadBtn}`}
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = generatedImages[currentImageIndex];
@@ -469,25 +501,29 @@ export default function ImageGeneration() {
                         document.body.removeChild(link);
                       }}
                     >
-                      <i className="fa-solid fa-download"></i> Download
+                      <i className="fa-solid fa-download"></i>
+                      <span>Download</span>
                     </button>
                     <button 
-                      className={styles.actionButton}
+                      className={`${styles.canvasBtn} ${styles.editBtn}`}
                       onClick={() => handleActionClick('edit', generatedImages[currentImageIndex])}
                     >
-                      <i className="fa-solid fa-pen-to-square"></i> Edit
+                      <i className="fa-solid fa-pen-to-square"></i>
+                      <span>Edit</span>
                     </button>
                     <button 
-                      className={styles.actionButton}
+                      className={`${styles.canvasBtn} ${styles.make3dBtn}`}
                       onClick={() => handleActionClick('3d', generatedImages[currentImageIndex])}
                     >
-                      <i className="fa-solid fa-cube"></i> Make 3D
+                      <i className="fa-solid fa-cube"></i>
+                      <span>Make 3D</span>
                     </button>
                     <button 
-                      className={styles.actionButton}
-                      onClick={() => router.push('/image/multi-view')}
+                      className={`${styles.canvasBtn}`}
+                      onClick={() => router.push(`/image/multi-view?refImage=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
                     >
-                      <i className="fa-solid fa-images"></i> Create Multi-View
+                      <i className="fa-solid fa-images"></i>
+                      <span>Create Multi-View</span>
                     </button>
                   </div>
                 )}
@@ -495,32 +531,7 @@ export default function ImageGeneration() {
             ) : (
               <div className={styles.imageContainer} />
             )}
-            
-            {generatedImages.length > 0 && (
-              <div className={styles.canvasButtons}>
-                <button 
-                  className={`${styles.canvasBtn} ${styles.editBtn}`}
-                  onClick={handleEdit}
-                >
-                  <i className="fa-solid fa-pen"></i>
-                  <span>Edit</span>
-                </button>
-                <button 
-                  className={`${styles.canvasBtn} ${styles.make3dBtn}`}
-                  onClick={handle3DGeneration}
-                >
-                  <i className="fa-solid fa-cube"></i>
-                  <span>Make 3D</span>
-                </button>
-                <button 
-                  className={`${styles.canvasBtn} ${styles.downloadBtn}`}
-                  onClick={downloadImage}
-                >
-                  <i className="fa-solid fa-download"></i>
-                  <span>Download Image</span>
-                </button>
-              </div>
-            )}
+            {/* Buttons moved to generatedImageActions to avoid duplication */}
           </div>
         </div>
       </div>

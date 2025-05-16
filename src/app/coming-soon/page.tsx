@@ -163,6 +163,34 @@ function ImageEditorContent() {
     setCurrentImageIndex(selectedImages.length - 1);
   };
 
+  // Save asset to user profile
+  const saveAssetToProfile = async (assetUrl: string, promptText: string, assetType: 'image' = 'image') => {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'save_asset',
+          asset_url: assetUrl,
+          asset_type: assetType,
+          prompt: promptText || 'Edited architectural design',
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.error('Failed to save image to user profile:', data.message || data.error);
+      } else {
+        console.log('Image successfully saved to user assets');
+      }
+    } catch (error) {
+      console.error('Error saving image to profile:', error);
+    }
+  };
+
   const handleSubmit = async () => {
     const currentImage = selectedImages[currentImageIndex];
     
@@ -251,11 +279,18 @@ function ImageEditorContent() {
           setCurrentImageIndex(selectedImages.length);
         }
 
+        // Save the generated image to user assets
+        if (activeTab === 'edit') {
+          saveAssetToProfile(generatedImageData, `Edited: ${prompt}`);
+        } else if (outputImage) {
+          saveAssetToProfile(outputImage, `Rendered: ${prompt}`);
+        }
+
         const notification = document.createElement('div');
         notification.className = styles.notification;
         notification.innerHTML = `
           <i class="fa-solid fa-check-circle"></i> 
-          Image successfully generated! (${data.creditsRemaining} credits remaining)
+          Image successfully generated and saved to assets! (${data.creditsRemaining} credits remaining)
         `;
         document.body.appendChild(notification);
 

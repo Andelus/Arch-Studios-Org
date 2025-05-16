@@ -905,17 +905,25 @@
 
 .notification {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  padding: 1rem 1.5rem;
-  background-color: #48bb78;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
   color: white;
-  border-radius: 0.5rem;
+  padding: 15px 20px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  z-index: 50;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  border-left: 4px solid #4facfe;
+  animation: slideIn 0.3s ease-out;
+  max-width: 400px;
+}
+
+.notification i {
+  color: #4facfe;
+  font-size: 18px;
 }
 
 .fadeOut {

@@ -591,6 +591,49 @@ function ThreeDModelingContent() {
     }
   };
 
+  // Save asset to user profile
+  const saveAssetToProfile = async (assetUrl: string, promptText: string, assetType: '3d' | 'image' | 'multi_view') => {
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'save_asset',
+          asset_url: assetUrl,
+          asset_type: assetType,
+          prompt: promptText || 'Architectural design',
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.error('Failed to save asset to user profile:', data.message || data.error);
+      } else {
+        console.log(`${assetType} asset successfully saved to user assets`);
+        // Show success notification
+        const notification = document.createElement('div');
+        notification.className = styles.notification;
+        notification.innerHTML = `
+          <i class="fa-solid fa-check-circle"></i> 
+          ${assetType === '3d' ? '3D model' : 'Image'} saved to your assets!
+        `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.classList.add(styles.fadeOut);
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 500);
+        }, 3000);
+      }
+    } catch (error) {
+      console.error(`Error saving ${assetType} to assets:`, error);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -804,6 +847,49 @@ function ThreeDModelingContent() {
   );
 }
 
+// Save asset to user profile (shared function for all components)
+const saveAssetToProfile = async (assetUrl: string, promptText: string, assetType: '3d' | 'image' | 'multi_view') => {
+  try {
+    const response = await fetch('/api/profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'save_asset',
+        asset_url: assetUrl,
+        asset_type: assetType,
+        prompt: promptText || 'Architectural design',
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      console.error('Failed to save asset to user profile:', data.message || data.error);
+    } else {
+      console.log(`${assetType} asset successfully saved to user assets`);
+      // Show success notification
+      const notification = document.createElement('div');
+      notification.className = styles.notification;
+      notification.innerHTML = `
+        <i class="fa-solid fa-check-circle"></i> 
+        ${assetType === '3d' ? '3D model' : 'Image'} saved to your assets!
+      `;
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.classList.add(styles.fadeOut);
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 500);
+      }, 3000);
+    }
+  } catch (error) {
+    console.error(`Error saving ${assetType} to assets:`, error);
+  }
+};
+
 export default function ThreeDModeling() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -865,6 +951,9 @@ export default function ThreeDModeling() {
       
       if (data.modelUrl) {
         setModelUrl(data.modelUrl);
+        
+        // Save the 3D model to user assets
+        saveAssetToProfile(data.modelUrl, prompt.trim(), '3d');
       }
     } catch (error) {
       setError('Failed to generate 3D model. Please try again.');
