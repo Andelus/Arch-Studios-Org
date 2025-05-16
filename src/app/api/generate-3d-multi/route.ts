@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (profile.subscription_status !== 'ACTIVE') {
+    if (profile.subscription_status !== 'ACTIVE' && profile.subscription_status !== 'TRIAL') {
       return NextResponse.json(
         { error: 'Your subscription has expired. Please renew to continue.' },
         { status: 403 }
