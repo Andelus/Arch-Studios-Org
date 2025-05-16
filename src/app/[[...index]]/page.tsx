@@ -53,7 +53,7 @@ export default function Home() {
             <h1 className={styles.mainHeading}>Create at the speed<br />of imagination.</h1>
             <SignUpButton mode="modal">
               <button className={styles.loginBtn}>
-                Try Arch-1
+                Try Arch Studio
               </button>
             </SignUpButton>
           </div>
