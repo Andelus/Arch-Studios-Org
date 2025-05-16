@@ -55,21 +55,7 @@ function ThreeDModelingContent() {
     if (imageUrl) {
       setSourceImage(decodeURIComponent(imageUrl));
     }
-
-    // Check for multi-view images passed from the multi-view page
-    const multiViewParam = searchParams?.get('multiView');
-    if (multiViewParam) {
-      try {
-        const decodedImages = JSON.parse(decodeURIComponent(multiViewParam));
-        if (Array.isArray(decodedImages) && decodedImages.length > 0) {
-          setMultiImages(decodedImages.map(img => ({ url: img.image, view: img.view })));
-          setActiveTab('multi');
-        }
-      } catch (error) {
-        console.error('Error parsing multi-view images:', error);
-      }
-    }
-  }, [imageUrl, searchParams]);
+  }, [imageUrl]);
 
   // Handle model loading when current model changes
   useEffect(() => {
@@ -469,7 +455,7 @@ function ThreeDModelingContent() {
 
     setIsGenerating(true);
     setError(null);
-    setMessage('Generating 3D model from multiple views...');
+    setMessage('Generating 3D model from multiple images...');
 
     try {
       const response = await fetch('/api/generate-3d-multi', {
@@ -478,39 +464,60 @@ function ThreeDModelingContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          images: multiImages.map(img => img.url),
+          imageUrls: multiImages.map(img => img.url)
         }),
       });
-
+      
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate 3D model');
+        if (response.status === 403 && data.error?.includes('insufficient credits')) {
+          setError('Your credits have been exhausted. You need to purchase more credits to continue generating 3D models.');
+          return;
+        }
+        if (response.status === 403 && data.error?.includes('subscription has expired')) {
+          setError('Your subscription has expired. Please renew your subscription to continue.');
+          return;
+        }
+        if (response.status === 401) {
+          setError('Authentication error. Please sign in again.');
+          return;
+        }
+        setError(data.error || 'Failed to generate 3D model');
+        return;
       }
 
       if (data.modelUrl) {
-        // Add the multi-view generated model to our models array
+        const newModel = {
+          url: data.modelUrl,
+          sourceImage: multiImages[0].url
+        };
+
         setGeneratedModels(prev => {
           const newModels = [...prev];
           if (newModels.length >= 3) {
             newModels.shift();
           }
-          newModels.push({
-            url: data.modelUrl,
-            sourceImage: multiImages[0].url // Use the first image as thumbnail
-          });
+          newModels.push(newModel);
           return newModels;
         });
-        
+
         setCurrentModelIndex(generatedModels.length);
-        setMessage(`Multi-view 3D model created successfully! Remaining credits: ${data.creditsRemaining}`);
-        setTimeout(() => setMessage(''), 5000);
+        await loadModel(data.modelUrl);
       }
-    } catch (error: any) {
-      console.error('Error generating multi-view 3D model:', error);
-      setError(error.message || 'Failed to generate multi-view 3D model. Please try again.');
+    } catch (error) {
+      console.error('Error generating 3D model:', error);
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes('unauthorized')) {
+        setError('Session expired. Please sign in again.');
+      } else if (error instanceof Error && error.message.includes('404')) {
+        setError('Service not found. The API endpoint may be unavailable.');
+      } else {
+        setError('Failed to generate 3D model. Please try again.');
+      }
     } finally {
       setIsGenerating(false);
+      setMessage('');
     }
   };
 
