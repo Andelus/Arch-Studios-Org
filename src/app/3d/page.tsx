@@ -456,6 +456,9 @@ function ThreeDModelingContent() {
     setIsGenerating(true);
     setError(null);
     setMessage('Generating 3D model from multiple images...');
+    
+    // Log the number of images for debugging
+    console.log(`Attempting to generate 3D model from ${multiImages.length} images`);
 
     try {
       const response = await fetch('/api/generate-3d-multi', {
@@ -471,6 +474,9 @@ function ThreeDModelingContent() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Log the error response for debugging
+        console.error('API Error:', response.status, data.error);
+        
         if (response.status === 403 && data.error?.includes('insufficient credits')) {
           setError('Your credits have been exhausted. You need to purchase more credits to continue generating 3D models.');
           return;
@@ -481,6 +487,19 @@ function ThreeDModelingContent() {
         }
         if (response.status === 401) {
           setError('Authentication error. Please sign in again.');
+          return;
+        }
+        if (response.status === 400) {
+          // Handle validation errors specifically
+          if (data.error?.includes('At least 2 images')) {
+            setError('Please upload at least 2 images from different views');
+          } else if (data.error?.includes('Maximum of 23 images')) {
+            setError('Too many images. Please use a maximum of 23 images.');
+          } else if (data.error?.includes('invalid')) {
+            setError('One or more images are invalid. Please try different images.');
+          } else {
+            setError(data.error || 'Invalid request. Please check your images.');
+          }
           return;
         }
         setError(data.error || 'Failed to generate 3D model');

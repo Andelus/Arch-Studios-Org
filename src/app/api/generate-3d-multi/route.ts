@@ -26,18 +26,18 @@ export async function POST(req: Request) {
     // Check user's credits/subscription
     const { data: profile } = await supabase
       .from('profiles')
-      .select('credits_balance, subscription_status')
+      .select('credits, subscription_status')
       .eq('id', userId)
       .single();
 
-    if (!profile || profile.credits_balance < 100) {
+    if (!profile || profile.credits < 100) {
       return NextResponse.json(
         { error: 'Insufficient credits. 3D model generation requires 100 credits. Please purchase more credits to continue.' },
         { status: 403 }
       );
     }
 
-    if (profile.subscription_status !== 'ACTIVE' && profile.subscription_status !== 'TRIAL') {
+    if (profile.subscription_status !== 'ACTIVE') {
       return NextResponse.json(
         { error: 'Your subscription has expired. Please renew to continue.' },
         { status: 403 }
@@ -45,65 +45,120 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { images } = body;
+    const { imageUrls } = body;
 
-    if (!Array.isArray(images) || images.length < 2 || images.length > 3) {
+    if (!Array.isArray(imageUrls) || imageUrls.length < 2) {
       return NextResponse.json(
-        { error: 'Between 2 and 3 images are required' },
+        { error: 'At least 2 images are required' },
         { status: 400 }
       );
     }
 
-    // Convert base64 images to URLs if needed
-    const imageUrls = [];
-    for (const image of images) {
-      if (image.startsWith('data:image')) {
-        // Extract base64 content
-        const base64Data = image.split(',')[1];
+    // Add validation for image URLs and count
+    if (imageUrls.length > 23) {
+      return NextResponse.json(
+        { error: 'Maximum of 23 images allowed' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if all URLs are valid
+    for (const url of imageUrls) {
+      try {
+        if (!url || (typeof url === 'string' && url.trim() === '')) {
+          return NextResponse.json(
+            { error: 'Empty image URL detected' },
+            { status: 400 }
+          );
+        }
         
-        // Upload to temporary storage or use directly
-        // For this example, we'll assume we have a way to convert to URLs
-        // This would be replaced with actual implementation
+        // For data URLs, check if they're properly formatted
+        if (url.startsWith('data:image/')) {
+          // Data URLs are valid for our use
+          continue;
+        }
         
-        // For demo purposes, we'll pass the base64 directly
-        imageUrls.push(base64Data);
-      } else {
-        imageUrls.push(image);
+        // For regular URLs, validate them
+        new URL(url);
+      } catch (e) {
+        return NextResponse.json(
+          { error: 'One or more image URLs are invalid' },
+          { status: 400 }
+        );
       }
     }
 
-    const result = await fal.subscribe("fal-ai/trellis/multi", {
-      input: {
-        image_urls: imageUrls,
-        ss_guidance_strength: 7.5,
-        ss_sampling_steps: 12,
-        slat_guidance_strength: 3,
-        slat_sampling_steps: 12,
-        mesh_simplify: 0.95,
-        texture_size: 1024,
-        multiimage_algo: "stochastic"
+    // Create an AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2-minute timeout
+
+    try {
+      const result = await fal.subscribe("fal-ai/trellis/multi", {
+        input: {
+          image_urls: imageUrls,
+          ss_guidance_strength: 7.5,
+          ss_sampling_steps: 12,
+          slat_guidance_strength: 3,
+          slat_sampling_steps: 12,
+          mesh_simplify: 0.95,
+          texture_size: 1024,
+          multiimage_algo: "multi_diffusion"
+        }
+      });
+
+      // Clear the timeout since the request completed
+      clearTimeout(timeoutId);
+
+      // Verify we have a valid model URL before deducting credits
+      if (!result?.data?.model_mesh?.url) {
+        return NextResponse.json(
+          { error: 'The 3D model generation service returned an incomplete response' },
+          { status: 500 }
+        );
       }
-    });
 
-    // Deduct credits and record transaction
-    const { error: dbError } = await supabase.rpc('handle_generation_deduction', {
-      p_user_id: userId,
-      p_generation_type: 'MULTI_VIEW_3D',
-      p_credit_amount: 100,
-      p_description: `Generated 3D model from ${images.length} views`
-    });
+      // Deduct credits only after successful generation
+      await supabase
+        .from('profiles')
+        .update({ credits: profile.credits - 100 })
+        .eq('id', userId);
 
-    if (dbError) {
-      console.error('Database error during credit deduction:', dbError);
-      throw new Error(`Failed to process credit deduction: ${dbError.message}`);
+      return NextResponse.json({
+        modelUrl: result.data.model_mesh.url,
+        creditsRemaining: profile.credits - 100
+      });
+    } catch (error) {
+      // Clear the timeout to prevent memory leaks
+      clearTimeout(timeoutId);
+      throw error; // Re-throw to be caught by the outer catch block
     }
-
-    return NextResponse.json({
-      modelUrl: result.data.model_mesh.url,
-      creditsRemaining: profile.credits_balance - 100
-    });
   } catch (error) {
     console.error('Error generating 3D model:', error);
+    
+    // Handle specific error cases
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return NextResponse.json(
+          { error: 'The request timed out. Please try again.' },
+          { status: 408 }
+        );
+      }
+      
+      if (error.message.includes('Unauthorized') || error.message.includes('auth')) {
+        return NextResponse.json(
+          { error: 'Authentication failed. Please sign in again.' },
+          { status: 401 }
+        );
+      }
+      
+      if (error.message.includes('not found') || error.message.toLowerCase().includes('404')) {
+        return NextResponse.json(
+          { error: 'The 3D generation service is currently unavailable.' },
+          { status: 503 }
+        );
+      }
+    }
+    
     return NextResponse.json(
       { error: 'Failed to generate 3D model' },
       { status: 500 }
