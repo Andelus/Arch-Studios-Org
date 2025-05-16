@@ -55,7 +55,21 @@ function ThreeDModelingContent() {
     if (imageUrl) {
       setSourceImage(decodeURIComponent(imageUrl));
     }
-  }, [imageUrl]);
+
+    // Check for multi-view images passed from the multi-view page
+    const multiViewParam = searchParams?.get('multiView');
+    if (multiViewParam) {
+      try {
+        const decodedImages = JSON.parse(decodeURIComponent(multiViewParam));
+        if (Array.isArray(decodedImages) && decodedImages.length > 0) {
+          setMultiImages(decodedImages.map(img => ({ url: img.image, view: img.view })));
+          setActiveTab('multi');
+        }
+      } catch (error) {
+        console.error('Error parsing multi-view images:', error);
+      }
+    }
+  }, [imageUrl, searchParams]);
 
   // Handle model loading when current model changes
   useEffect(() => {
@@ -455,51 +469,48 @@ function ThreeDModelingContent() {
 
     setIsGenerating(true);
     setError(null);
+    setMessage('Generating 3D model from multiple views...');
 
     try {
-      const result = await fal.subscribe("fal-ai/trellis/multi", {
-        input: {
-          image_urls: multiImages.map(img => img.url),
-          ss_guidance_strength: 7.5,
-          ss_sampling_steps: 12,
-          slat_guidance_strength: 3,
-          slat_sampling_steps: 12,
-          mesh_simplify: 0.95,
-          texture_size: 1024,
-          multiimage_algo: "stochastic"
+      const response = await fetch('/api/generate-3d-multi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS") {
-            setMessage(update.logs[update.logs.length - 1]?.message || 'Processing...');
-          }
-        },
+        body: JSON.stringify({
+          images: multiImages.map(img => img.url),
+        }),
       });
 
-      if (result.data?.model_mesh?.url) {
-        const newModel = {
-          url: result.data.model_mesh.url,
-          sourceImage: multiImages[0].url
-        };
+      const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate 3D model');
+      }
+
+      if (data.modelUrl) {
+        // Add the multi-view generated model to our models array
         setGeneratedModels(prev => {
           const newModels = [...prev];
           if (newModels.length >= 3) {
             newModels.shift();
           }
-          newModels.push(newModel);
+          newModels.push({
+            url: data.modelUrl,
+            sourceImage: multiImages[0].url // Use the first image as thumbnail
+          });
           return newModels;
         });
-
-        setCurrentModelIndex(prev => prev + 1);
-        await loadModel(result.data.model_mesh.url);
+        
+        setCurrentModelIndex(generatedModels.length);
+        setMessage(`Multi-view 3D model created successfully! Remaining credits: ${data.creditsRemaining}`);
+        setTimeout(() => setMessage(''), 5000);
       }
-    } catch (error) {
-      console.error('Error generating 3D model:', error);
-      setError('Failed to generate 3D model. Please try again.');
+    } catch (error: any) {
+      console.error('Error generating multi-view 3D model:', error);
+      setError(error.message || 'Failed to generate multi-view 3D model. Please try again.');
     } finally {
       setIsGenerating(false);
-      setMessage('');
     }
   };
 

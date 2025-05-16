@@ -274,6 +274,7 @@
   transition: all 0.2s;
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -305,6 +306,18 @@
 .aiButton.locked i {
   font-size: 0.8rem;
   margin-right: 0.2rem;
+  color: rgba(138, 43, 226, 0.5);
+}
+
+.qualityDescription {
+  font-size: 10px;
+  opacity: 0.7;
+  text-align: center;
+  display: none;
+}
+
+.aiButton:hover .qualityDescription {
+  display: block;
 }
 
 .poweredBy {

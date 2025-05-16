@@ -260,10 +260,23 @@ export default function ImageGeneration() {
           <span className={styles.logoText}>Arch Studios</span>
           <span className={styles.indie}>indie</span>
         </div>
-        <Link href="/dashboard" className={styles.backButton}>
-          <i className="fa-solid fa-arrow-left"></i>
-        </Link>
+        <div className={styles.navButtons}>
+          <Link href="/dashboard" className={styles.backButton}>
+            <i className="fa-solid fa-arrow-left"></i>
+          </Link>
+          <div className={styles.divider}>|</div>
+          <span className={styles.title}>AI Image Generator</span>
+        </div>
         <CreditDisplay />
+      </div>
+
+      <div className={styles.tabs}>
+        <Link href="/image" className={`${styles.tab} ${styles.active}`}>
+          <i className="fa-solid fa-image"></i> Single View
+        </Link>
+        <Link href="/image/multi-view" className={`${styles.tab}`}>
+          <i className="fa-solid fa-images"></i> Multi-View
+        </Link>
       </div>
 
       <div className={styles.mainContent}>
@@ -436,6 +449,12 @@ export default function ImageGeneration() {
                       onClick={() => handleActionClick('3d', generatedImages[currentImageIndex])}
                     >
                       <i className="fa-solid fa-cube"></i> Make 3D
+                    </button>
+                    <button 
+                      className={styles.actionButton}
+                      onClick={() => router.push('/image/multi-view')}
+                    >
+                      <i className="fa-solid fa-images"></i> Create Multi-View
                     </button>
                   </div>
                 )}

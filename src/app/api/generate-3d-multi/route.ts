@@ -26,18 +26,18 @@ export async function POST(req: Request) {
     // Check user's credits/subscription
     const { data: profile } = await supabase
       .from('profiles')
-      .select('credits, subscription_status')
+      .select('credits_balance, subscription_status')
       .eq('id', userId)
       .single();
 
-    if (!profile || profile.credits < 100) {
+    if (!profile || profile.credits_balance < 100) {
       return NextResponse.json(
         { error: 'Insufficient credits. 3D model generation requires 100 credits. Please purchase more credits to continue.' },
         { status: 403 }
       );
     }
 
-    if (profile.subscription_status !== 'ACTIVE') {
+    if (profile.subscription_status !== 'ACTIVE' && profile.subscription_status !== 'TRIAL') {
       return NextResponse.json(
         { error: 'Your subscription has expired. Please renew to continue.' },
         { status: 403 }
@@ -45,13 +45,31 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { imageUrls } = body;
+    const { images } = body;
 
-    if (!Array.isArray(imageUrls) || imageUrls.length < 2) {
+    if (!Array.isArray(images) || images.length < 2 || images.length > 3) {
       return NextResponse.json(
-        { error: 'At least 2 images are required' },
+        { error: 'Between 2 and 3 images are required' },
         { status: 400 }
       );
+    }
+
+    // Convert base64 images to URLs if needed
+    const imageUrls = [];
+    for (const image of images) {
+      if (image.startsWith('data:image')) {
+        // Extract base64 content
+        const base64Data = image.split(',')[1];
+        
+        // Upload to temporary storage or use directly
+        // For this example, we'll assume we have a way to convert to URLs
+        // This would be replaced with actual implementation
+        
+        // For demo purposes, we'll pass the base64 directly
+        imageUrls.push(base64Data);
+      } else {
+        imageUrls.push(image);
+      }
     }
 
     const result = await fal.subscribe("fal-ai/trellis/multi", {
@@ -67,15 +85,22 @@ export async function POST(req: Request) {
       }
     });
 
-    // Deduct credits
-    await supabase
-      .from('profiles')
-      .update({ credits: profile.credits - 100 })
-      .eq('id', userId);
+    // Deduct credits and record transaction
+    const { error: dbError } = await supabase.rpc('handle_generation_deduction', {
+      p_user_id: userId,
+      p_generation_type: 'MULTI_VIEW_3D',
+      p_credit_amount: 100,
+      p_description: `Generated 3D model from ${images.length} views`
+    });
+
+    if (dbError) {
+      console.error('Database error during credit deduction:', dbError);
+      throw new Error(`Failed to process credit deduction: ${dbError.message}`);
+    }
 
     return NextResponse.json({
       modelUrl: result.data.model_mesh.url,
-      creditsRemaining: profile.credits - 100
+      creditsRemaining: profile.credits_balance - 100
     });
   } catch (error) {
     console.error('Error generating 3D model:', error);

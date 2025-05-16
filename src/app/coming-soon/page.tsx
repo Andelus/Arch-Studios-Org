@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from "@clerk/nextjs";
 import styles from './ComingSoon.module.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import CreditDisplay from '@/components/CreditDisplay';
@@ -12,6 +13,7 @@ import DrawingCanvas from './components/DrawingCanvas';
 function ImageEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
   const [activeTab, setActiveTab] = useState<'edit' | 'render'>(
     searchParams?.get('mode') === 'edit' ? 'edit' : 'render'
   );
@@ -29,6 +31,12 @@ function ImageEditorContent() {
   const [drawMode, setDrawMode] = useState<'pen' | 'eraser'>('pen');
 
   useEffect(() => {
+    // Redirect if not signed in
+    if (!isSignedIn) {
+      router.push('/');
+      return;
+    }
+
     const fetchSubscription = async () => {
       try {
         const response = await fetch('/api/profile');
@@ -43,7 +51,7 @@ function ImageEditorContent() {
     };
 
     fetchSubscription();
-  }, []);
+  }, [isSignedIn, router]);
 
   const canAccessQuality = (quality: string): boolean => {
     switch (quality) {
@@ -52,7 +60,8 @@ function ImageEditorContent() {
       case 'Enhanced':
         return subscription === 'ACTIVE';
       case 'Premium':
-        return subscription === 'ACTIVE' && (currentPlan?.toLowerCase() || '').includes('pro');
+        return subscription === 'ACTIVE' && 
+               (currentPlan?.toLowerCase() || '').includes('pro');
       default:
         return false;
     }
@@ -65,7 +74,7 @@ function ImageEditorContent() {
       case 'Enhanced':
         return subscription === 'ACTIVE' 
           ? 'Standard and Pro plan feature' 
-          : 'Upgrade to Standard or Pro plan to unlock';
+          : 'Upgrade to a paid plan to unlock';
       case 'Premium':
         return subscription === 'ACTIVE' && (currentPlan?.toLowerCase() || '').includes('pro')
           ? 'Pro plan feature'
@@ -75,10 +84,10 @@ function ImageEditorContent() {
     }
   };
 
-  const qualityLevels: Array<{value: 'none' | 'minor' | 'major'; label: string}> = [
-    { value: 'none', label: 'Standard' },
-    { value: 'minor', label: 'Enhanced' },
-    { value: 'major', label: 'Premium' }
+  const qualityLevels: Array<{value: 'none' | 'minor' | 'major'; label: string; description: string}> = [
+    { value: 'none', label: 'Standard', description: 'Basic quality, available to all users' },
+    { value: 'minor', label: 'Enhanced', description: 'Better details and composition (requires paid subscription)' },
+    { value: 'major', label: 'Premium', description: 'Highest quality with maximum detail (Pro plan only)' }
   ];
 
   React.useEffect(() => {
@@ -279,23 +288,27 @@ function ImageEditorContent() {
                   <div className={styles.infoTooltip}>
                     Controls how much the AI modifies your image:
                     <br />• <strong>Standard:</strong> Minimal changes, preserves most of the original details
-                    <br />• <strong>Enhanced:</strong> Moderate edits, balances between original and new elements
-                    <br />• <strong>Premium:</strong> Significant changes, prioritizes the new content
+                    <br />• <strong>Enhanced:</strong> Moderate edits, balances between original and new elements (Paid plans only)
+                    <br />• <strong>Premium:</strong> Significant changes, prioritizes the new content (Pro only)
                   </div>
                 </h3>
                 <div className={styles.aiAssistButtons}>
-                  {qualityLevels.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      className={`${styles.aiButton} ${drawAssist === value ? styles.activeAi : ''} ${!canAccessQuality(label) ? styles.locked : ''}`}
-                      onClick={() => canAccessQuality(label) && setDrawAssist(value)}
-                      title={getQualityButtonTooltip(label)}
-                      disabled={!canAccessQuality(label)}
-                    >
-                      {!canAccessQuality(label) && <i className="fa-solid fa-lock"></i>}
-                      {label}
-                    </button>
-                  ))}
+                  {qualityLevels.map(({ value, label, description }) => {
+                    const isLocked = !canAccessQuality(label);
+                    return (
+                      <button
+                        key={value}
+                        className={`${styles.aiButton} ${drawAssist === value ? styles.activeAi : ''} ${isLocked ? styles.locked : ''}`}
+                        onClick={() => !isLocked && setDrawAssist(value)}
+                        title={getQualityButtonTooltip(label)}
+                        disabled={isLocked}
+                      >
+                        {isLocked && <i className="fa-solid fa-lock"></i>}
+                        {label}
+                        <span className={styles.qualityDescription}>{description}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className={styles.actionButtons}>
@@ -398,23 +411,27 @@ function ImageEditorContent() {
                         <div className={styles.infoTooltip}>
                           Controls the quality and detail level of the generated image:
                           <br />• <strong>Standard:</strong> Basic quality (Free)
-                          <br />• <strong>Enhanced:</strong> Better details and composition (Standard & Pro)
+                          <br />• <strong>Enhanced:</strong> Better details and composition (Paid plans only)
                           <br />• <strong>Premium:</strong> Highest quality with maximum detail (Pro only)
                         </div>
                       </h3>
                       <div className={styles.aiAssistButtons}>
-                        {qualityLevels.map(({ value, label }) => (
-                          <button
-                            key={value}
-                            className={`${styles.aiButton} ${drawAssist === value ? styles.activeAi : ''} ${!canAccessQuality(label) ? styles.locked : ''}`}
-                            onClick={() => canAccessQuality(label) && setDrawAssist(value)}
-                            title={getQualityButtonTooltip(label)}
-                            disabled={!canAccessQuality(label)}
-                          >
-                            {!canAccessQuality(label) && <i className="fa-solid fa-lock"></i>}
-                            {label}
-                          </button>
-                        ))}
+                        {qualityLevels.map(({ value, label, description }) => {
+                          const isLocked = !canAccessQuality(label);
+                          return (
+                            <button
+                              key={value}
+                              className={`${styles.aiButton} ${drawAssist === value ? styles.activeAi : ''} ${isLocked ? styles.locked : ''}`}
+                              onClick={() => !isLocked && setDrawAssist(value)}
+                              title={getQualityButtonTooltip(label)}
+                              disabled={isLocked}
+                            >
+                              {isLocked && <i className="fa-solid fa-lock"></i>}
+                              {label}
+                              <span className={styles.qualityDescription}>{description}</span>
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <div className={styles.actionButtons}>
