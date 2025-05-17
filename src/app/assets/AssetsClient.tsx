@@ -151,7 +151,7 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
     setShowViewModal(true);
   };
 
-  // Use an asset in a different page
+  // This method is kept for backward compatibility but no longer used with the new button UI
   const useAssetInApp = (asset: UserAsset) => {
     if (!asset) return;
 
@@ -283,9 +283,9 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
             <div className={styles.assetActions}>
               <button 
                 className={styles.actionButton}
-                onClick={() => useAssetInApp(asset)}
+                onClick={() => handleAssetClick(asset)}
               >
-                <i className="fas fa-pencil-alt"></i> Use
+                <i className="fas fa-eye"></i> View Details
               </button>
               <button 
                 className={`${styles.actionButton} ${styles.deleteButton}`}
@@ -400,7 +400,7 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
               </div>
             )}
           </div>
-          <div className={styles.modalFooter}>
+          <div className={`${styles.modalFooter} ${styles.enhancedModalFooter}`}>
             <button
               className={styles.buttonSecondary}
               onClick={() => {
@@ -410,15 +410,100 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
             >
               Close
             </button>
-            <button
-              className={styles.buttonPrimary}
-              onClick={() => {
-                useAssetInApp(selectedAsset);
-                setShowViewModal(false);
-              }}
-            >
-              Use in App
-            </button>
+            {selectedAsset.asset_type === 'image' && (
+              <div className={styles.imageActionButtons}>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = selectedAsset.asset_url;
+                    link.download = 'arch-studios-image.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <i className="fa-solid fa-download"></i> Download
+                </button>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    router.push(`/coming-soon?mode=edit&image=${encodeURIComponent(selectedAsset.asset_url)}`);
+                    setShowViewModal(false);
+                  }}
+                >
+                  <i className="fa-solid fa-pen-to-square"></i> Edit
+                </button>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    router.push(`/3d?imageUrl=${encodeURIComponent(selectedAsset.asset_url)}`);
+                    setShowViewModal(false);
+                  }}
+                >
+                  <i className="fa-solid fa-cube"></i> Make 3D
+                </button>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    localStorage.setItem('multiViewReferenceImage', selectedAsset.asset_url);
+                    router.push('/image/multi-view');
+                    setShowViewModal(false);
+                  }}
+                >
+                  <i className="fa-solid fa-images"></i> Multi-View
+                </button>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    router.push(`/coming-soon?mode=render&image=${encodeURIComponent(selectedAsset.asset_url)}`);
+                    setShowViewModal(false);
+                  }}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i> Render
+                </button>
+              </div>
+            )}
+            {selectedAsset.asset_type === 'multi_view' && (
+              <div className={styles.imageActionButtons}>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = selectedAsset.asset_url;
+                    link.download = 'arch-studios-multiview.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <i className="fa-solid fa-download"></i> Download
+                </button>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    localStorage.setItem('multiViewReferenceImage', selectedAsset.asset_url);
+                    router.push('/image/multi-view');
+                    setShowViewModal(false);
+                  }}
+                >
+                  <i className="fa-solid fa-pencil-alt"></i> Edit Multi-View
+                </button>
+              </div>
+            )}
+            {selectedAsset.asset_type === '3d' && (
+              <div className={styles.imageActionButtons}>
+                <button 
+                  className={styles.actionButton}
+                  onClick={() => {
+                    router.push(`/3d?modelUrl=${encodeURIComponent(selectedAsset.asset_url)}`);
+                    setShowViewModal(false);
+                  }}
+                >
+                  <i className="fa-solid fa-cube"></i> Edit 3D Model
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
