@@ -80,9 +80,10 @@ export async function saveUserAsset(props: SaveAssetProps) {
  * 
  * @param {string} userId - User ID
  * @param {AssetType} [assetType] - Optional filter by asset type
+ * @param {string} [authToken] - Optional auth token for browser requests
  * @returns {Promise<{success: boolean, data?: UserAsset[], error?: any}>} Result object with assets
  */
-export async function getUserAssets(userId: string, assetType?: AssetType) {
+export async function getUserAssets(userId: string, assetType?: AssetType, authToken?: string) {
   try {
     console.log(`Fetching assets for user ${userId}, type filter: ${assetType || 'none'}`);
     
@@ -98,6 +99,15 @@ export async function getUserAssets(userId: string, assetType?: AssetType) {
     // service client for server context (bypasses RLS with service role)
     const client = isBrowser ? supabaseClientAnon : supabase;
     console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    
+    // If we have an auth token in browser context, set the session
+    if (isBrowser && authToken) {
+      console.log('Setting auth session with token before querying');
+      await client.auth.setSession({
+        access_token: authToken,
+        refresh_token: authToken,
+      });
+    }
     
     // Add debug info to track potential issues
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
@@ -138,9 +148,10 @@ export async function getUserAssets(userId: string, assetType?: AssetType) {
  * 
  * @param {string} userId - User ID
  * @param {string} assetId - Asset ID to delete
+ * @param {string} [authToken] - Optional auth token for browser requests
  * @returns {Promise<{success: boolean, error?: any}>} Result object
  */
-export async function deleteUserAsset(userId: string, assetId: string) {
+export async function deleteUserAsset(userId: string, assetId: string, authToken?: string) {
   try {
     console.log(`Deleting asset ${assetId} for user ${userId}`);
     
@@ -156,6 +167,15 @@ export async function deleteUserAsset(userId: string, assetId: string) {
     // service client for server context (bypasses RLS with service role)
     const client = isBrowser ? supabaseClientAnon : supabase;
     console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    
+    // If we have an auth token in browser context, set the session
+    if (isBrowser && authToken) {
+      console.log('Setting auth session with token before deleting');
+      await client.auth.setSession({
+        access_token: authToken,
+        refresh_token: authToken,
+      });
+    }
     
     // Add debug info to track potential issues
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {

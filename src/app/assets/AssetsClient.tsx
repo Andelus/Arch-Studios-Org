@@ -43,7 +43,8 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
         
         const { success, data, error } = await getUserAssets(
           userId, 
-          filter !== 'all' ? filter as AssetType : undefined
+          filter !== 'all' ? filter as AssetType : undefined,
+          token || undefined  // Pass the auth token explicitly
         );
         
         if (success && data) {
@@ -93,7 +94,9 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
     if (!selectedAsset) return;
     
     try {
-      const { success, error } = await deleteUserAsset(userId, selectedAsset.id);
+      // Get the authentication token from Clerk
+      const token = await getToken({ template: 'supabase' });
+      const { success, error } = await deleteUserAsset(userId, selectedAsset.id, token || undefined);
       
       if (success) {
         // Remove the asset from the local state
