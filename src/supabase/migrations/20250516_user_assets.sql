@@ -66,23 +66,38 @@ CREATE POLICY "Service role has full access" ON user_assets
 CREATE POLICY "Users can view their own assets" ON user_assets
   FOR SELECT
   TO authenticated
-  USING (auth.uid()::text = user_id);
+  USING (
+    auth.jwt()->>'sub' = user_id
+    OR (auth.uid()::text = user_id)
+  );
 
 -- Create policy for inserting assets
 CREATE POLICY "Users can insert their own assets" ON user_assets
   FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid()::text = user_id);
+  WITH CHECK (
+    auth.jwt()->>'sub' = user_id
+    OR (auth.uid()::text = user_id)
+  );
 
 -- Create policy for updating assets
 CREATE POLICY "Users can update their own assets" ON user_assets
   FOR UPDATE
   TO authenticated
-  USING (auth.uid()::text = user_id)
-  WITH CHECK (auth.uid()::text = user_id);
+  USING (
+    auth.jwt()->>'sub' = user_id
+    OR (auth.uid()::text = user_id)
+  )
+  WITH CHECK (
+    auth.jwt()->>'sub' = user_id
+    OR (auth.uid()::text = user_id)
+  );
 
 -- Create policy for deleting assets
 CREATE POLICY "Users can delete their own assets" ON user_assets
   FOR DELETE
   TO authenticated
-  USING (auth.uid()::text = user_id);
+  USING (
+    auth.jwt()->>'sub' = user_id
+    OR (auth.uid()::text = user_id)
+  );

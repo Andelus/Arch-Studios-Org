@@ -48,6 +48,17 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           throw new Error('Failed to get Supabase token from Clerk');
         }
 
+        // Log JWT details for debugging
+        try {
+          const tokenParts = token.split('.');
+          const header = JSON.parse(atob(tokenParts[0]));
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('JWT Header:', header);
+          console.log('JWT Payload:', payload);
+        } catch (e) {
+          console.warn('Could not parse JWT for debugging:', e);
+        }
+
         // Set the Supabase auth session using the Clerk JWT
         const { error: sessionError } = await supabaseClientAnon.auth.setSession({
           access_token: token,
