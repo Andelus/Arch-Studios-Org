@@ -218,23 +218,31 @@
 }
 
 .toolButton {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(138, 43, 226, 0.1);
   border: 1px solid rgba(138, 43, 226, 0.2);
   border-radius: 8px;
   color: #fff;
-  font-size: 1rem;
-  padding: 0.75rem 1.25rem;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
   flex: 1;
-  transition: all 0.2s;
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   position: relative;
   outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+  box-shadow: 
+    0 4px 12px rgba(138, 43, 226, 0.15),
+    0 1px 3px rgba(138, 43, 226, 0.1);
+  overflow: hidden;
 }
 
 .toolButton:hover {
-  background: rgba(138, 43, 226, 0.1);
+  background: rgba(138, 43, 226, 0.15);
   border-color: rgba(138, 43, 226, 0.3);
 }
 
@@ -264,24 +272,29 @@
 }
 
 .aiButton {
-  padding: 0.75rem 1rem;
+  padding: 0.4rem 0.8rem;
   border: 1px solid rgba(138, 43, 226, 0.3);
-  border-radius: 0.5rem;
+  border-radius: 8px;
   background: rgba(138, 43, 226, 0.1);
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   color: #fff;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  backdrop-filter: blur(5px);
+  gap: 0.4rem;
+  backdrop-filter: blur(10px);
   text-align: center;
   min-width: 0;
   white-space: nowrap;
+  font-weight: 500;
+  box-shadow: 
+    0 4px 12px rgba(138, 43, 226, 0.15),
+    0 1px 3px rgba(138, 43, 226, 0.1);
+  overflow: hidden;
 }
 
 .aiButton:hover:not(.locked) {
@@ -343,14 +356,15 @@
   border: 1px solid #3a3a3a;
   border-radius: 8px;
   color: #fff;
-  font-size: 0.9rem;
-  padding: 0.6rem;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 0.4rem;
+  font-weight: 500;
 }
 
 .pauseButton:hover {
@@ -363,14 +377,14 @@
   border: none;
   border-radius: 8px;
   color: #fff;
-  font-size: 0.9rem;
-  padding: 1rem;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 0.4rem;
   font-weight: 500;
   position: relative;
   overflow: hidden;
@@ -535,13 +549,13 @@
 .uploadButton {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.4rem;
   background: linear-gradient(45deg, #8A2BE2, #9370DB);
   border: none;
   border-radius: 8px;
   color: #fff;
-  font-size: 1rem;
-  padding: 1rem 1.5rem;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 500;
@@ -742,24 +756,37 @@
 }
 
 .canvasActionButton {
-  background: rgba(138, 43, 226, 0.1);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(138, 43, 226, 0.2);
   border-radius: 8px;
   color: #fff;
-  font-size: 0.9rem;
-  padding: 0.75rem 1.25rem;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.4rem;
   font-weight: 500;
   position: relative;
   overflow: hidden;
+}
+
+/* Styling for brush buttons - keeps the original purple color */
+.canvasActionButton.brushButton {
+  background: rgba(138, 43, 226, 0.1);
+  border: 1px solid rgba(138, 43, 226, 0.2);
   box-shadow: 
     0 4px 12px rgba(138, 43, 226, 0.15),
     0 1px 3px rgba(138, 43, 226, 0.1);
+}
+
+/* Styling for action buttons (download, render, make 3D) - uses the new red color */
+.canvasActionButton:not(.brushButton) {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  box-shadow: 
+    0 4px 12px rgba(255, 107, 107, 0.15),
+    0 1px 3px rgba(255, 107, 107, 0.1);
 }
 
 .canvasActionButton::before {

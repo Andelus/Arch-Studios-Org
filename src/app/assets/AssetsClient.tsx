@@ -1,12 +1,12 @@
 "use client";
 
-// filepath: /Users/Shared/VScode/Arch Studios/src/app/assets/AssetsClient.tsx
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './Assets.module.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { getUserAssets, deleteUserAsset, AssetType, UserAsset } from '@/lib/asset-manager';
 import SimpleModelViewer from '@/components/SimpleModelViewer';
+import { useAuth } from '@clerk/nextjs';
 
 interface AssetsClientProps {
   userId: string;
@@ -19,19 +19,31 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
   const [selectedAsset, setSelectedAsset] = useState<UserAsset | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const router = useRouter();
+  const { getToken } = useAuth();
 
   // Fetch assets whenever userId or filter changes
   useEffect(() => {
     const fetchAssets = async () => {
       setLoading(true);
+      setFetchError(null);
+      
       try {
+        console.log('Fetching assets for user:', userId, 'with filter:', filter);
+        
+        // Get the authentication token from Clerk
+        const token = await getToken({ template: 'supabase' });
+        console.log('Auth token available:', !!token);
+        
         const { success, data, error } = await getUserAssets(
           userId, 
           filter !== 'all' ? filter as AssetType : undefined
         );
         
         if (success && data) {
+          console.log(`Fetched ${data.length} assets successfully`);
+          
           // Make sure each item has the required fields from UserAsset interface
           const typedAssets = Array.isArray(data) ? data.map(item => ({
             id: String(item.id || ''),
@@ -46,18 +58,25 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
           setAssets(typedAssets);
         } else {
           console.error('Error fetching assets:', error);
+          // Fix: error might not have a message property, so we need to handle it safely
+          setFetchError(typeof error === 'object' && error !== null && 'message' in error 
+            ? String(error.message) 
+            : 'Failed to fetch assets');
           setAssets([]);
         }
       } catch (error) {
         console.error('Exception fetching assets:', error);
+        setFetchError('An unexpected error occurred');
         setAssets([]);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchAssets();
-  }, [userId, filter]);
+    if (userId) {
+      fetchAssets();
+    }
+  }, [userId, filter, getToken]);
 
   // Apply filter change
   const handleFilterChange = (newFilter: AssetType | 'all') => {
@@ -114,10 +133,17 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
         router.push(`/3d?imageUrl=${encodeURIComponent(asset.asset_url)}`);
         break;
       case 'multi_view':
-        // For multi-view we need to reconstruct the multi-view format expected by the page
+        // For multi-view, we can either:
+        // 1. Use the first image as a reference if viewImages exist in metadata
+        // 2. Or use the main asset URL directly
         const multiViewData = asset.metadata?.viewImages || [];
         if (multiViewData.length > 0) {
-          router.push(`/image/multi-view?data=${encodeURIComponent(JSON.stringify(multiViewData))}`);
+          // If there's image data in the viewImages, use the first one as reference
+          const firstImage = multiViewData[0]?.imagePreview || multiViewData[0]?.image || asset.asset_url;
+          router.push(`/image/multi-view?referenceImage=${encodeURIComponent(firstImage)}`);
+        } else {
+          // Otherwise use the main asset URL
+          router.push(`/image/multi-view?referenceImage=${encodeURIComponent(asset.asset_url)}`);
         }
         break;
     }
@@ -143,6 +169,24 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
       return (
         <div className={styles.loadingState}>
           <i className="fas fa-circle-notch fa-spin fa-3x"></i>
+        </div>
+      );
+    }
+    
+    if (fetchError) {
+      return (
+        <div className={styles.errorState || styles.emptyState}>
+          <i className="fas fa-exclamation-triangle"></i>
+          <h3 className={styles.errorStateTitle || styles.emptyStateTitle}>Error loading assets</h3>
+          <p className={styles.errorStateDesc || styles.emptyStateDesc}>
+            {fetchError}
+          </p>
+          <button 
+            onClick={() => setFilter(filter)} // This will trigger a re-fetch
+            className={styles.errorStateButton || styles.emptyStateButton}
+          >
+            Try Again
+          </button>
         </div>
       );
     }

@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from "@vercel/analytics/react";
+import { SupabaseAuthSync } from "@/lib/auth-sync";
 
 export const metadata: Metadata = {
   title: "Chateaux AI",
@@ -33,11 +34,13 @@ export default function RootLayout({
         <body
           className={`${GeistSans.variable} ${GeistMono.variable} antialiased min-h-screen w-full flex flex-col`}
         >
-          <Navigation />
-          <main className="flex-1 w-full mx-auto px-0">
-            {children}
-          </main>
-          <Analytics />
+          <SupabaseAuthSync>
+            <Navigation />
+            <main className="flex-1 w-full mx-auto px-0">
+              {children}
+            </main>
+            <Analytics />
+          </SupabaseAuthSync>
         </body>
       </html>
     </ClerkProvider>

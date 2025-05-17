@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { supabase, supabaseClientAnon } from './supabase';
+import { isBrowser } from '@/utils/environment';
 
 // Type definitions for user assets
 export type AssetType = 'image' | '3d' | 'multi_view';
@@ -29,6 +30,8 @@ export interface UserAsset {
  */
 export async function saveUserAsset(props: SaveAssetProps) {
   try {
+    console.log(`Saving ${props.assetType} asset for user ${props.userId}`);
+    
     // Validate required fields
     if (!props.userId || !props.assetType || !props.assetUrl) {
       return {
@@ -44,8 +47,9 @@ export async function saveUserAsset(props: SaveAssetProps) {
         error: `Invalid asset type: ${props.assetType}. Must be 'image', '3d', or 'multi_view'`
       };
     }
-
-    // Insert the asset into the database
+    
+    // Always use service role client for saving assets (server operation)
+    // This is important because saveUserAsset might be called from server components
     const { data, error } = await supabase
       .from('user_assets')
       .insert({
@@ -62,7 +66,8 @@ export async function saveUserAsset(props: SaveAssetProps) {
       console.error('Error saving user asset:', error);
       return { success: false, error };
     }
-
+    
+    console.log(`Asset saved successfully with ID: ${data.id}`);
     return { success: true, data };
   } catch (error) {
     console.error('Exception saving user asset:', error);
@@ -79,6 +84,8 @@ export async function saveUserAsset(props: SaveAssetProps) {
  */
 export async function getUserAssets(userId: string, assetType?: AssetType) {
   try {
+    console.log(`Fetching assets for user ${userId}, type filter: ${assetType || 'none'}`);
+    
     // Validate required fields
     if (!userId) {
       return {
@@ -87,8 +94,13 @@ export async function getUserAssets(userId: string, assetType?: AssetType) {
       };
     }
 
+    // Use the appropriate client - anon client for browser context (respects RLS),
+    // service client for server context (bypasses RLS with service role)
+    const client = isBrowser ? supabaseClientAnon : supabase;
+    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context`);
+
     // Build the query
-    let query = supabase
+    let query = client
       .from('user_assets')
       .select('*')
       .eq('user_id', userId)
@@ -107,6 +119,8 @@ export async function getUserAssets(userId: string, assetType?: AssetType) {
       return { success: false, error };
     }
 
+    console.log(`Successfully fetched ${data?.length || 0} assets`);
+    
     return { success: true, data };
   } catch (error) {
     console.error('Exception fetching user assets:', error);
@@ -123,6 +137,8 @@ export async function getUserAssets(userId: string, assetType?: AssetType) {
  */
 export async function deleteUserAsset(userId: string, assetId: string) {
   try {
+    console.log(`Deleting asset ${assetId} for user ${userId}`);
+    
     // Validate required fields
     if (!userId || !assetId) {
       return {
@@ -131,8 +147,13 @@ export async function deleteUserAsset(userId: string, assetId: string) {
       };
     }
 
+    // Use the appropriate client - anon client for browser context (respects RLS),
+    // service client for server context (bypasses RLS with service role)
+    const client = isBrowser ? supabaseClientAnon : supabase;
+    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context`);
+
     // Delete the asset
-    const { error } = await supabase
+    const { error } = await client
       .from('user_assets')
       .delete()
       .eq('id', assetId)
@@ -143,6 +164,7 @@ export async function deleteUserAsset(userId: string, assetId: string) {
       return { success: false, error };
     }
 
+    console.log(`Asset ${assetId} deleted successfully`);
     return { success: true };
   } catch (error) {
     console.error('Exception deleting user asset:', error);

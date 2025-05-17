@@ -1,7 +1,11 @@
+-- Drop existing table and related objects if they exist
+DROP TABLE IF EXISTS user_assets CASCADE;
+DROP FUNCTION IF EXISTS maintain_user_assets_limit CASCADE;
+
 -- Create user_assets table to store generation history
 CREATE TABLE IF NOT EXISTS user_assets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL, -- Changed to TEXT to match Clerk user IDs
   asset_type TEXT NOT NULL CHECK (asset_type IN ('image', '3d', 'multi_view')),
   asset_url TEXT NOT NULL,
   prompt TEXT,
@@ -53,49 +57,26 @@ EXECUTE FUNCTION maintain_user_assets_limit();
 -- Enable Row Level Security
 ALTER TABLE user_assets ENABLE ROW LEVEL SECURITY;
 
--- Create policy for selecting assets
+-- Create policy for service role access (for admin operations)
+CREATE POLICY "Service role has full access" ON user_assets
+  USING (auth.jwt() IS NULL);
+
+-- Create policy for selecting assets (consistent type handling)
 CREATE POLICY "Users can view their own assets" ON user_assets
   FOR SELECT
   USING (auth.uid()::text = user_id);
 
--- Create policy for inserting assets
+-- Create policy for inserting assets (consistent type handling)
 CREATE POLICY "Users can insert their own assets" ON user_assets
   FOR INSERT
   WITH CHECK (auth.uid()::text = user_id);
 
--- Create policy for updating assets
+-- Create policy for updating assets (consistent type handling)
 CREATE POLICY "Users can update their own assets" ON user_assets
   FOR UPDATE
   USING (auth.uid()::text = user_id);
 
--- Create policy for deleting assets
+-- Create policy for deleting assets (consistent type handling)
 CREATE POLICY "Users can delete their own assets" ON user_assets
   FOR DELETE
   USING (auth.uid()::text = user_id);
-
-  -- Enable Row Level Security
-ALTER TABLE user_assets ENABLE ROW LEVEL SECURITY;
-
--- Create policy for selecting assets
--- This allows users to read only their own assets
-CREATE POLICY "Users can view their own assets" ON user_assets
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
--- Create policy for inserting assets
--- This allows users to insert only their own assets
-CREATE POLICY "Users can insert their own assets" ON user_assets
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- Create policy for updating assets
--- This allows users to update only their own assets
-CREATE POLICY "Users can update their own assets" ON user_assets
-  FOR UPDATE
-  USING (auth.uid() = user_id);
-
--- Create policy for deleting assets
--- This allows users to delete only their own assets
-CREATE POLICY "Users can delete their own assets" ON user_assets
-  FOR DELETE
-  USING (auth.uid() = user_id);
