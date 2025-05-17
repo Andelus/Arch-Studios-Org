@@ -282,7 +282,7 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
 
             <div className={styles.assetActions}>
               <button 
-                className={styles.actionButton}
+                className={`${styles.actionButton} ${styles.primaryActionButton}`}
                 onClick={() => handleAssetClick(asset)}
               >
                 <i className="fas fa-eye"></i> View Details

@@ -182,9 +182,9 @@
 }
 
 .actionButton {
-  background: rgba(255, 107, 107, 0.1);
-  color: #ff8e8e;
-  border: 1px solid rgba(255, 107, 107, 0.3);
+  background: rgba(90, 104, 224, 0.1);
+  color: #a6c1ee;
+  border: 1px solid rgba(90, 104, 224, 0.3);
   border-radius: 6px;
   padding: 6px 12px;
   font-size: 13px;
@@ -210,11 +210,11 @@
 }
 
 .actionButton:hover {
-  background: rgba(255, 107, 107, 0.2);
+  background: rgba(90, 104, 224, 0.2);
   transform: translateY(-1px);
   box-shadow: 
-    0 6px 16px rgba(255, 107, 107, 0.25),
-    0 2px 4px rgba(255, 107, 107, 0.15);
+    0 6px 16px rgba(90, 104, 224, 0.25),
+    0 2px 4px rgba(90, 104, 224, 0.15);
 }
 
 .actionButton:hover::before {
@@ -224,12 +224,31 @@
 .actionButton:active {
   transform: translateY(1px);
   box-shadow: 
-    0 2px 8px rgba(255, 107, 107, 0.2),
-    0 1px 2px rgba(255, 107, 107, 0.1);
+    0 2px 8px rgba(90, 104, 224, 0.2),
+    0 1px 2px rgba(90, 104, 224, 0.1);
 }
 
 .actionButton i {
   font-size: 0.8rem;
+}
+
+.deleteButton {
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff8e8e;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.deleteButton:hover {
+  background: rgba(255, 107, 107, 0.2);
+  box-shadow: 
+    0 6px 16px rgba(255, 107, 107, 0.25),
+    0 2px 4px rgba(255, 107, 107, 0.15);
+}
+
+.deleteButton:active {
+  box-shadow: 
+    0 2px 8px rgba(255, 107, 107, 0.2),
+    0 1px 2px rgba(255, 107, 107, 0.1);
 }
 
 .imageActionButtons {
@@ -244,6 +263,19 @@
   padding: 5px 10px;
   height: auto;
   min-height: 32px;
+}
+
+.primaryActionButton {
+  background: rgba(166, 193, 238, 0.15);
+  color: #a6c1ee;
+  border: 1px solid rgba(90, 104, 224, 0.4);
+}
+
+.primaryActionButton:hover {
+  background: rgba(90, 104, 224, 0.3);
+  box-shadow: 
+    0 6px 16px rgba(90, 104, 224, 0.3),
+    0 2px 4px rgba(90, 104, 224, 0.2);
 }
 
 .emptyState {
