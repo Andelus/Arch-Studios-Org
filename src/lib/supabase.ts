@@ -31,6 +31,10 @@ export const supabaseClientAnon = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Default export for backward compatibility
+export const supabase = supabaseClientAnon;
+export default supabaseClientAnon;
+
 // Create a service role client for admin operations (server-side only)
 export const supabaseAdmin = !isBrowser && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey, {

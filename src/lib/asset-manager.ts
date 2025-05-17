@@ -1,4 +1,4 @@
-import { supabase, supabaseClientAnon } from './supabase';
+import { supabaseClientAnon, supabase } from './supabase';
 import { isBrowser } from '@/utils/environment';
 
 // Type definitions for user assets
