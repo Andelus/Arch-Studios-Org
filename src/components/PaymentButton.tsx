@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 
@@ -21,9 +21,23 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { isSignedIn, userId } = useAuth();
+  const { isSignedIn, userId, getToken } = useAuth();
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  // Get auth token on component mount
+  useEffect(() => {
+    if (isSignedIn && getToken) {
+      getToken().then(token => {
+        setAuthToken(token);
+        console.log('Auth token retrieved successfully:', !!token);
+      }).catch(err => {
+        console.error('Failed to get auth token:', err);
+      });
+    }
+  }, [isSignedIn, getToken]);
 
   const loadFlutterwaveScript = async () => {
+    // Existing implementation...
     return new Promise<void>((resolve, reject) => {
       if (document.getElementById('flutterwave-script')) {
         resolve();
@@ -62,6 +76,7 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
   };
 
   const initializeFlutterwaveCheckout = async (publicKey: string, email: string) => {
+    // Existing implementation...
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
     
     if (typeof window.FlutterwaveCheckout !== 'function') {
@@ -73,10 +88,12 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
           },
+          credentials: 'include', // Include cookies for session authentication
           body: JSON.stringify({
-            planId: planId,
-            autoBuy: autoBuy,
+            planId,
+            autoBuy,
             bypassChecks: true
           }),
         });
@@ -190,7 +207,20 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
 
   const handlePayment = async () => {
     if (!isSignedIn) {
+      console.log('User not signed in, redirecting to sign-in page');
       router.push('/sign-in');
+      return;
+    }
+    
+    console.log('User authentication state:', { 
+      isSignedIn, 
+      userId: userId || 'not available',
+      hasAuthToken: !!authToken
+    });
+    
+    if (!userId) {
+      setError('You must be signed in to make a payment. Please try signing out and signing back in.');
+      console.error('User is signed in but userId is missing');
       return;
     }
 
@@ -198,20 +228,33 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
     setError(null);
     
     console.log('Payment button clicked, starting payment process...');
-    console.log('Environment check - Public key available:', !!process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY);
 
     try {
       // Try server-side first approach - more reliable and avoids client-side Flutterwave issues
       try {
         console.log('Attempting server-side payment initialization...');
+        
+        // Try to refresh the auth token if not available
+        if (!authToken && getToken) {
+          try {
+            const token = await getToken();
+            setAuthToken(token);
+            console.log('Auth token refreshed:', !!token);
+          } catch (tokenError) {
+            console.error('Failed to refresh auth token:', tokenError);
+          }
+        }
+        
         const response = await fetch('/api/payment/initialize', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
           },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify({
-            planId: planId,
-            autoBuy: autoBuy,
+            planId,
+            autoBuy,
             bypassChecks: true
           }),
         });
@@ -227,7 +270,15 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
           return;
         } else {
           console.log('Server-side initialization failed, trying client-side...');
-          // If server-side fails, continue with client-side approach
+          
+          if (response.status === 401) {
+            console.error('Authentication failed. Try signing out and back in again.');
+            setError('Authentication failed. Please sign out and sign back in, then try again.');
+            setIsLoading(false);
+            return;
+          }
+          
+          // If server-side fails for other reasons, continue with client-side approach
         }
       } catch (serverError) {
         console.warn('Server-side payment initialization failed:', serverError);
@@ -244,7 +295,13 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
 
       // Get user's email
       console.log('Fetching user profile...');
-      const response = await fetch('/api/profile');
+      const response = await fetch('/api/profile', {
+        headers: {
+          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+        },
+        credentials: 'include'
+      });
+      
       const profileData = await response.json();
       console.log('Profile response status:', response.status);
       console.log('Profile data received:', profileData ? 'Yes' : 'No');

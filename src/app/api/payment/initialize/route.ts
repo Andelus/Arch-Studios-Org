@@ -6,10 +6,31 @@ import { supabase } from '@/lib/supabase';
 export async function POST(req: NextRequest) {
   try {
     console.log('Payment initialize API called');
-    const { userId } = getAuth(req);
+    
+    // Check authentication from multiple sources
+    const auth = getAuth(req);
+    let userId = auth.userId;
+    
+    // Also check for Authorization header (Bearer token)
+    const authHeader = req.headers.get('authorization');
+    if (!userId && authHeader && authHeader.startsWith('Bearer ')) {
+      // For Clerk, we'd need to validate the token, but we'll log it for now
+      console.log('Found Bearer token in Authorization header');
+    }
+    
+    // Debug auth state
+    console.log('Auth state:', {
+      hasUserId: !!userId,
+      hasAuthHeader: !!authHeader,
+      sessionId: auth.sessionId || 'none' 
+    });
+    
     if (!userId) {
       console.log('Unauthorized: No userId found in request');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        details: 'Please sign in again to continue'
+      }, { status: 401 });
     }
     console.log('User authenticated with ID:', userId);
 
