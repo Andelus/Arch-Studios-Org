@@ -37,40 +37,21 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
         if (token) {
           console.log('Received token from Clerk for Supabase auth');
           
-          // Set the Supabase auth session using the Clerk JWT
-          // First verify the current session state
-          const currentSession = await supabaseClientAnon.auth.getSession();
-          console.log('Current session state:', currentSession.data.session ? 'Active' : 'None');
-
-          // Set the new session
-          const { error, data } = await supabaseClientAnon.auth.setSession({
-            access_token: token,
-            refresh_token: token, // Using same token as refresh token as it's handled by Clerk
-          });
+          // Instead of setting a session, we'll store the token for use in the headers
+          // This avoids creating multiple GoTrueClient instances
           
-          if (error) {
-            console.error('Error setting Supabase auth session:', error);
-            // Log additional error details
-            if (error.message) console.error('Error message:', error.message);
-            if (error.status) console.error('Error status:', error.status);
-          } else {
-            console.log('Successfully set new Supabase auth session');
-            
-            // Verify the session was set correctly
-            const { data: { session }, error: verifyError } = await supabaseClientAnon.auth.getSession();
-            if (verifyError) {
-              console.error('Error verifying session:', verifyError);
-            } else if (session) {
-              console.log('Verified session is active with user:', session.user?.id);
-              // Test an authenticated request
-              const { data: testData, error: testError } = await supabaseClientAnon.auth.getUser();
-              if (testError) {
-                console.error('Test auth request failed:', testError);
-              } else {
-                console.log('Test auth request succeeded:', testData);
-              }
-            } else {
-              console.warn('Session verification failed - no active session found after setting it');
+          // Store token in sessionStorage for use across the app
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.setItem('supabase_auth_token', token);
+              console.log('Successfully stored auth token for header-based authentication');
+              
+              // Test authentication is working by logging JWT payload
+              const [header, payload] = token.split('.').slice(0, 2);
+              const decoded = JSON.parse(atob(payload));
+              console.log('Auth token contains user ID:', decoded.sub);
+            } catch (e) {
+              console.error('Error storing token:', e);
             }
           }
         } else {

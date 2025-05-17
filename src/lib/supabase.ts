@@ -25,10 +25,13 @@ export const supabaseClientAnon = createClient(
   supabaseAnonKey || '',
   {
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
+      persistSession: false,  // Disable session persistence - we'll handle auth via headers
+      autoRefreshToken: false, // Disable token refresh - Clerk handles this
+      detectSessionInUrl: false, // Disable URL detection
       flowType: 'pkce'
+    },
+    global: {
+      headers: {}
     }
   }
 );
@@ -48,3 +51,44 @@ const supabaseClient = isBrowser
     );
 
 export const supabase = supabaseClient;
+
+/**
+ * Creates an authenticated Supabase client using the provided token
+ * This approach avoids multiple GoTrueClient instances by using header-based auth
+ * 
+ * @param token JWT token from Clerk
+ * @returns Supabase client with authentication headers
+ */
+export function getAuthenticatedClient(token?: string) {
+  // If no token is provided and we're in browser context, try to get from sessionStorage
+  if (!token && typeof window !== 'undefined') {
+    try {
+      token = sessionStorage.getItem('supabase_auth_token') || undefined;
+    } catch (e) {
+      console.error('Error reading token from sessionStorage:', e);
+    }
+  }
+  
+  // If we have a token, create a client with auth headers
+  if (token) {
+    return createClient(
+      supabaseUrl || '',
+      supabaseAnonKey || '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: supabaseAnonKey || ''
+          }
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        }
+      }
+    );
+  }
+  
+  // Otherwise return the anon client
+  return supabaseClientAnon;
+}
