@@ -58,17 +58,19 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
           return;
         }
         
-        const { success, data, error } = await getUserAssets(
-          userId, 
-          filter !== 'all' ? filter as AssetType : undefined,
-          token || undefined  // Pass the auth token explicitly
-        );
+        // Create headers with the auth token
+        const headers = token ? { 
+          Authorization: `Bearer ${token}`,
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' 
+        } : undefined;
         
-        if (success && data) {
-          console.log(`Fetched ${data.length} assets successfully`);
+        const result = await getUserAssets(userId, filter !== 'all' ? filter as AssetType : undefined, headers);
+        
+        if (Array.isArray(result)) {
+          console.log(`Fetched ${result.length} assets successfully`);
           
           // Make sure each item has the required fields from UserAsset interface
-          const typedAssets = Array.isArray(data) ? data.map(item => ({
+          const typedAssets = result.map(item => ({
             id: item.id,                    // Keep original UUID from database
             user_id: String(item.user_id),  // Convert to string as it's TEXT in DB
             asset_type: (item.asset_type as AssetType) || 'image',
@@ -76,15 +78,12 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
             prompt: item.prompt !== undefined ? String(item.prompt) : null,
             created_at: String(item.created_at || ''),
             metadata: item.metadata || {}
-          } as UserAsset)) : [];
+          } as UserAsset));
           
           setAssets(typedAssets);
         } else {
-          console.error('Error fetching assets:', error);
-          // Fix: error might not have a message property, so we need to handle it safely
-          setFetchError(typeof error === 'object' && error !== null && 'message' in error 
-            ? String(error.message) 
-            : 'Failed to fetch assets');
+          console.error('Error fetching assets or no assets found');
+          setFetchError('No assets found or there was an error fetching your assets');
           setAssets([]);
         }
       } catch (error) {
@@ -113,7 +112,14 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
     try {
       // Get the authentication token from Clerk
       const token = await getToken({ template: 'supabase' });
-      const { success, error } = await deleteUserAsset(userId, selectedAsset.id, token || undefined);
+      
+      // Create headers with the auth token
+      const headers = token ? { 
+        Authorization: `Bearer ${token}`,
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' 
+      } : undefined;
+      
+      const { success, error } = await deleteUserAsset(userId, selectedAsset.id, headers);
       
       if (success) {
         // Remove the asset from the local state

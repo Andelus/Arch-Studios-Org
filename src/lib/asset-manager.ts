@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase, supabaseClientAnon } from './supabase';
 import { isBrowser } from '@/utils/environment';
 
@@ -80,28 +81,36 @@ export async function saveUserAsset(props: SaveAssetProps) {
  * 
  * @param {string} userId - User ID
  * @param {AssetType} [assetType] - Optional filter by asset type
- * @param {string} [authToken] - Optional auth token for browser requests
- * @returns {Promise<{success: boolean, data?: UserAsset[], error?: any}>} Result object with assets
+ * @param {HeadersInit} [headers] - Optional headers for authentication
+ * @returns {Promise<UserAsset[]>} Array of user assets
  */
-export async function getUserAssets(userId: string, assetType?: AssetType, authToken?: string) {
+export async function getUserAssets(
+  userId: string,
+  assetType?: AssetType,
+  headers?: HeadersInit
+): Promise<UserAsset[]> {
   try {
     console.log(`Fetching assets for user ${userId}, type filter: ${assetType || 'none'}`);
     
     // Validate required fields
     if (!userId) {
-      return {
-        success: false,
-        error: 'Missing required field: userId'
-      };
+      console.error('Missing required field: userId');
+      return [];
     }
 
     // Use the appropriate client - anon client for browser context (respects RLS),
-    // service client for server context (bypasses RLS with service role)
-    const client = isBrowser ? supabaseClientAnon : supabase;
-    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    // or create a client with custom headers if provided
+    const client = headers ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: headers as Record<string, string>,
+        },
+      }
+    ) : isBrowser ? supabaseClientAnon : supabase;
     
-    // We don't need to set a session since we're using the user_id directly in RLS policies
-    console.log('Using direct user_id comparison with RLS policies');
+    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}${headers ? ' and custom headers' : ''}`);
     
     // Add debug info to track potential issues
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
@@ -125,15 +134,15 @@ export async function getUserAssets(userId: string, assetType?: AssetType, authT
 
     if (error) {
       console.error('Error fetching user assets:', error);
-      return { success: false, error };
+      return [];
     }
 
     console.log(`Successfully fetched ${data?.length || 0} assets`);
     
-    return { success: true, data };
+    return data as UserAsset[] || [];
   } catch (error) {
     console.error('Exception fetching user assets:', error);
-    return { success: false, error };
+    return [];
   }
 }
 
@@ -142,10 +151,10 @@ export async function getUserAssets(userId: string, assetType?: AssetType, authT
  * 
  * @param {string} userId - User ID
  * @param {string} assetId - Asset ID to delete
- * @param {string} [authToken] - Optional auth token for browser requests
+ * @param {HeadersInit} [headers] - Optional headers for authentication
  * @returns {Promise<{success: boolean, error?: any}>} Result object
  */
-export async function deleteUserAsset(userId: string, assetId: string, authToken?: string) {
+export async function deleteUserAsset(userId: string, assetId: string, headers?: HeadersInit) {
   try {
     console.log(`Deleting asset ${assetId} for user ${userId}`);
     
@@ -158,12 +167,18 @@ export async function deleteUserAsset(userId: string, assetId: string, authToken
     }
 
     // Use the appropriate client - anon client for browser context (respects RLS),
-    // service client for server context (bypasses RLS with service role)
-    const client = isBrowser ? supabaseClientAnon : supabase;
-    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    // or create a client with custom headers if provided
+    const client = headers ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: headers as Record<string, string>,
+        },
+      }
+    ) : isBrowser ? supabaseClientAnon : supabase;
     
-    // We don't need to set a session since we're using the user_id directly in RLS policies
-    console.log('Using direct user_id comparison with RLS policies');
+    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}${headers ? ' and custom headers' : ''}`);
     
     // Add debug info to track potential issues
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {

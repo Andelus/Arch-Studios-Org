@@ -7,22 +7,22 @@ DROP POLICY IF EXISTS "Users can insert their own assets" ON user_assets;
 DROP POLICY IF EXISTS "Users can update their own assets" ON user_assets;
 DROP POLICY IF EXISTS "Users can delete their own assets" ON user_assets;
 
--- Create new policies using direct text comparison with user_id
+-- Create new policies using JWT comparison for Clerk integration
 CREATE POLICY "Users can view their own assets" ON user_assets
     FOR SELECT
-    USING (auth.uid()::text = user_id);
+    USING ((auth.jwt() ->> 'sub')::text = user_id);
 
 CREATE POLICY "Users can insert their own assets" ON user_assets
     FOR INSERT
-    WITH CHECK (auth.uid()::text = user_id);
+    WITH CHECK ((auth.jwt() ->> 'sub')::text = user_id);
 
 CREATE POLICY "Users can update their own assets" ON user_assets
     FOR UPDATE
-    USING (auth.uid()::text = user_id)
-    WITH CHECK (auth.uid()::text = user_id);
+    USING ((auth.jwt() ->> 'sub')::text = user_id)
+    WITH CHECK ((auth.jwt() ->> 'sub')::text = user_id);
 
 CREATE POLICY "Users can delete their own assets" ON user_assets
     FOR DELETE
-    USING (auth.uid()::text = user_id);
+    USING ((auth.jwt() ->> 'sub')::text = user_id);
 
 COMMIT;
