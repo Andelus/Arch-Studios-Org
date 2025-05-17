@@ -100,35 +100,8 @@ export async function getUserAssets(userId: string, assetType?: AssetType, authT
     const client = isBrowser ? supabaseClientAnon : supabase;
     console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
     
-    // If we have an auth token in browser context, set the session
-    if (isBrowser && authToken) {
-      console.log('Setting auth session with token before querying');
-      try {
-        // First clear any existing session
-        await client.auth.signOut();
-        
-        // Set the new session
-        const { error: sessionError } = await client.auth.setSession({
-          access_token: authToken,
-          refresh_token: authToken,
-        });
-
-        if (sessionError) {
-          console.error('Error setting auth session:', sessionError);
-          return { success: false, error: sessionError };
-        }
-
-        // Verify the session was set
-        const { data: { session } } = await client.auth.getSession();
-        if (!session) {
-          console.error('Failed to verify session after setting it');
-          return { success: false, error: 'Failed to verify session' };
-        }
-      } catch (error) {
-        console.error('Exception setting auth session:', error);
-        return { success: false, error };
-      }
-    }
+    // We don't need to set a session since we're using the user_id directly in RLS policies
+    console.log('Using direct user_id comparison with RLS policies');
     
     // Add debug info to track potential issues
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
@@ -189,14 +162,8 @@ export async function deleteUserAsset(userId: string, assetId: string, authToken
     const client = isBrowser ? supabaseClientAnon : supabase;
     console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
     
-    // If we have an auth token in browser context, set the session
-    if (isBrowser && authToken) {
-      console.log('Setting auth session with token before deleting');
-      await client.auth.setSession({
-        access_token: authToken,
-        refresh_token: authToken,
-      });
-    }
+    // We don't need to set a session since we're using the user_id directly in RLS policies
+    console.log('Using direct user_id comparison with RLS policies');
     
     // Add debug info to track potential issues
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
