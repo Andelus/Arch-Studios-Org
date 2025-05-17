@@ -36,7 +36,14 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
         const token = await getToken({ template: 'supabase' });
         console.log('Auth token available:', !!token);
         
-        // Check if Supabase is properly configured
+        // Decode and log the JWT token for debugging (only the header and payload)
+        if (token) {
+          const [header, payload] = token.split('.').slice(0, 2);
+          console.log('JWT Header:', JSON.parse(atob(header)));
+          console.log('JWT Payload:', JSON.parse(atob(payload)));
+        }
+        
+        // Check if Supabase environment is properly configured
         if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
           console.error('Supabase env variables missing in client component');
         }
