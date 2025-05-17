@@ -59,24 +59,30 @@ ALTER TABLE user_assets ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for service role access (for admin operations)
 CREATE POLICY "Service role has full access" ON user_assets
+  FOR ALL
   USING (auth.jwt() IS NULL);
 
--- Create policy for selecting assets (consistent type handling)
+-- Create policy for selecting assets
 CREATE POLICY "Users can view their own assets" ON user_assets
   FOR SELECT
+  TO authenticated
   USING (auth.uid()::text = user_id);
 
--- Create policy for inserting assets (consistent type handling)
+-- Create policy for inserting assets
 CREATE POLICY "Users can insert their own assets" ON user_assets
   FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid()::text = user_id);
 
--- Create policy for updating assets (consistent type handling)
+-- Create policy for updating assets
 CREATE POLICY "Users can update their own assets" ON user_assets
   FOR UPDATE
-  USING (auth.uid()::text = user_id);
+  TO authenticated
+  USING (auth.uid()::text = user_id)
+  WITH CHECK (auth.uid()::text = user_id);
 
--- Create policy for deleting assets (consistent type handling)
+-- Create policy for deleting assets
 CREATE POLICY "Users can delete their own assets" ON user_assets
   FOR DELETE
+  TO authenticated
   USING (auth.uid()::text = user_id);
