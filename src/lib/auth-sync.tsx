@@ -21,15 +21,28 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
         // Check if Supabase environment is properly configured
         if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
           console.error('Supabase environment variables missing in auth sync component');
+          return; // Exit early if env vars are missing
         }
         
         // Get token from Clerk using the Supabase template
         const token = await getToken({ template: 'supabase' });
         
+        // Log token details for debugging (only in development)
+        if (process.env.NODE_ENV === 'development' && token) {
+          const [header, payload] = token.split('.').slice(0, 2);
+          console.log('JWT Header:', JSON.parse(atob(header)));
+          console.log('JWT Payload:', JSON.parse(atob(payload)));
+        }
+        
         if (token) {
           console.log('Received token from Clerk for Supabase auth');
           
           // Set the Supabase auth session using the Clerk JWT
+          // First verify the current session state
+          const currentSession = await supabaseClientAnon.auth.getSession();
+          console.log('Current session state:', currentSession.data.session ? 'Active' : 'None');
+
+          // Set the new session
           const { error, data } = await supabaseClientAnon.auth.setSession({
             access_token: token,
             refresh_token: token, // Using same token as refresh token as it's handled by Clerk
@@ -37,13 +50,25 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           
           if (error) {
             console.error('Error setting Supabase auth session:', error);
+            // Log additional error details
+            if (error.message) console.error('Error message:', error.message);
+            if (error.status) console.error('Error status:', error.status);
           } else {
-            console.log('Successfully synchronized Clerk auth with Supabase');
+            console.log('Successfully set new Supabase auth session');
             
             // Verify the session was set correctly
-            const { data: { session } } = await supabaseClientAnon.auth.getSession();
-            if (session) {
+            const { data: { session }, error: verifyError } = await supabaseClientAnon.auth.getSession();
+            if (verifyError) {
+              console.error('Error verifying session:', verifyError);
+            } else if (session) {
               console.log('Verified session is active with user:', session.user?.id);
+              // Test an authenticated request
+              const { data: testData, error: testError } = await supabaseClientAnon.auth.getUser();
+              if (testError) {
+                console.error('Test auth request failed:', testError);
+              } else {
+                console.log('Test auth request succeeded:', testData);
+              }
             } else {
               console.warn('Session verification failed - no active session found after setting it');
             }
