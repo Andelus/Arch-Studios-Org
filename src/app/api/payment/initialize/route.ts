@@ -5,18 +5,23 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('Payment initialize API called');
     const { userId } = getAuth(req);
     if (!userId) {
+      console.log('Unauthorized: No userId found in request');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log('User authenticated with ID:', userId);
 
     if (!process.env.FLUTTERWAVE_SECRET_KEY) {
-      console.error('Flutterwave configuration missing');
+      console.error('ERROR: Flutterwave secret key is missing in environment config');
       return NextResponse.json({ 
         error: 'Payment service unavailable',
         details: 'Missing payment configuration'
       }, { status: 500 });
     }
+    console.log('Flutterwave config check passed');
+    
 
     const { planId, autoBuy, bypassChecks } = await req.json();
     
@@ -89,44 +94,59 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
     const redirectUrl = `${baseUrl}/credit-subscription/verify`;
 
+    const txRef = `chateaux-${Date.now()}`;
+    const requestPayload = {
+      tx_ref: txRef,
+      amount: plan.price,
+      currency: 'USD',
+      payment_type: 'card',
+      redirect_url: redirectUrl,
+      customer: {
+        email: profile.email,
+      },
+      customizations: {
+        title: 'Chateaux AI',
+        description: `Subscribe to ${plan.name} plan`,
+        logo: `${baseUrl}/logo.svg`,
+      },
+      meta: {
+        planId,
+        userId,
+        autoBuy,
+      }
+    };
+    
+    console.log('Initializing Flutterwave payment with:', {
+      ...requestPayload,
+      tx_ref: txRef, // Safe to log
+      amount: plan.price,
+      email: profile.email
+    });
+    
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
       },
-      body: JSON.stringify({
-        tx_ref: `chateaux-${Date.now()}`,
-        amount: plan.price,
-        currency: 'USD',
-        payment_type: 'card',
-        redirect_url: redirectUrl,
-        customer: {
-          email: profile.email,
-        },
-        customizations: {
-          title: 'Chateaux AI',
-          description: `Subscribe to ${plan.name} plan`,
-          logo: `${baseUrl}/logo.svg`,
-        },
-        meta: {
-          planId,
-          userId,
-          autoBuy,
-        },
-      }),
+      body: JSON.stringify(requestPayload),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Flutterwave error:', data);
+      console.error('Flutterwave API error:', data);
+      console.error('Response status:', response.status, response.statusText);
       return NextResponse.json({ 
         error: 'Payment initialization failed',
         details: data.message || 'Unknown error',
         code: data.code || 'UNKNOWN'
       }, { status: response.status });
     }
+    
+    console.log('Flutterwave payment initialized successfully, returning payment URL');
+    
 
     return NextResponse.json({ paymentUrl: data.data.link });
   } catch (error) {

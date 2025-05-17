@@ -196,10 +196,14 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
 
     setIsLoading(true);
     setError(null);
+    
+    console.log('Payment button clicked, starting payment process...');
+    console.log('Environment check - Public key available:', !!process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY);
 
     try {
       // Try server-side first approach - more reliable and avoids client-side Flutterwave issues
       try {
+        console.log('Attempting server-side payment initialization...');
         const response = await fetch('/api/payment/initialize', {
           method: 'POST',
           headers: {
@@ -213,10 +217,12 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
         });
 
         const data = await response.json();
+        console.log('Server response status:', response.status);
+        console.log('Server response:', data);
         
         if (response.ok && data.paymentUrl) {
           // Redirect to Flutterwave hosted payment page
-          console.log('Using server-side payment initialization');
+          console.log('Using server-side payment initialization, redirecting to:', data.paymentUrl);
           window.location.href = data.paymentUrl;
           return;
         } else {
@@ -225,18 +231,23 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
         }
       } catch (serverError) {
         console.warn('Server-side payment initialization failed:', serverError);
+        console.log('Falling back to client-side payment approach...');
         // Continue with client-side approach
       }
 
       // Client-side approach (fallback)
       const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
+      console.log('Client-side public key check:', !!publicKey);
       if (!publicKey) {
         throw new Error('Flutterwave configuration missing');
       }
 
       // Get user's email
+      console.log('Fetching user profile...');
       const response = await fetch('/api/profile');
       const profileData = await response.json();
+      console.log('Profile response status:', response.status);
+      console.log('Profile data received:', profileData ? 'Yes' : 'No');
       if (!response.ok) {
         throw new Error(profileData.error || 'Failed to get user profile');
       }
