@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import styles from "./MultiView.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
@@ -29,7 +29,6 @@ const VIEWS = [
 
 export default function MultiViewGeneration() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { isSignedIn } = useAuth();
   const [prompt, setPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -49,25 +48,11 @@ export default function MultiViewGeneration() {
     { value: 'major', label: 'Premium', description: 'Highest quality with maximum detail (Pro plan only)' }
   ];
 
-  // Check for reference image in URL params and subscription status on component mount
+  // Check subscription status on component mount
   useEffect(() => {
     if (!isSignedIn) {
       router.push('/');
       return;
-    }
-    
-    // Get reference image from URL if available
-    if (searchParams) {
-      const refImageParam = searchParams.get('referenceImage');
-      if (refImageParam) {
-        try {
-          const decodedImage = decodeURIComponent(refImageParam);
-          console.log('Reference image loaded from URL param');
-          setReferenceImage(decodedImage);
-        } catch (err) {
-          console.error('Error parsing reference image from URL:', err);
-        }
-      }
     }
 
     const fetchSubscription = async () => {
@@ -84,7 +69,7 @@ export default function MultiViewGeneration() {
     };
 
     fetchSubscription();
-  }, [isSignedIn, router, searchParams]);
+  }, [isSignedIn, router]);
 
   // Check if user can access the quality level
   const canAccessQuality = (quality: 'none' | 'minor' | 'major'): boolean => {
