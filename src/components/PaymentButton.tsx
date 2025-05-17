@@ -122,12 +122,30 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
         
         // Use try-catch inside the checkout initialization
         try {
+          // Add loading indicator in the DOM
+          const loadingIndicator = document.createElement('div');
+          loadingIndicator.id = 'payment-loading-indicator';
+          loadingIndicator.style.position = 'fixed';
+          loadingIndicator.style.top = '50%';
+          loadingIndicator.style.left = '50%';
+          loadingIndicator.style.transform = 'translate(-50%, -50%)';
+          loadingIndicator.style.padding = '20px';
+          loadingIndicator.style.backgroundColor = 'rgba(0,0,0,0.7)';
+          loadingIndicator.style.borderRadius = '10px';
+          loadingIndicator.style.color = 'white';
+          loadingIndicator.style.zIndex = '9999';
+          loadingIndicator.textContent = 'Preparing payment form...';
+          document.body.appendChild(loadingIndicator);
+          
+          // Safer implementation of FlutterwaveCheckout to avoid fingerprinting issues
           window.FlutterwaveCheckout({
             public_key: publicKey,
             tx_ref: tx_ref,
             amount: price,
             currency: 'USD',
             payment_options: 'card',
+            // Disable fingerprinting to avoid the API key error
+            disable_pwb: true,
             customer: {
               email: email,
               name: email.split('@')[0] || 'User',
@@ -141,9 +159,22 @@ export default function PaymentButton({ planId, planName, price, autoBuy = false
               planId,
               userId,
               autoBuy,
+              source: 'client',
             },
-            onclose: handleClose,
-            callback: handleCallback
+            onclose: () => {
+              // Remove the loading indicator
+              if (document.getElementById('payment-loading-indicator')) {
+                document.body.removeChild(loadingIndicator);
+              }
+              handleClose();
+            },
+            callback: (response: any) => {
+              // Remove the loading indicator
+              if (document.getElementById('payment-loading-indicator')) {
+                document.body.removeChild(loadingIndicator);
+              }
+              handleCallback(response);
+            }
           });
         } catch (e) {
           console.error('Error initializing FlutterwaveCheckout:', e);

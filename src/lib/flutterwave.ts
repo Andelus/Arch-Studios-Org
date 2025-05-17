@@ -21,33 +21,49 @@ export const initializePayment = async (data: PaymentData) => {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
   const redirectUrl = `${baseUrl}/credit-subscription/verify`;
 
+  // Generate a transaction reference with more uniqueness
+  const txRef = `chateaux-${data.userId.substring(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
   try {
+    const payload = {
+      tx_ref: txRef,
+      amount: data.amount,
+      currency: 'USD',
+      payment_options: 'card,ussd,mpesa,barter,mobilemoneyghana,mobilemoneyrwanda,mobilemoneyzambia,mobilemoneyuganda,banktransfer',
+      payment_type: 'card',
+      redirect_url: redirectUrl,
+      customer: {
+        email: data.email,
+        name: data.email.split('@')[0], // Derive name from email
+      },
+      customizations: {
+        title: 'Chateaux AI',
+        description: `Subscribe to ${data.plan} plan`,
+        logo: `${baseUrl}/logo.svg`,
+      },
+      meta: {
+        plan: data.plan,
+        userId: data.userId,
+        autoBuy: data.autoBuy,
+        source: 'api',
+      },
+      // Add fingerprint configuration to address the API key error
+      public_key: FLUTTERWAVE_PUBLIC_KEY,
+    };
+
+    console.log('Initializing payment with library:', {
+      ...payload,
+      public_key: '[REDACTED]', // Don't log the actual key
+    });
+
     const response = await axios.post(
       'https://api.flutterwave.com/v3/payments',
-      {
-        tx_ref: `chateaux-${Date.now()}`,
-        amount: data.amount,
-        currency: 'USD',
-        payment_type: 'card',
-        redirect_url: redirectUrl,
-        customer: {
-          email: data.email,
-        },
-        customizations: {
-          title: 'Chateaux AI',
-          description: `Subscribe to ${data.plan} plan`,
-          logo: `${baseUrl}/logo.svg`,
-        },
-        meta: {
-          plan: data.plan,
-          userId: data.userId,
-          autoBuy: data.autoBuy,
-        },
-      },
+      payload,
       {
         headers: {
           Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
         },
       }
     );

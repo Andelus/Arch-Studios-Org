@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import { NextRequest } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createPaymentPayload, getPaymentHeaders, isCardPermissionError } from '@/lib/payment-utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,33 +62,32 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';
     const redirectUrl = `${baseUrl}/credit-subscription/verify`;
 
+    // Generate a transaction reference with more uniqueness
+    const txRef = `chateaux-${userId.substring(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Create a payload using our utility function
+    const payload = createPaymentPayload({
+      txRef,
+      amount: plan.price,
+      email: userEmail,
+      userId,
+      planId: plan.id,
+      planName: plan.name,
+      autoBuy,
+      redirectUrl,
+      publicKey: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+      baseUrl,
+      direct: true // Set direct flag for tracking the source
+    });
+    
+    // Get standardized headers for the payment request
+    const headers = getPaymentHeaders(process.env.FLUTTERWAVE_SECRET_KEY);
+    
+    // Make the request to Flutterwave
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tx_ref: `chateaux-${Date.now()}`,
-        amount: plan.price,
-        currency: 'USD',
-        payment_type: 'card',
-        redirect_url: redirectUrl,
-        customer: {
-          email: userEmail,
-        },
-        customizations: {
-          title: 'Chateaux AI',
-          description: `Subscribe to ${plan.name} plan`,
-          logo: `${baseUrl}/logo.svg`,
-        },
-        meta: {
-          planId: plan.id,
-          userId,
-          autoBuy,
-          direct: true
-        },
-      }),
+      headers,
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
