@@ -13,8 +13,8 @@ export interface SaveAssetProps {
 }
 
 export interface UserAsset {
-  id: string;
-  user_id: string;
+  id: string;        // Keep as string since UUID is represented as string in JS/TS
+  user_id: string;   // This is TEXT in the database to match Clerk user IDs
   asset_type: AssetType;
   asset_url: string;
   prompt: string | null;

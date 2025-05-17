@@ -69,8 +69,8 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
           
           // Make sure each item has the required fields from UserAsset interface
           const typedAssets = Array.isArray(data) ? data.map(item => ({
-            id: String(item.id || ''),
-            user_id: String(item.user_id || ''),
+            id: item.id,                    // Keep original UUID from database
+            user_id: String(item.user_id),  // Convert to string as it's TEXT in DB
             asset_type: (item.asset_type as AssetType) || 'image',
             asset_url: String(item.asset_url || ''),
             prompt: item.prompt !== undefined ? String(item.prompt) : null,
