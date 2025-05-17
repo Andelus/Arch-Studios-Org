@@ -103,10 +103,31 @@ export async function getUserAssets(userId: string, assetType?: AssetType, authT
     // If we have an auth token in browser context, set the session
     if (isBrowser && authToken) {
       console.log('Setting auth session with token before querying');
-      await client.auth.setSession({
-        access_token: authToken,
-        refresh_token: authToken,
-      });
+      try {
+        // First clear any existing session
+        await client.auth.signOut();
+        
+        // Set the new session
+        const { error: sessionError } = await client.auth.setSession({
+          access_token: authToken,
+          refresh_token: authToken,
+        });
+
+        if (sessionError) {
+          console.error('Error setting auth session:', sessionError);
+          return { success: false, error: sessionError };
+        }
+
+        // Verify the session was set
+        const { data: { session } } = await client.auth.getSession();
+        if (!session) {
+          console.error('Failed to verify session after setting it');
+          return { success: false, error: 'Failed to verify session' };
+        }
+      } catch (error) {
+        console.error('Exception setting auth session:', error);
+        return { success: false, error };
+      }
     }
     
     // Add debug info to track potential issues

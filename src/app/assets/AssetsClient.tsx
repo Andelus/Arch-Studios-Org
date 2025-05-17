@@ -33,19 +33,29 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
         console.log('Fetching assets for user:', userId, 'with filter:', filter);
         
         // Get the authentication token from Clerk
-        const token = await getToken({ template: 'supabase' });
+        const token = await getToken({ 
+          template: 'supabase',
+          skipCache: true // Always get a fresh token
+        });
+        
         console.log('Auth token available:', !!token);
         
         // Decode and log the JWT token for debugging (only the header and payload)
         if (token) {
-          const [header, payload] = token.split('.').slice(0, 2);
-          console.log('JWT Header:', JSON.parse(atob(header)));
-          console.log('JWT Payload:', JSON.parse(atob(payload)));
+          try {
+            const [header, payload] = token.split('.').slice(0, 2);
+            console.log('JWT Header:', JSON.parse(atob(header)));
+            console.log('JWT Payload:', JSON.parse(atob(payload)));
+          } catch (e) {
+            console.error('Error decoding token:', e);
+          }
         }
         
         // Check if Supabase environment is properly configured
         if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
           console.error('Supabase env variables missing in client component');
+          setFetchError('Missing configuration. Please contact support.');
+          return;
         }
         
         const { success, data, error } = await getUserAssets(
