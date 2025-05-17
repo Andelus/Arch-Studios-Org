@@ -36,6 +36,11 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
         const token = await getToken({ template: 'supabase' });
         console.log('Auth token available:', !!token);
         
+        // Check if Supabase is properly configured
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+          console.error('Supabase env variables missing in client component');
+        }
+        
         const { success, data, error } = await getUserAssets(
           userId, 
           filter !== 'all' ? filter as AssetType : undefined
@@ -127,24 +132,26 @@ export default function AssetsClient({ userId }: AssetsClientProps) {
     // Different actions depending on asset type
     switch (asset.asset_type) {
       case 'image':
+        // For regular images, we can still use URL params since the image page doesn't use useSearchParams
         router.push(`/image?referenceImage=${encodeURIComponent(asset.asset_url)}`);
         break;
       case '3d':
         router.push(`/3d?imageUrl=${encodeURIComponent(asset.asset_url)}`);
         break;
       case 'multi_view':
-        // For multi-view, we can either:
-        // 1. Use the first image as a reference if viewImages exist in metadata
-        // 2. Or use the main asset URL directly
+        // For multi-view, use localStorage instead of URL params to avoid build errors
         const multiViewData = asset.metadata?.viewImages || [];
         if (multiViewData.length > 0) {
           // If there's image data in the viewImages, use the first one as reference
           const firstImage = multiViewData[0]?.imagePreview || multiViewData[0]?.image || asset.asset_url;
-          router.push(`/image/multi-view?referenceImage=${encodeURIComponent(firstImage)}`);
+          // Store the reference image in localStorage before navigation
+          localStorage.setItem('multiViewReferenceImage', firstImage);
         } else {
           // Otherwise use the main asset URL
-          router.push(`/image/multi-view?referenceImage=${encodeURIComponent(asset.asset_url)}`);
+          localStorage.setItem('multiViewReferenceImage', asset.asset_url);
         }
+        // Navigate without query params
+        router.push('/image/multi-view');
         break;
     }
   };

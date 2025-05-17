@@ -393,7 +393,11 @@ export default function ImageGeneration() {
                     </button>
                     <button 
                       className={styles.actionButton}
-                      onClick={() => router.push(`/image/multi-view?referenceImage=${encodeURIComponent(generatedImages[currentImageIndex])}`)}
+                      onClick={() => {
+                        // Store the reference image in localStorage
+                        localStorage.setItem('multiViewReferenceImage', generatedImages[currentImageIndex]);
+                        router.push('/image/multi-view');
+                      }}
                     >
                       <i className="fa-solid fa-images"></i> Create Multi-View
                     </button>

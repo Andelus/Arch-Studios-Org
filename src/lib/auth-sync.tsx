@@ -15,10 +15,20 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
     // Function to set the auth cookie for Supabase based on Clerk token
     const setupSupabaseAuth = async () => {
       try {
+        // Log when we're attempting to sync auth
+        console.log('Setting up Supabase auth sync with Clerk...');
+        
+        // Check if Supabase environment is properly configured
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+          console.error('Supabase environment variables missing in auth sync component');
+        }
+        
         // Get token from Clerk using the Supabase template
         const token = await getToken({ template: 'supabase' });
         
         if (token) {
+          console.log('Received token from Clerk for Supabase auth');
+          
           // Set the Supabase auth session using the Clerk JWT
           const { error } = await supabaseClientAnon.auth.setSession({
             access_token: token,
@@ -30,6 +40,8 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           } else {
             console.log('Successfully synchronized Clerk auth with Supabase');
           }
+        } else {
+          console.warn('No token received from Clerk for Supabase auth');
         }
       } catch (error) {
         console.error('Failed to sync Clerk authentication with Supabase:', error);

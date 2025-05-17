@@ -97,7 +97,12 @@ export async function getUserAssets(userId: string, assetType?: AssetType) {
     // Use the appropriate client - anon client for browser context (respects RLS),
     // service client for server context (bypasses RLS with service role)
     const client = isBrowser ? supabaseClientAnon : supabase;
-    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context`);
+    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    
+    // Add debug info to track potential issues
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+      console.warn('Supabase configuration may be missing in environment variables');
+    }
 
     // Build the query
     let query = client
@@ -150,7 +155,12 @@ export async function deleteUserAsset(userId: string, assetId: string) {
     // Use the appropriate client - anon client for browser context (respects RLS),
     // service client for server context (bypasses RLS with service role)
     const client = isBrowser ? supabaseClientAnon : supabase;
-    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context`);
+    console.log(`Using client for ${isBrowser ? 'browser' : 'server'} context with URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+    
+    // Add debug info to track potential issues
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (isBrowser ? !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+      console.warn('Supabase configuration may be missing in environment variables');
+    }
 
     // Delete the asset
     const { error } = await client

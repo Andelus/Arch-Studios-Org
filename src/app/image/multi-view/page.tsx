@@ -48,11 +48,22 @@ export default function MultiViewGeneration() {
     { value: 'major', label: 'Premium', description: 'Highest quality with maximum detail (Pro plan only)' }
   ];
 
-  // Check subscription status on component mount
+  // Check subscription status on component mount and load reference image if available
   useEffect(() => {
     if (!isSignedIn) {
       router.push('/');
       return;
+    }
+
+    // Check localStorage for reference image
+    if (typeof window !== 'undefined') {
+      const storedImage = localStorage.getItem('multiViewReferenceImage');
+      if (storedImage) {
+        console.log('Reference image loaded from localStorage');
+        setReferenceImage(storedImage);
+        // Clear the stored image after loading it
+        // localStorage.removeItem('multiViewReferenceImage');
+      }
     }
 
     const fetchSubscription = async () => {
