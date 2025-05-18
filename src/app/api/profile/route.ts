@@ -75,9 +75,14 @@ export async function GET(req: Request) {
         credits_balance,
         subscription_status,
         current_plan_id,
+        organization_id,
         subscription_plans (
           name,
           total_credits
+        ),
+        organizations (
+          name,
+          slug
         )
       `)
       .eq('id', userId)

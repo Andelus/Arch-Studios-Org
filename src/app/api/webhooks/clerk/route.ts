@@ -141,6 +141,65 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Profile created successfully' });
     }
 
+    // Handle organization events
+    if (type === 'organization.created') {
+      console.log('Processing organization.created event');
+      const { id: orgId, name, slug } = data;
+      
+      console.log('Organization created:', { 
+        orgId, 
+        name, 
+        slug, 
+        slugGenerated: name !== slug // Check if slug was auto-generated 
+      });
+      
+      // Insert the organization into the organizations table
+      const { error } = await supabase
+        .from('organizations')
+        .insert({
+          id: orgId,
+          name,
+          slug,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error('Error creating organization in database:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      
+      return NextResponse.json({ message: 'Organization created successfully' });
+    }
+     if (type === 'organizationMembership.created') {
+      console.log('Processing organizationMembership.created event');
+      const { organization, public_user_data } = data;
+      const userId = public_user_data.user_id;
+      const organizationId = organization.id;
+      
+      console.log('User added to organization:', {
+        organizationId,
+        organizationName: organization.name,
+        userId
+      });
+      
+      // Update the user's profile with their organization ID
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          organization_id: organizationId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('Error updating user profile with organization:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      
+      return NextResponse.json({ message: 'Organization membership processed successfully' });
+    }
+    
     // Return a 200 for any other event types
     return NextResponse.json({ message: 'Event received but not processed' });
   } catch (error) {

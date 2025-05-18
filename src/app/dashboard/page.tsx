@@ -3,18 +3,60 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import Link from "next/link";
+import { useOrganizationList, useUser } from "@clerk/nextjs";
 import styles from "./Dashboard.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { useSystemTheme } from "../../hooks/useSystemTheme";  // Extend the Window interface to include Clerk
+declare global {
+  interface Window {
+    Clerk?: {
+      openCreateOrganization: (options: { 
+        afterCreateOrganizationUrl?: string,
+        appearance?: any
+      }) => void;
+      openOrganizationProfile: (
+        organizationId: string,
+        options?: {
+          appearance?: any
+        }
+      ) => void;
+    }
+  }
+}
 
 export default function DashboardPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
+  const [showOrgBanner, setShowOrgBanner] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Use the system theme hook
+  const systemTheme = useSystemTheme();
+  const orgDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Get user and organization data
+  const { userMemberships, isLoaded: isOrgListLoaded } = useOrganizationList({ userMemberships: true });
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const [hasOrganization, setHasOrganization] = useState<boolean | null>(null);
+
+  // Check if user has an organization
+  useEffect(() => {
+    if (isOrgListLoaded && userMemberships) {
+      const hasOrg = userMemberships.data?.length > 0;
+      setHasOrganization(hasOrg);
+      // Show the organization banner for new users without organizations
+      setShowOrgBanner(!hasOrg);
+    }
+  }, [isOrgListLoaded, userMemberships]);
   
   // Close dropdown when clicking outside
   const handleClickOutside = (event: MouseEvent) => {
     if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
       setIsDropdownOpen(false);
+    }
+    if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target as Node)) {
+      setIsOrgDropdownOpen(false);
     }
   };
 
@@ -133,6 +175,72 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.container}>
+      {showOrgBanner && (
+        <div className={styles.orgBanner}>
+          <p>Set up your organization to collaborate with team members!</p>
+          <div>
+            <button 
+              className={styles.orgBannerBtn}
+              onClick={() => {
+                // Open Clerk's organization creation dialog
+                if (window.Clerk) {
+                  window.Clerk.openCreateOrganization({
+                    afterCreateOrganizationUrl: "/dashboard",
+                    appearance: {
+                      // Use the system theme hook
+                      baseTheme: systemTheme,
+                      variables: {
+                        colorPrimary: "#4facfe",
+                      },
+                      elements: {
+                        // Light mode styles (default)
+                        formButtonPrimary: {
+                          backgroundColor: "#4facfe",
+                          "&:hover": {
+                            backgroundColor: "#357abd"
+                          }
+                        },
+                        card: {
+                          boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+                          border: "1px solid rgba(0, 0, 0, 0.05)",
+                        },
+                        input: {
+                          border: "1px solid rgba(0, 0, 0, 0.1)"
+                        },
+                        // Dark mode styles
+                        "formButtonPrimary.dark": {
+                          backgroundColor: "#4facfe",
+                          "&:hover": {
+                            backgroundColor: "#357abd"
+                          }
+                        },
+                        "card.dark": {
+                          backgroundColor: "#0d0d0d",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
+                        },
+                        "input.dark": {
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          backgroundColor: "rgba(255, 255, 255, 0.05)",
+                          color: "#ededed"
+                        }
+                      }
+                    }
+                  });
+                }
+              }}
+            >
+              Create Organization
+            </button>
+            <button 
+              className={styles.orgBannerClose}
+              onClick={() => setShowOrgBanner(false)}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      )}
       <header className={styles.header}>
         <h1>
           <span className={styles.logoText}>Arch Studios</span> 
@@ -158,6 +266,128 @@ export default function DashboardPage() {
               <Link href="/assets" onClick={() => setIsDropdownOpen(false)}>My Assets</Link>
               <Link href="/credit-subscription" onClick={() => setIsDropdownOpen(false)}>Credit & Subscription</Link>
             </div>
+          </div>
+          
+          {/* Organization management section */}
+          <div className={styles.orgManagement}>
+            <h3>Organization Management</h3>
+            {hasOrganization === false ? (
+              <div className={styles.noOrgCard}>
+                <p>You don't have an organization yet. Create one to collaborate with your team.</p>
+                <button 
+                  className={styles.setupOrgButton}
+                  onClick={() => {
+                    // Open Clerk's organization creation modal
+                    if (window.Clerk) {
+                      window.Clerk.openCreateOrganization({
+                        afterCreateOrganizationUrl: "/dashboard",
+                        appearance: {
+                          // Use the system theme hook
+                          baseTheme: systemTheme,
+                          variables: {
+                            colorPrimary: "#4facfe",
+                          },
+                          elements: {
+                            // Light mode styles (default)
+                            card: {
+                              boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+                              border: "1px solid rgba(0, 0, 0, 0.05)",
+                            },
+                            // Dark mode styles
+                            "card.dark": {
+                              backgroundColor: "#0d0d0d",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
+                            },
+                            formButtonPrimary: {
+                              backgroundColor: "#4facfe",
+                              "&:hover": {
+                                backgroundColor: "#357abd"
+                              }
+                            },
+                            input: {
+                              border: "1px solid rgba(255, 255, 255, 0.1)"
+                            }
+                          }
+                        }
+                      });
+                    }
+                  }}
+                >
+                  Create Organization
+                </button>
+              </div>
+            ) : (
+              <div className={styles.dropdown} ref={orgDropdownRef}>
+                <button 
+                  className={`${styles.dropbtn} ${isOrgDropdownOpen ? styles.active : ''}`}
+                  onClick={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
+                >
+                  <span>{hasOrganization ? 'Manage Organization' : 'No Organization Found'}</span>
+                  <i className={`fas ${isOrgDropdownOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+                </button>
+                {hasOrganization && (
+                  <div className={`${styles.dropdownContent} ${isOrgDropdownOpen ? styles.show : ''}`}>
+                    <Link href="/organization" onClick={() => setIsOrgDropdownOpen(false)}>View Organization</Link>
+                    <Link href="/billing" onClick={() => setIsOrgDropdownOpen(false)}>Billing</Link>
+                    <Link href="/settings" onClick={() => setIsOrgDropdownOpen(false)}>Settings</Link>                <button 
+                  className={styles.manageOrgButton}
+                  onClick={() => {
+                    // Open Clerk's organization profile modal
+                    if (window.Clerk && userMemberships?.data?.[0]?.organization) {
+                      window.Clerk.openOrganizationProfile(
+                        userMemberships.data[0].organization.id,
+                        {
+                          appearance: {
+                            // Use the system theme hook
+                            baseTheme: systemTheme,
+                            variables: {
+                              colorPrimary: "#4facfe",
+                            },
+                            elements: {
+                              // Light mode styles (default)
+                              card: {
+                                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+                                border: "1px solid rgba(0, 0, 0, 0.05)",
+                              },
+                              formButtonPrimary: {
+                                backgroundColor: "#4facfe",
+                                "&:hover": {
+                                  backgroundColor: "#357abd"
+                                }
+                              },
+                              input: {
+                                border: "1px solid rgba(0, 0, 0, 0.1)"
+                              },
+                              // Dark mode styles
+                              "card.dark": {
+                                backgroundColor: "#0d0d0d",
+                                border: "1px solid rgba(255, 255, 255, 0.1)",
+                                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
+                              },
+                              "formButtonPrimary.dark": {
+                                backgroundColor: "#4facfe",
+                                "&:hover": {
+                                  backgroundColor: "#357abd"
+                                }
+                              },
+                              "input.dark": {
+                                border: "1px solid rgba(255, 255, 255, 0.1)"
+                              }
+                            }
+                          }
+                        }
+                      );
+                      setIsOrgDropdownOpen(false);
+                    }
+                  }}
+                >
+                  Organization Profile
+                </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
         

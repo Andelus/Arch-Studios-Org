@@ -1,0 +1,118 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(to bottom, var(--background-gradient-start, #f8f8f8), var(--background-gradient-end, #e8e8e8));
+  color: var(--foreground, #171717);
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
+    color: #ffffff;
+  }
+}
+
+.onboardingCard {
+  background-color: var(--card-background, #ffffff);
+  border-radius: 10px;
+  border: 1px solid var(--card-border-color, rgba(0, 0, 0, 0.05));
+  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.1));
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .onboardingCard {
+    background-color: #0d0d0d;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.createOrgSection,
+.invitationsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.createOrgSection h2,
+.invitationsSection h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--heading-color, #333333);
+  margin-bottom: 0.5rem;
+}
+
+.createOrgSection p,
+.invitationsSection p {
+  font-size: 1rem;
+  color: var(--text-color, #555555);
+  margin-top: 0;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .createOrgSection h2,
+  .invitationsSection h2 {
+    color: #ffffff;
+  }
+  
+  .createOrgSection p,
+  .invitationsSection p {
+    color: #bbbbbb;
+  }
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(79, 172, 254, 0.3);
+  border-radius: 50%;
+  border-top-color: #4facfe;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto 1rem auto;
+}
+
+/* Dark mode styling remains the same as the light mode for the spinner */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skipSection {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.1));
+}
+
+@media (prefers-color-scheme: dark) {
+  .skipSection {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.skipLink {
+  background: none;
+  border: none;
+  color: #4facfe;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: underline;
+  padding: 0;
+  font-size: inherit;
+}
+
+.skipLink:hover {
+  color: #357abd;
+}

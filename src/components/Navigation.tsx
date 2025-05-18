@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignedIn, SignedOut, UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 
 export default function Navigation() {
   const [hasSubscription, setHasSubscription] = useState(false);
@@ -37,30 +37,92 @@ export default function Navigation() {
           </div>
           
           <SignedIn>
-            {!hasSubscription && (
-              <div className="flex items-center space-x-4">
-                <div className="hidden sm:flex items-center space-x-3">
-                  <div className="flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500/10 to-blue-500/5 dark:from-blue-400/20 dark:to-blue-400/10 text-blue-600 dark:text-blue-400 rounded-full text-sm font-medium border border-blue-500/20 dark:border-blue-400/20 transition-all duration-200 hover:scale-105">
-                    <i className="fa-regular fa-image text-xs mr-2 opacity-70"></i>
-                    <span className="font-medium tracking-tight">Free Image</span>
-                  </div>
-                  <div className="flex items-center px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-purple-500/5 dark:from-purple-400/20 dark:to-purple-400/10 text-purple-600 dark:text-purple-400 rounded-full text-sm font-medium border border-purple-500/20 dark:border-purple-400/20 transition-all duration-200 hover:scale-105">
-                    <i className="fa-solid fa-cube text-xs mr-2 opacity-70"></i>
-                    <span className="font-medium tracking-tight">Free 3D</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* We've removed the Free Image and Free 3D badges as requested */}
           </SignedIn>
 
           <div className="flex items-center space-x-4">
             <SignedIn>
-              <div className="flex items-center">
-                <UserButton afterSignOutUrl="/" />
+              <div className="flex items-center space-x-3">
+                <OrganizationSwitcher 
+                  hidePersonal={true}
+                  appearance={{
+                    variables: {
+                      colorPrimary: "#4facfe",
+                    },
+                    elements: {
+                      rootBox: {
+                        width: '200px'
+                      },
+                      organizationSwitcherTrigger: {
+                        padding: '6px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      },
+                      "organizationSwitcherTrigger.dark": {
+                        border: '1px solid rgba(79, 172, 254, 0.3)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                        backgroundColor: '#111111',
+                        color: '#ffffff',
+                      },
+                      organizationPreviewTextContainer: {
+                        fontSize: '14px'
+                      },
+                      "organizationSwitcherPopoverCard.dark": {
+                        backgroundColor: '#0d0d0d',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+                      }
+                    }
+                  }}
+                />
+                <UserButton 
+                  afterSignOutUrl="/" 
+                  appearance={{
+                    variables: {
+                      colorPrimary: "#4facfe",
+                    },
+                    elements: {
+                      "avatarBox.dark": {
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(79, 172, 254, 0.3)',
+                      },
+                      "userButtonPopoverCard.dark": {
+                        backgroundColor: '#0d0d0d',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+                      }
+                    }
+                  }}
+                />
               </div>
             </SignedIn>
             <SignedOut>
-              <SignInButton mode="modal">
+              <SignInButton 
+                mode="modal"
+                appearance={{
+                  variables: {
+                    colorPrimary: "#4facfe",
+                  },
+                  elements: {
+                    "card.dark": {
+                      backgroundColor: "#0d0d0d",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
+                    },
+                    "input.dark": {
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                    },
+                    formButtonPrimary: {
+                      backgroundColor: "#4facfe",
+                      "&:hover": {
+                        backgroundColor: "#357abd"
+                      }
+                    }
+                  }
+                }}
+              >
                 <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base">
                   Sign In
                 </button>

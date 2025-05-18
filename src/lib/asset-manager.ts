@@ -11,6 +11,7 @@ export interface SaveAssetProps {
   assetUrl: string;
   prompt?: string;
   metadata?: Record<string, any>;
+  organizationId?: string; // Optional organization ID (if known)
 }
 
 export interface UserAsset {
@@ -49,12 +50,25 @@ export async function saveUserAsset(props: SaveAssetProps) {
       };
     }
     
+    // Get the user's organization ID
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', props.userId)
+      .single();
+      
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      // Continue without organization_id
+    }
+    
     // Always use service role client for saving assets (server operation)
     // This is important because saveUserAsset might be called from server components
     const { data, error } = await supabase
       .from('user_assets')
       .insert({
         user_id: props.userId,
+        organization_id: props.organizationId || userProfile?.organization_id || null,
         asset_type: props.assetType,
         asset_url: props.assetUrl,
         prompt: props.prompt || null,
