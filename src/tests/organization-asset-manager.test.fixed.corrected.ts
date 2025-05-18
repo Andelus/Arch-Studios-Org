@@ -8,39 +8,14 @@ import {
 import { supabase } from '../lib/supabase';
 
 // Mock the Supabase client
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            order: vi.fn(() => ({
-              limit: vi.fn(() => ({
-                single: vi.fn()
-              }))
-            })),
-            order: vi.fn(() => ({
-              limit: vi.fn()
-            }))
-          })),
-          order: vi.fn(() => ({
-            select: vi.fn()
-          }))
-        })),
-        eq: vi.fn(() => ({
-          order: vi.fn(() => ({
-            select: vi.fn()
-          }))
-        })),
-        order: vi.fn(() => ({
-          select: vi.fn()
-        }))
-      }))
-    }),
-    // Use proper comma here
-    rpc: vi.fn()
-  }
-}));
+vi.mock('../lib/supabase', () => {
+  return {
+    supabase: {
+      from: vi.fn(),
+      rpc: vi.fn()
+    }
+  };
+});
 
 describe('Organization Asset Manager', () => {
   beforeEach(() => {
