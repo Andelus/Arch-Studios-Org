@@ -2,26 +2,34 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SignInButton, SignedIn, SignedOut, UserButton, OrganizationSwitcher } from "@clerk/nextjs";
+import { SignInButton, SignedIn, SignedOut, UserButton, OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
 
 export default function Navigation() {
-  const [hasSubscription, setHasSubscription] = useState(false);
-
+  const [orgSubscriptionStatus, setOrgSubscriptionStatus] = useState<string | null>(null);
+  const { organization, isLoaded } = useOrganization();
+  
   useEffect(() => {
-    const checkSubscriptionStatus = async () => {
+    const checkOrgSubscriptionStatus = async () => {
+      if (!organization?.id) return;
+      
       try {
-        const response = await fetch('/api/profile');
+        const response = await fetch(`/api/organization/${organization.id}/subscription`);
         if (response.ok) {
           const data = await response.json();
-          setHasSubscription(data.subscription_status === 'ACTIVE');
+          setOrgSubscriptionStatus(data.status);
+        } else if (response.status === 404) {
+          // No subscription found
+          setOrgSubscriptionStatus(null);
         }
       } catch (error) {
-        console.error('Error checking subscription status:', error);
+        console.error('Error checking organization subscription status:', error);
       }
     };
 
-    checkSubscriptionStatus();
-  }, []);
+    if (isLoaded && organization) {
+      checkOrgSubscriptionStatus();
+    }
+  }, [organization?.id, isLoaded]);
 
   return (
     <nav className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 bg-white dark:bg-gray-900">
@@ -32,7 +40,16 @@ export default function Navigation() {
               <span className="text-lg sm:text-xl font-bold">Chateaux AI</span>
             </Link>
             <div className="ml-10 hidden sm:flex space-x-8">
-              {/* Navigation links can be added here */}
+              <SignedIn>
+                {organization && (
+                  <Link 
+                    href="/organization-billing" 
+                    className="text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                  >
+                    Organization Billing
+                  </Link>
+                )}
+              </SignedIn>
             </div>
           </div>
           

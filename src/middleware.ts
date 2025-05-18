@@ -7,8 +7,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks/clerk',
   '/api/webhooks/flutterwave',
   '/api/payment/verify/callback',
-  '/api/payment/verify', // Add payment verification endpoint
-  '/credit-subscription/verify', // Add verification page
+  '/api/payment/verify', // Payment verification endpoint
+  '/api/organization/subscription/verify', // Organization subscription verification endpoint
   '/privacy',
   '/terms',
   '/about',
@@ -16,7 +16,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in',
   '/sign-up',
   '/coming-soon',
-  '/credit-subscription',
+  '/organization-billing',
   // Organization setup is now handled through the dashboard
   // with Clerk's native UI components
   // Static paths

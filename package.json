@@ -6,11 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@clerk/backend": "^1.32.2",
-    "@clerk/nextjs": "^6.18.0",
+    "@clerk/nextjs": "^6.19.4",
     "@clerk/themes": "^2.2.44",
     "@fal-ai/client": "^1.4.0",
     "@fortawesome/fontawesome-free": "^6.7.2",
@@ -33,17 +36,22 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/three": "^0.176.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
+    "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.0.1",
     "eslint": "9.27.0",
     "eslint-config-next": "15.3.2",
+    "jsdom": "^26.1.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.1.3"
   }
 }
