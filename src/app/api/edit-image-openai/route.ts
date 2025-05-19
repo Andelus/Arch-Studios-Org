@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
-import OpenAI, { toFile } from 'openai';
+import OpenAI from 'openai';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -156,9 +156,9 @@ export async function POST(request: Request) {
       // Log the request (without the large image data) for debugging
       console.log(`Processing OpenAI inpainting request with: prompt="${enhancedPrompt}", drawAssist="${drawAssist}"`);
       
-      // Create image and mask files
-      const imageFile = await toFile(new Uint8Array(imageBuffer), "image.png", { type: "image/png" });
-      const maskFile = await toFile(new Uint8Array(maskBuffer), "mask.png", { type: "image/png" });
+      // Create image and mask files using OpenAI's File constructor
+      const imageFile = new File([new Uint8Array(imageBuffer)], "image.png", { type: "image/png" });
+      const maskFile = new File([new Uint8Array(maskBuffer)], "mask.png", { type: "image/png" });
     
       console.log('Debug - Files prepared:', {
         imageFile: Boolean(imageFile),

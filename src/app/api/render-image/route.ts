@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
-import OpenAI, { toFile } from 'openai';
+import OpenAI from 'openai';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -132,7 +132,7 @@ Style: ${styleModifiers[style as keyof typeof styleModifiers]}`;
       if (image) {
         const imageStr = image.split('base64,').pop() || image;
         const imageBuffer = Buffer.from(imageStr, 'base64');
-        apiParams.image = await toFile(new Uint8Array(imageBuffer), "reference.png", { type: "image/png" });
+        apiParams.image = new File([new Uint8Array(imageBuffer)], "reference.png", { type: "image/png" });
       }
 
       const response = await openai.images.generate(apiParams);
