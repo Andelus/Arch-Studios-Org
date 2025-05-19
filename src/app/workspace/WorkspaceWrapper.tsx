@@ -1,23 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { TeamProvider } from "@/contexts/TeamContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
-import WorkspaceContent from "./WorkspaceContent";
+import { useState, useEffect } from "react";
 
-export default function WorkspacePage() {
+// Import directly from page.tsx to avoid circular dependency
+import WorkspacePage from "./page";
+
+export default function WorkspaceWrapper() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
   
-  // Initialize with default project
+  // In a real app, we'd get the selected project from URL or local storage
   useEffect(() => {
-    // Default to first project for the demo
+    // Default to first project for now
     setSelectedProjectId('proj-1');
   }, []);
   
   return (
     <TeamProvider initialProjectId={selectedProjectId}>
       <WorkspaceProvider initialProjectId={selectedProjectId}>
-        <WorkspaceContent />
+        <WorkspacePage />
       </WorkspaceProvider>
     </TeamProvider>
   );
