@@ -9,12 +9,12 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import { useTeam } from "@/contexts/TeamContext";
 import type { TeamMember } from "@/contexts/TeamContext";
 import TeamManagementModal from "@/components/TeamManagementModal";
-import NotificationCenter from "@/components/NotificationCenter";
 import { useNotifications } from "@/hooks/useNotifications";
 import AssetManager from "@/components/AssetManager";
 import CommunicationPanel from "@/components/CommunicationPanel";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
+import TaskCreationModal from "@/components/TaskCreationModal";
 
 // Types
 interface Project {
@@ -128,7 +128,10 @@ export default function WorkspaceContent() {
   const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'assets' | 'communication'>('tasks');
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | undefined>(undefined);
   const { notifications, addNotification, markAsRead, markAllAsRead, dismissNotification } = useNotifications();
   const { 
     projectMembers, 
@@ -173,6 +176,91 @@ export default function WorkspaceContent() {
     return members.some(member => 
       member.id === user.id && member.permission === 'admin'
     );
+  };
+
+  // Task Management Functions
+  const handleCreateTask = (taskData: {
+    title: string;
+    description: string;
+    status: 'To Do' | 'In Progress' | 'Done';
+    assignee?: string;
+    dueDate?: string;
+    priority: 'Low' | 'Medium' | 'High';
+  }) => {
+    if (!selectedProject) return;
+    
+    const newTask: Task = {
+      id: generateId('task'),
+      ...taskData,
+      projectId: selectedProject.id
+    };
+    
+    setTasks(prev => [...prev, newTask]);
+    setIsTaskModalOpen(false);
+    
+    // Show success notification
+    addNotification(
+      'success',
+      'Task Created',
+      `"${taskData.title}" has been added to the project.`
+    );
+  };
+  
+  const handleEditTask = (taskId: string) => {
+    const taskToEdit = tasks.find((task: Task) => task.id === taskId);
+    if (taskToEdit) {
+      setTaskToEdit(taskToEdit);
+      setIsTaskModalOpen(true);
+    }
+  };
+  
+  const handleUpdateTask = (taskData: {
+    title: string;
+    description: string;
+    status: 'To Do' | 'In Progress' | 'Done';
+    assignee?: string;
+    dueDate?: string;
+    priority: 'Low' | 'Medium' | 'High';
+  }) => {
+    if (!taskToEdit) return;
+    
+    const updatedTask: Task = {
+      ...taskToEdit,
+      ...taskData
+    };
+    
+    setTasks(prev => prev.map((task: Task) => 
+      task.id === taskToEdit.id ? updatedTask : task
+    ));
+    
+    setIsTaskModalOpen(false);
+    setTaskToEdit(undefined);
+    
+    // Show success notification
+    addNotification(
+      'success',
+      'Task Updated',
+      `"${taskData.title}" has been updated.`
+    );
+  };
+  
+  const handleDeleteTask = (taskId: string) => {
+    const taskToDelete = tasks.find((task: Task) => task.id === taskId);
+    if (!taskToDelete) return;
+    
+    setTasks(prev => prev.filter((task: Task) => task.id !== taskId));
+    
+    // Show notification
+    addNotification(
+      'info',
+      'Task Deleted',
+      `"${taskToDelete.title}" has been removed from the project.`
+    );
+  };
+  
+  const openTaskModal = () => {
+    setTaskToEdit(undefined); // Reset any previous task
+    setIsTaskModalOpen(true);
   };
 
   useEffect(() => {
@@ -262,12 +350,6 @@ export default function WorkspaceContent() {
           <span className={styles.title}>Workspace</span>
         </div>
         <div className={styles.userSection}>
-          <NotificationCenter 
-            notifications={notifications}
-            onMarkAsRead={markAsRead}
-            onMarkAllAsRead={markAllAsRead}
-            onDismiss={dismissNotification}
-          />
           {user && <span className={styles.userName}>{user.firstName} {user.lastName}</span>}
         </div>
       </div>
@@ -335,14 +417,7 @@ export default function WorkspaceContent() {
                 </button>
                 <button 
                   className={styles.primaryButton}
-                  onClick={() => {
-                    // In a real app, this would open a task creation modal
-                    addNotification(
-                      'info',
-                      'Task Creation',
-                      'Task creation functionality will be implemented in the next phase.'
-                    );
-                  }}
+                  onClick={openTaskModal}
                 >
                   <i className="fas fa-plus"></i> Add Task
                 </button>
@@ -439,22 +514,51 @@ export default function WorkspaceContent() {
 
         {/* View Toggle */}
         <div className={styles.viewToggle}>
-          <button 
-            className={`${styles.viewButton} ${viewMode === 'board' ? styles.activeView : ''}`}
-            onClick={() => setViewMode('board')}
-          >
-            <i className="fas fa-columns"></i> Board View
-          </button>
-          <button 
-            className={`${styles.viewButton} ${viewMode === 'list' ? styles.activeView : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            <i className="fas fa-list"></i> List View
-          </button>
+          {/* Tabs menu */}
+          <div className={styles.tabsMenu}>
+            <button 
+              className={`${styles.tabButton} ${activeTab === 'tasks' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('tasks')}
+            >
+              <i className="fas fa-tasks"></i> Tasks
+            </button>
+            <button 
+              className={`${styles.tabButton} ${activeTab === 'assets' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('assets')}
+            >
+              <i className="fas fa-file-alt"></i> Assets
+            </button>
+            <button 
+              className={`${styles.tabButton} ${activeTab === 'communication' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('communication')}
+            >
+              <i className="fas fa-comments"></i> Communication
+            </button>
+          </div>
+          
+          {/* Only show view toggle if on tasks tab */}
+          {activeTab === 'tasks' && (
+            <div className={styles.viewTypeToggle}>
+              <button 
+                className={`${styles.viewButton} ${viewMode === 'board' ? styles.activeView : ''}`}
+                onClick={() => setViewMode('board')}
+              >
+                <i className="fas fa-columns"></i> Board View
+              </button>
+              <button 
+                className={`${styles.viewButton} ${viewMode === 'list' ? styles.activeView : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                <i className="fas fa-list"></i> List View
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Tabs navigation is handled in the viewToggle section above */}
+
         {/* Tasks Section */}
-        {selectedProject && (
+        {selectedProject && activeTab === 'tasks' && (
           <div className={styles.tasksSection}>
             {viewMode === 'board' ? (
               <div className={styles.boardView}>
@@ -487,17 +591,17 @@ export default function WorkspaceContent() {
                             </div>
                           )}
                           <div className={styles.taskActions}>
-                            <button className={styles.iconButton}>
+                            <button className={styles.iconButton} onClick={() => handleEditTask(task.id)}>
                               <i className="fas fa-edit"></i>
                             </button>
-                            <button className={styles.iconButton}>
+                            <button className={styles.iconButton} onClick={() => handleDeleteTask(task.id)}>
                               <i className="fas fa-trash-alt"></i>
                             </button>
                           </div>
                         </div>
                       ))}
                       
-                      <div className={styles.addTaskCard}>
+                      <div className={styles.addTaskCard} onClick={openTaskModal}>
                         <i className="fas fa-plus"></i> Add Task
                       </div>
                     </div>
@@ -553,10 +657,10 @@ export default function WorkspaceContent() {
                         </td>
                         <td>
                           <div className={styles.rowActions}>
-                            <button className={styles.iconButton}>
+                            <button className={styles.iconButton} onClick={() => handleEditTask(task.id)}>
                               <i className="fas fa-edit"></i>
                             </button>
-                            <button className={styles.iconButton}>
+                            <button className={styles.iconButton} onClick={() => handleDeleteTask(task.id)}>
                               <i className="fas fa-trash-alt"></i>
                             </button>
                           </div>
@@ -567,12 +671,153 @@ export default function WorkspaceContent() {
                 </table>
                 
                 <div className={styles.addTaskRow}>
-                  <button className={styles.primaryButton}>
+                  <button className={styles.primaryButton} onClick={openTaskModal}>
                     <i className="fas fa-plus"></i> Add Task
                   </button>
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Assets Manager Section */}
+        {selectedProject && activeTab === 'assets' && (
+          <div className={styles.assetsSection}>
+            <div className={styles.sectionHeader}>
+              <h3>Project Assets</h3>
+              <button className={styles.primaryButton}>
+                <i className="fas fa-upload"></i> Upload Asset
+              </button>
+            </div>
+            <div className={styles.assetsContent}>
+              <AssetManager
+                assets={[
+                  {
+                    id: 'asset-1',
+                    name: 'Floor Plan Draft.pdf',
+                    type: 'document',
+                    url: '#',
+                    thumbnailUrl: '/thumbnails/pdf.png',
+                    dateUploaded: new Date().toISOString(),
+                    uploadedBy: user?.firstName + ' ' + user?.lastName || 'Unknown User',
+                    size: '2.4 MB',
+                    description: 'Initial floor plan draft for client review',
+                    tags: ['floor plan', 'draft', 'client']
+                  },
+                  {
+                    id: 'asset-2',
+                    name: 'Building Exterior.jpg',
+                    type: 'image',
+                    url: '#',
+                    thumbnailUrl: '/thumbnails/image.png',
+                    dateUploaded: new Date().toISOString(),
+                    uploadedBy: user?.firstName + ' ' + user?.lastName || 'Unknown User',
+                    size: '5.7 MB',
+                    description: 'Exterior rendering for client presentation',
+                    tags: ['render', 'exterior', 'presentation']
+                  }
+                ]}
+                projectId={selectedProject.id}
+                onAssetUpload={(file, description, tags) => {
+                  // This would be connected to the workspace context in a real implementation
+                  console.log("Asset upload:", file, description, tags);
+                  addNotification(
+                    'success',
+                    'Asset Uploaded',
+                    `${file.name} has been uploaded successfully.`
+                  );
+                }}
+                onDeleteAsset={(assetId) => {
+                  // This would be connected to the workspace context in a real implementation
+                  console.log("Delete asset:", assetId);
+                  addNotification(
+                    'info',
+                    'Asset Deleted',
+                    `The asset has been removed from the project.`
+                  );
+                }}
+                onEditAsset={(assetId, updates) => {
+                  // This would be connected to the workspace context in a real implementation
+                  console.log("Edit asset:", assetId, updates);
+                  addNotification(
+                    'success',
+                    'Asset Updated',
+                    `Asset details have been updated.`
+                  );
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Communication Panel Section */}
+        {selectedProject && activeTab === 'communication' && (
+          <div className={styles.communicationSection}>
+            <div className={styles.sectionHeader}>
+              <h3>Project Communication</h3>
+            </div>
+            <div className={styles.communicationContent}>
+              <CommunicationPanel 
+                projectId={selectedProject.id}
+                currentUserId={user?.id || ''}
+                messages={[
+                  {
+                    id: 'msg-1',
+                    content: 'Hi team! I have uploaded the latest floor plan drafts to the Assets section. Please review and provide feedback by tomorrow.',
+                    sender: {
+                      id: 'user-1',
+                      name: 'Alex Johnson',
+                      avatar: '/avatars/alex.jpg'
+                    },
+                    timestamp: new Date(Date.now() - 8600000).toISOString()
+                  },
+                  {
+                    id: 'msg-2',
+                    content: 'I will take a look at them this afternoon.',
+                    sender: {
+                      id: 'user-2',
+                      name: 'Maria Garcia',
+                      avatar: '/avatars/maria.jpg'
+                    },
+                    timestamp: new Date(Date.now() - 7200000).toISOString()
+                  },
+                  {
+                    id: 'msg-3',
+                    content: 'The client meeting has been moved to Thursday at 2 PM. Please update your calendars.',
+                    sender: {
+                      id: 'user-1',
+                      name: 'Alex Johnson',
+                      avatar: '/avatars/alex.jpg'
+                    },
+                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    isAnnouncement: true
+                  }
+                ]}
+                channels={[
+                  { id: 'general', name: 'General', description: 'Project-wide announcements and discussions', isPrivate: false, unreadCount: 1 },
+                  { id: 'design', name: 'Design', description: 'Design team discussions', isPrivate: false },
+                  { id: 'technical', name: 'Technical', description: 'Technical discussions and issues', isPrivate: false }
+                ]}
+                onSendMessage={(content: string, channelId: string, attachments?: File[]) => {
+                  // This would be connected to the workspace context in a real implementation
+                  console.log("Send message:", content, channelId, attachments);
+                  addNotification(
+                    'info',
+                    'Message Sent',
+                    `Your message has been sent to the ${channelId} channel.`
+                  );
+                }}
+                onCreateChannel={(name: string, isPrivate: boolean, description?: string) => {
+                  // This would be connected to the workspace context in a real implementation
+                  console.log("Create channel:", name, isPrivate, description);
+                  addNotification(
+                    'success',
+                    'Channel Created',
+                    `The ${name} channel has been created.`
+                  );
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -665,6 +910,29 @@ export default function WorkspaceContent() {
           );
         }}
       />
+      
+      {/* Task Creation/Edit Modal */}
+      {selectedProject && (
+        <TaskCreationModal
+          isOpen={isTaskModalOpen}
+          onClose={() => {
+            setIsTaskModalOpen(false);
+            setTaskToEdit(undefined);
+          }}
+          onCreateTask={taskToEdit ? handleUpdateTask : handleCreateTask}
+          projectId={selectedProject.id}
+          projectMembers={projectMembers[selectedProject.id] || selectedProject.members.map(m => ({
+            id: m.id,
+            name: m.name,
+            avatar: m.avatar,
+            role: m.role,
+            email: '',
+            status: m.status as 'online' | 'offline' | 'away',
+            permission: 'editor'
+          }))}
+          taskToEdit={taskToEdit}
+        />
+      )}
     </div>
   );
 }

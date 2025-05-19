@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './ProjectCreationModal.module.css';
 
 interface ProjectCreationModalProps {
@@ -11,29 +11,55 @@ interface ProjectCreationModalProps {
     description: string;
     status: 'Planning' | 'In Progress' | 'Review' | 'Completed';
     dueDate?: string;
+    projectType: string;
+    clientName?: string;
+    budgetEstimate?: number;
+    isPrivate: boolean;
   }) => void;
+  isAdmin?: boolean;
 }
 
 export default function ProjectCreationModal({
   isOpen,
   onClose,
-  onCreateProject
+  onCreateProject,
+  isAdmin = false
 }: ProjectCreationModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'Planning' | 'In Progress' | 'Review' | 'Completed'>('Planning');
   const [dueDate, setDueDate] = useState<string>('');
+  const [projectType, setProjectType] = useState('Residential');
+  const [clientName, setClientName] = useState('');
+  const [budgetEstimate, setBudgetEstimate] = useState<string>('');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [showAdminWarning, setShowAdminWarning] = useState(!isAdmin);
+
+  useEffect(() => {
+    // Show warning if user is not an admin
+    setShowAdminWarning(!isAdmin);
+  }, [isAdmin]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent non-admins from creating projects
+    if (!isAdmin) {
+      alert('You need admin privileges to create projects.');
+      return;
+    }
+    
     onCreateProject({
       name,
       description,
       status,
-      dueDate: dueDate || undefined
+      dueDate: dueDate || undefined,
+      projectType,
+      clientName: clientName || undefined,
+      budgetEstimate: budgetEstimate ? parseFloat(budgetEstimate) : undefined,
+      isPrivate
     });
 
     // Reset form
@@ -41,6 +67,10 @@ export default function ProjectCreationModal({
     setDescription('');
     setStatus('Planning');
     setDueDate('');
+    setProjectType('Residential');
+    setClientName('');
+    setBudgetEstimate('');
+    setIsPrivate(false);
     
     onClose();
   };
@@ -58,14 +88,16 @@ export default function ProjectCreationModal({
             <i className="fas fa-times"></i>
           </button>
         </div>
-        <div className={styles.adminNotice}>
-          <i className="fas fa-shield-alt"></i>
-          <span>Admin privileges required for project creation</span>
-        </div>
+        {showAdminWarning && (
+          <div className={styles.adminNotice}>
+            <i className="fas fa-shield-alt"></i>
+            <span>Admin privileges required for project creation</span>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit} className={styles.modalForm}>
           <div className={styles.formGroup}>
-            <label htmlFor="project-name">Project Name</label>
+            <label htmlFor="project-name">Project Name *</label>
             <input
               id="project-name"
               type="text"
@@ -76,8 +108,38 @@ export default function ProjectCreationModal({
             />
           </div>
           
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <label htmlFor="project-type">Project Type</label>
+              <select
+                id="project-type"
+                value={projectType}
+                onChange={(e) => setProjectType(e.target.value)}
+              >
+                <option value="Residential">Residential</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Industrial">Industrial</option>
+                <option value="Interior Design">Interior Design</option>
+                <option value="Landscape">Landscape</option>
+                <option value="Urban Planning">Urban Planning</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            
+            <div className={styles.formGroup}>
+              <label htmlFor="project-client">Client Name</label>
+              <input
+                id="project-client"
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+          
           <div className={styles.formGroup}>
-            <label htmlFor="project-description">Description</label>
+            <label htmlFor="project-description">Description *</label>
             <textarea
               id="project-description"
               value={description}
@@ -104,7 +166,7 @@ export default function ProjectCreationModal({
             </div>
             
             <div className={styles.formGroup}>
-              <label htmlFor="project-due-date">Due Date (optional)</label>
+              <label htmlFor="project-due-date">Due Date</label>
               <input
                 id="project-due-date"
                 type="date"
@@ -112,6 +174,38 @@ export default function ProjectCreationModal({
                 onChange={(e) => setDueDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]} // Today as minimum date
               />
+            </div>
+          </div>
+          
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <label htmlFor="project-budget">Budget Estimate</label>
+              <div className={styles.budgetInputWrapper}>
+                <span className={styles.currencySymbol}>$</span>
+                <input
+                  id="project-budget"
+                  type="number"
+                  value={budgetEstimate}
+                  onChange={(e) => setBudgetEstimate(e.target.value)}
+                  placeholder="Optional"
+                  min="0"
+                  step="1000"
+                />
+              </div>
+            </div>
+            
+            <div className={`${styles.formGroup} ${styles.checkboxGroup}`}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={isPrivate}
+                  onChange={(e) => setIsPrivate(e.target.checked)}
+                />
+                <span>Private Project</span>
+              </label>
+              <p className={styles.helpText}>
+                Private projects are only visible to invited team members
+              </p>
             </div>
           </div>
           
@@ -125,9 +219,10 @@ export default function ProjectCreationModal({
             </button>
             <button 
               type="submit" 
-              className={styles.primaryButton}
+              className={`${styles.primaryButton} ${!isAdmin ? styles.disabledButton : ''}`}
+              disabled={!isAdmin}
             >
-              Create Project
+              {isAdmin ? 'Create Project' : 'Admin Access Required'}
             </button>
           </div>
         </form>

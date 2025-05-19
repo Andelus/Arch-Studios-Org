@@ -153,6 +153,54 @@
   background-color: #f0f0f0;
 }
 
+.budgetInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.currencySymbol {
+  position: absolute;
+  left: 12px;
+  font-weight: 500;
+  color: #555;
+}
+
+.budgetInputWrapper input {
+  padding-left: 24px;
+}
+
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.checkboxLabel input {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+}
+
+.helpText {
+  margin: 4px 0 0 0;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.disabledButton {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .modalContent {
@@ -211,5 +259,17 @@
   
   .secondaryButton:hover {
     background-color: #3a3a3a;
+  }
+  
+  .currencySymbol {
+    color: #aaa;
+  }
+
+  .helpText {
+    color: #999;
+  }
+  
+  .checkboxLabel {
+    color: #e0e0e0;
   }
 }
