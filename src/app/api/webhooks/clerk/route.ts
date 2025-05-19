@@ -10,8 +10,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Function to update Clerk user metadata
-async function updateClerkUserMetadata(userId: string, authUuid: string) {
+// Function to update Clerk user metadata if needed in the future
+async function updateClerkUserMetadata(userId: string, metadata: Record<string, any>) {
   try {
     const response = await fetch(`https://api.clerk.dev/v1/users/${userId}/metadata`, {
       method: 'PATCH',
@@ -20,9 +20,7 @@ async function updateClerkUserMetadata(userId: string, authUuid: string) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        public_metadata: {
-          supabase_auth_uuid: authUuid
-        }
+        public_metadata: metadata
       })
     });
 
@@ -91,15 +89,11 @@ export async function POST(req: Request) {
 
       console.log('Creating profile for user:', { id, email: primaryEmail });
 
-      // Generate a new UUID for authentication
-      const authUuid = uuidv4();
-
       // Create user profile in the database
       const { error } = await supabase
         .from('profiles')
         .insert({
-          id: id,
-          auth_uuid: authUuid,
+          id: id,  // Use Clerk's UUID as the profile ID
           email: primaryEmail,
           credits_balance: 1000, // Give initial trial credits
           auto_buy_enabled: false,
@@ -114,13 +108,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
-      // Update the Clerk user's metadata with the auth_uuid
-      try {
-        await updateClerkUserMetadata(id, authUuid);
-      } catch (error) {
-        console.error('Error updating Clerk metadata:', error);
-        // Don't fail the request, but log the error
-      }
+      // No need to store auth_uuid or update Clerk metadata anymore
+      // The profile ID is the Clerk user ID
 
       // Create initial credit transaction for trial credits
       const { error: transactionError } = await supabase
