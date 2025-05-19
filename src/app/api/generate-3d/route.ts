@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import { saveUserAsset } from '@/lib/asset-manager';
+import { handleOrganizationModelGeneration } from '@/lib/organization-asset-manager';
 
 interface FalAIClient {
   subscribe: (model: string, options: any) => Promise<any>;
@@ -32,6 +33,7 @@ interface UserProfile {
   credits_balance: number;
   current_plan_id: string | null;
   subscription_status: string;
+  organization_id: string | null;
   subscription_plan?: SubscriptionPlan;
 }
 
@@ -116,6 +118,7 @@ export async function POST(req: Request) {
               credits_balance,
               current_plan_id,
               subscription_status,
+              organization_id,
               subscription_plan:subscription_plans (
                 model_credit_cost
               )
@@ -145,24 +148,67 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check subscription status
-    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Your subscription has expired or been cancelled. Please renew your subscription to continue using this feature.' },
-        { status: 403 }
-      );
-    }
+    // Check if user belongs to an organization
+    if (profile.organization_id) {
+      // Try to use organization subscription first
+      const orgResult = await handleOrganizationModelGeneration(profile.organization_id, '3d');
+      
+      if (orgResult.canGenerate) {
+        console.log('Using organization subscription for model generation');
+        
+        // If we're using trial credits, log info about remaining credits
+        if (orgResult.trialCreditsUsed) {
+          console.log(`Organization trial credits used. Remaining: ${orgResult.creditsRemaining}`);
+        }
+        
+        // No need to check user's personal credits if org subscription covers it
+        // Continue with generation without deducting user credits
+      } else {
+        // Organization can't cover this - fall back to user's personal subscription/credits
+        console.log('Organization subscription unavailable or insufficient trial credits. Falling back to personal credits.');
+        
+        // The rest of this code is the fallback to personal credits
+        // Check subscription status
+        if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+          return NextResponse.json(
+            { error: 'Your subscription has expired or been cancelled. Please renew your subscription to continue using this feature.' },
+            { status: 403 }
+          );
+        }
 
-    // Determine credit cost
-    const creditCost = profile.subscription_status === 'TRIAL' ? 100 :
-      profile.subscription_plan?.model_credit_cost ??
-      (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+        // Determine credit cost - reduced to 10 credits for trial users (as per new requirements)
+        const creditCost = profile.subscription_status === 'TRIAL' ? 10 :
+          profile.subscription_plan?.model_credit_cost ??
+          (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
 
-    if (profile.credits_balance < creditCost) {
-      return NextResponse.json(
-        { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
-        { status: 403 }
-      );
+        if (profile.credits_balance < creditCost) {
+          return NextResponse.json(
+            { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
+            { status: 403 }
+          );
+        }
+      }
+    } else {
+      // User is not part of an organization - use personal credits
+      // Check subscription status
+      if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+        return NextResponse.json(
+          { error: 'Your subscription has expired or been cancelled. Please renew your subscription to continue using this feature.' },
+          { status: 403 }
+        );
+      }
+
+      // Determine credit cost - reduced to 10 credits for trial users (as per new requirements)
+      const creditCost = profile.subscription_status === 'TRIAL' ? 10 :
+        profile.subscription_plan?.model_credit_cost ??
+        (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+
+      if (profile.credits_balance < creditCost) {
+        return NextResponse.json(
+          { error: 'Insufficient credits. Please purchase more credits or upgrade your plan.' },
+          { status: 403 }
+        );
+      }
     }
 
     try {
@@ -201,31 +247,62 @@ export async function POST(req: Request) {
         throw new Error('Generated model URL is not accessible');
       }
 
-      // Deduct credits atomically with a transaction
-      const { error: transactionError } = await supabase.rpc('deduct_credits_and_log', {
-        p_user_id: userId,
-        p_credit_amount: creditCost,
-        p_transaction_type: profile.subscription_status === 'TRIAL' ? 'TRIAL_MODEL_GENERATION' : 'MODEL_GENERATION',
-        p_generation_type: '3D_MODEL',
-        p_description: '3D model generation'
-      });
-
-      if (transactionError) {
-        console.error('Failed to process credit transaction:', transactionError);
-        throw new Error('Failed to process credit transaction');
+      // Only deduct from personal credits if not using organization subscription
+      // Check if user belongs to organization first
+      let skipPersonalCreditDeduction = false;
+      
+      if (profile.organization_id) {
+        const orgResult = await handleOrganizationModelGeneration(profile.organization_id, '3d');
+        if (orgResult.canGenerate) {
+          skipPersonalCreditDeduction = true;
+        }
       }
       
-      // Save the 3D model to user_assets table
+      if (!skipPersonalCreditDeduction) {
+        // Determine credit cost for personal deduction
+        const creditCost = profile.subscription_status === 'TRIAL' ? 10 :
+          profile.subscription_plan?.model_credit_cost ??
+          (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+        
+        // Deduct credits atomically with a transaction
+        const { error: transactionError } = await supabase.rpc('deduct_credits_and_log', {
+          p_user_id: userId,
+          p_credit_amount: creditCost,
+          p_transaction_type: profile.subscription_status === 'TRIAL' ? 'TRIAL_MODEL_GENERATION' : 'MODEL_GENERATION',
+          p_generation_type: '3D_MODEL',
+          p_description: '3D model generation'
+        });
+
+        if (transactionError) {
+          console.error('Failed to process credit transaction:', transactionError);
+          throw new Error('Failed to process credit transaction');
+        }
+      } else {
+        console.log('Using organization credits - skipping personal credit deduction');
+      }
+      
+      // Save the 3D model to user_assets table (with organization support)
       try {
+        // Get the user's current profile to check organization
+        const user = await currentUser();
+        let organizationId: string | undefined = undefined;
+        
+        // Check if the user is part of an organization
+        if (profile.organization_id) {
+          organizationId = profile.organization_id;
+        }
+        
         const assetSaveResult = await saveUserAsset({
           userId,
           assetType: '3d',
           assetUrl: modelUrl,
           prompt: prompt || 'Generated from image',
+          organizationId,  // This will be undefined if user is not part of an organization
           metadata: {
             sourceImageUrl: imageUrl,
             modelFormat: 'glb',
-            generatedAt: new Date().toISOString()
+            generatedAt: new Date().toISOString(),
+            generatedBy: user?.firstName || userId,
           }
         });
 
@@ -233,7 +310,7 @@ export async function POST(req: Request) {
           // Log the error but don't fail the request
           console.error('Failed to save 3D asset:', assetSaveResult.error);
         } else {
-          console.log('Successfully saved 3D asset:', assetSaveResult.data?.id);
+          console.log(`Successfully saved 3D asset ${assetSaveResult.data?.id} ${organizationId ? 'for organization ' + organizationId : 'for individual user'}`);
         }
       } catch (assetError) {
         // Log the error but don't fail the request

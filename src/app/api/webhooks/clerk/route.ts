@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   updateClerkUserMetadata, 
   getSupabaseProfileIdFromClerk, 
-  ensureProfileExists
+  ensureProfileExists,
+  ensureOrganizationTrialExists
 } from '@/utils/clerk-supabase';
 
 // Initialize Supabase client
@@ -98,23 +99,36 @@ export async function POST(req: Request) {
         slugGenerated: name !== slug // Check if slug was auto-generated 
       });
       
-      // Insert the organization into the organizations table
-      const { error } = await supabase
-        .from('organizations')
-        .insert({
-          id: orgId,
-          name,
-          slug,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+      try {
+        // Insert the organization into the organizations table
+        const { error } = await supabase
+          .from('organizations')
+          .insert({
+            id: orgId,
+            name,
+            slug,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        
+        if (error) {
+          console.error('Error creating organization in database:', error);
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        
+        // Create a trial subscription for this new organization
+        const orgTrial = await ensureOrganizationTrialExists(orgId);
+        console.log(`Created organization trial with ${orgTrial.trial_credits} credits for organization: ${orgId}`);
+        
+        return NextResponse.json({ 
+          message: 'Organization created successfully with trial subscription',
+          organizationId: orgId,
+          trialCredits: orgTrial.trial_credits
         });
-      
-      if (error) {
-        console.error('Error creating organization in database:', error);
+      } catch (error: any) {
+        console.error('Error creating organization with trial:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
-      
-      return NextResponse.json({ message: 'Organization created successfully' });
     }
      if (type === 'organizationMembership.created') {
       console.log('Processing organizationMembership.created event');

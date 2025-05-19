@@ -1,6 +1,10 @@
 import { supabase } from './supabase';
 import { AssetType, UserAsset } from './asset-manager';
 import { isBrowser } from '@/utils/environment';
+import { 
+  hasEnoughOrganizationTrialCredits, 
+  deductOrganizationTrialCredits 
+} from '@/utils/clerk-supabase';
 
 // Implementation of getAuthClient directly in this file
 function getAuthClient(headers?: HeadersInit) {
@@ -69,7 +73,7 @@ export async function getOrganizationAssets(
 export interface OrganizationSubscription {
   id: string;
   organization_id: string;
-  plan_type: 'unlimited' | 'custom';
+  plan_type: 'unlimited' | 'custom' | 'trial';
   amount: number;
   currency: string;
   status: 'pending' | 'active' | 'cancelled' | 'expired';
@@ -79,6 +83,8 @@ export interface OrganizationSubscription {
   last_transaction_id?: string;
   storage_limit?: number | null; // null means unlimited
   asset_limit?: number | null; // null means unlimited
+  is_trial?: boolean;
+  trial_credits?: number;
   created_at: string;
   updated_at: string;
 }
@@ -87,7 +93,7 @@ export interface OrganizationSubscription {
  * Check if an organization has an active subscription
  * 
  * @param {string} organizationId - Organization ID to check
- * @returns {Promise<{hasActiveSubscription: boolean, subscription?: OrganizationSubscription, error?: any}>} Result object
+ * @returns {Promise<{hasActiveSubscription: boolean, subscription?: OrganizationSubscription, isTrial?: boolean, trialCredits?: number, error?: any}>} Result object
  */
 export async function checkOrganizationSubscription(organizationId: string) {
   try {
@@ -121,9 +127,15 @@ export async function checkOrganizationSubscription(organizationId: string) {
       return { hasActiveSubscription: false, error };
     }
 
+    // Check if this is a trial subscription
+    const isTrial = data.is_trial === true;
+    const trialCredits = isTrial ? (data.trial_credits || 0) : 0;
+    
     return { 
       hasActiveSubscription: true, 
-      subscription: data
+      subscription: data,
+      isTrial,
+      trialCredits
     };
   } catch (error) {
     console.error('Exception checking organization subscription:', error);
@@ -170,5 +182,83 @@ export async function getOrganizationStorageUsage(organizationId: string) {
   } catch (error) {
     console.error('Exception getting organization storage usage:', error);
     return { totalStorage: 0, totalAssets: 0, error };
+  }
+}
+
+/**
+ * Handle model generation for an organization
+ * Checks if the organization can generate a model (either has active subscription or enough trial credits)
+ * If using trial, deducts 10 credits per model generation
+ * 
+ * @param {string} organizationId - Organization ID
+ * @param {string} modelType - Type of model being generated (e.g., '3d', 'multi_view')
+ * @returns {Promise<{canGenerate: boolean, trialCreditsUsed?: boolean, creditsRemaining?: number, error?: string}>} Result object
+ */
+export async function handleOrganizationModelGeneration(organizationId: string, modelType: string = '3d'): Promise<{
+  canGenerate: boolean;
+  trialCreditsUsed?: boolean;
+  creditsRemaining?: number;
+  error?: string;
+}> {
+  try {
+    console.log(`Processing model generation for org ${organizationId}, type: ${modelType}`);
+    
+    if (!organizationId) {
+      return { canGenerate: false, error: 'Missing required field: organizationId' };
+    }
+    
+    // Check subscription status
+    const { hasActiveSubscription, subscription, isTrial, trialCredits, error } = 
+      await checkOrganizationSubscription(organizationId);
+    
+    // If no active subscription at all
+    if (!hasActiveSubscription) {
+      return { 
+        canGenerate: false, 
+        error: 'No active subscription found for this organization' 
+      };
+    }
+    
+    // If it's a paid subscription, allow generation without checking credits
+    if (!isTrial) {
+      return { canGenerate: true };
+    }
+    
+    // Check if trial has enough credits (need 10 credits per model)
+    if (trialCredits === undefined || trialCredits < 10) {
+      return { 
+        canGenerate: false, 
+        trialCreditsUsed: true,
+        creditsRemaining: trialCredits || 0,
+        error: 'Insufficient trial credits. Please upgrade to continue generating models.' 
+      };
+    }
+    
+    // Deduct 10 credits from the organization's trial balance
+    const deductionSuccess = await deductOrganizationTrialCredits(
+      organizationId,
+      10,
+      `${modelType.toUpperCase()} model generation`
+    );
+    
+    if (!deductionSuccess) {
+      return { 
+        canGenerate: false, 
+        error: 'Failed to process trial credit deduction' 
+      };
+    }
+    
+    // Return success with credits remaining
+    return { 
+      canGenerate: true, 
+      trialCreditsUsed: true,
+      creditsRemaining: trialCredits - 10
+    };
+  } catch (error) {
+    console.error('Error handling organization model generation:', error);
+    return { 
+      canGenerate: false, 
+      error: 'Failed to process model generation request' 
+    };
   }
 }

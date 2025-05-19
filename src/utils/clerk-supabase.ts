@@ -220,3 +220,173 @@ export async function ensureProfileExists(clerkUserId: string, email: string): P
     throw error;
   }
 }
+
+/**
+ * Ensures an organization has a trial subscription
+ * Creates a trial subscription with 1000 credits if one doesn't exist
+ * @param organizationId The Clerk organization ID
+ * @returns The organization subscription data
+ */
+export async function ensureOrganizationTrialExists(organizationId: string): Promise<{id: string, trial_credits: number, is_trial: boolean}> {
+  try {
+    // Check if organization already has a subscription
+    const { data: existingSubscription } = await supabase
+      .from('organization_subscriptions')
+      .select('id, trial_credits, is_trial')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    
+    if (existingSubscription) {
+      return existingSubscription;
+    }
+    
+    // Create a new trial subscription
+    const subscriptionId = uuidv4();
+    const { error } = await supabase
+      .from('organization_subscriptions')
+      .insert({
+        id: subscriptionId,
+        organization_id: organizationId,
+        plan_type: 'trial',
+        amount: 0,
+        status: 'active',
+        is_trial: true,
+        trial_credits: 1000,
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Error creating organization trial subscription:', error);
+      throw new Error(`Failed to create organization trial: ${error.message}`);
+    }
+    
+    // Log the creation of trial subscription
+    console.log(`Created trial subscription for organization: ${organizationId}`);
+    
+    // Add an entry in transactions table
+    await supabase
+      .from('organization_subscription_transactions')
+      .insert({
+        organization_id: organizationId,
+        tx_ref: `trial-${subscriptionId}`,
+        amount: 0,
+        currency: 'USD',
+        status: 'completed',
+        payment_provider_response: { type: 'trial_activation' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    
+    return {
+      id: subscriptionId,
+      trial_credits: 1000,
+      is_trial: true
+    };
+  } catch (error) {
+    console.error('Error ensuring organization trial exists:', error);
+    throw error;
+  }
+}
+
+/**
+ * Checks if an organization has sufficient trial credits
+ * @param organizationId The organization ID
+ * @param requiredCredits The number of credits required for the operation
+ * @returns True if the organization has sufficient trial credits
+ */
+export async function hasEnoughOrganizationTrialCredits(
+  organizationId: string, 
+  requiredCredits: number = 10
+): Promise<boolean> {
+  try {
+    const { data: subscription } = await supabase
+      .from('organization_subscriptions')
+      .select('is_trial, trial_credits, status')
+      .eq('organization_id', organizationId)
+      .single();
+    
+    if (!subscription) {
+      return false;
+    }
+    
+    // If not a trial or not active, we're not checking credits
+    if (!subscription.is_trial || subscription.status !== 'active') {
+      return true; // Assuming paid subscriptions don't need credit checks
+    }
+    
+    return subscription.trial_credits >= requiredCredits;
+  } catch (error) {
+    console.error('Error checking organization trial credits:', error);
+    return false;
+  }
+}
+
+/**
+ * Deducts credits from an organization's trial balance
+ * @param organizationId The organization ID
+ * @param credits The number of credits to deduct
+ * @param description The reason for the deduction
+ * @returns True if deduction was successful
+ */
+export async function deductOrganizationTrialCredits(
+  organizationId: string, 
+  credits: number = 10,
+  description: string = 'Model generation'
+): Promise<boolean> {
+  try {
+    // Get current credits
+    const { data: subscription } = await supabase
+      .from('organization_subscriptions')
+      .select('id, is_trial, trial_credits, status')
+      .eq('organization_id', organizationId)
+      .single();
+    
+    if (!subscription || !subscription.is_trial || subscription.status !== 'active') {
+      return false;
+    }
+    
+    if (subscription.trial_credits < credits) {
+      return false;
+    }
+    
+    // Update subscription with new credit balance
+    const { error } = await supabase
+      .from('organization_subscriptions')
+      .update({
+        trial_credits: subscription.trial_credits - credits,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', subscription.id);
+    
+    if (error) {
+      console.error('Error deducting organization trial credits:', error);
+      return false;
+    }
+    
+    // Create a transaction record for this deduction
+    await supabase
+      .from('organization_subscription_transactions')
+      .insert({
+        organization_id: organizationId,
+        tx_ref: `deduction-${uuidv4()}`,
+        amount: 0, // No money involved in trial credit usage
+        currency: 'USD',
+        status: 'completed',
+        payment_provider_response: { 
+          type: 'trial_credit_usage',
+          credits_used: credits,
+          description
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    
+    return true;
+  } catch (error) {
+    console.error('Error deducting organization trial credits:', error);
+    return false;
+  }
+}

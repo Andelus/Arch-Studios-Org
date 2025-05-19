@@ -8,6 +8,7 @@ The new organization-based subscription model replaces the individual credit-bas
 
 ## Key Features
 
+- **Organization Trial**: All new organizations get a trial with 1000 shared credits (10 credits per model generation)
 - **Unlimited Plan** ($200/month): Provides unlimited image and 3D model generation for all members of an organization
 - **Custom Enterprise Plans**: Custom pricing and features tailored for enterprise clients
 - **Organization Asset Library**: All organization members have access to a shared asset library
@@ -50,10 +51,31 @@ The subscription system exposes the following API endpoints:
 ## User Flow
 
 1. User creates or joins an organization
-2. User navigates to the Organization Billing page
-3. User subscribes to the Unlimited Plan ($200/month)
-4. All organization members immediately gain unlimited access to the platform
-5. Subscription automatically renews monthly until cancelled
+2. Organization automatically gets a trial subscription with 1000 shared credits
+3. All organization members can use premium features with the trial credits (10 credits per model)
+4. When ready, organization admin navigates to the Organization Billing page
+5. Admin subscribes to the Unlimited Plan ($200/month)
+6. All organization members immediately gain unlimited access to the platform
+7. Subscription automatically renews monthly until cancelled
+
+## Technical Update: May 19, 2025
+
+### Organization Trial Implementation
+
+1. **Automatic Trial Creation**
+   - Added automatic trial subscription creation for new organizations
+   - Trial includes 1000 shared credits with reduced cost (10 credits per model generation)
+   - Trial lasts for 30 days
+
+2. **Credit Management**
+   - Added `is_trial` and `trial_credits` fields to organization subscriptions
+   - Created utility functions for checking and deducting trial credits
+   - Implemented trial credit tracking in the organization subscription transactions table
+
+3. **Asset Generation**
+   - Updated asset generation logic to use organization trial credits before personal credits
+   - Reduced trial credit cost for model generation from 100 to 10 credits
+   - Added organization asset association when generating with organization trial
 
 ## Technical Update: May 20, 2025
 
