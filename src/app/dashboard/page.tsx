@@ -329,7 +329,7 @@ export default function DashboardPage() {
                 {hasOrganization && (
                   <div className={`${styles.dropdownContent} ${isOrgDropdownOpen ? styles.show : ''}`}>
                     <Link href="/organization" onClick={() => setIsOrgDropdownOpen(false)}>View Organization</Link>
-                    <Link href="/billing" onClick={() => setIsOrgDropdownOpen(false)}>Billing</Link>
+                    <Link href="/organization-billing" onClick={() => setIsOrgDropdownOpen(false)}>Organization Billing</Link>
                     <Link href="/settings" onClick={() => setIsOrgDropdownOpen(false)}>Settings</Link>                <button 
                   className={styles.manageOrgButton}
                   onClick={() => {

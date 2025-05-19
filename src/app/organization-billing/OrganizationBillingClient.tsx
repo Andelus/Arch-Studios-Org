@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './OrganizationBilling.module.css';
 import { Inter } from 'next/font/google';
 import { useRouter } from 'next/navigation';
-import { useAuth, useOrganization } from '@clerk/nextjs';
+import { useAuth, useOrganization, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -100,26 +100,20 @@ const CustomPricingModal: React.FC<CustomPricingModalProps> = ({
   });
 
   const { organization } = useOrganization();
-  const { userId, getToken } = useAuth();
+  const { userId } = useAuth();
+  const { user } = useUser();
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
 
-  // Get user details 
+  // Get user details from Clerk hook instead of direct API call
   useEffect(() => {
-    if (userId) {
-      fetch(`https://api.clerk.dev/v1/users/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}`,
-        },
-      })
-      .then(res => res.json())
-      .then(userData => {
-        setUserName(`${userData.first_name || ''} ${userData.last_name || ''}`);
-        setUserEmail(userData.email_addresses[0]?.email_address || '');
-      })
-      .catch(error => console.error('Error fetching user data:', error));
+    if (user) {
+      setUserName(`${user.firstName || ''} ${user.lastName || ''}`);
+      if (user.emailAddresses && user.emailAddresses.length > 0) {
+        setUserEmail(user.emailAddresses[0].emailAddress);
+      }
     }
-  }, [userId]);
+  }, [user]);
 
   useEffect(() => {
     if (organization && userName && userEmail) {
@@ -599,7 +593,7 @@ export default function OrganizationBillingClient() {
                   <div className={styles.detailsItem}>
                     <div className={styles.detailsLabel}>Asset Limit</div>
                     <div className={styles.detailsValue}>
-                      {subscription.asset_limit ? subscription.asset_limit.toLocaleString() : 'Unlimited'}
+                      {subscription && subscription.asset_limit ? subscription.asset_limit.toLocaleString() : 'Unlimited'}
                     </div>
                   </div>
                 </div>
@@ -611,18 +605,18 @@ export default function OrganizationBillingClient() {
                   <div className={styles.usageGrid}>
                     <div className={styles.usageItem}>
                       <div className={styles.usageLabel}>Total Assets</div>
-                      <div className={styles.usageValue}>{usageStats.totalAssets.toLocaleString()}</div>
+                      <div className={styles.usageValue}>{usageStats.totalAssets ? usageStats.totalAssets.toLocaleString() : '0'}</div>
                     </div>
                     <div className={styles.usageItem}>
                       <div className={styles.usageLabel}>Storage Used</div>
                       <div className={styles.usageValue}>
-                        {(usageStats.totalStorageUsed / 1024 / 1024).toFixed(2)} MB
+                        {usageStats.totalStorageUsed ? (usageStats.totalStorageUsed / 1024 / 1024).toFixed(2) : '0'} MB
                       </div>
                     </div>
                     <div className={styles.usageItem}>
                       <div className={styles.usageLabel}>Last Updated</div>
                       <div className={styles.usageValue}>
-                        {new Date(usageStats.lastUpdated).toLocaleTimeString()}
+                        {usageStats.lastUpdated ? new Date(usageStats.lastUpdated).toLocaleString() : 'Never'}
                       </div>
                     </div>
                     <div className={styles.usageItem}>

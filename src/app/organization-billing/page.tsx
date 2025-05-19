@@ -22,7 +22,7 @@ export default async function OrganizationBillingPage() {
   }
 
   return (
-    <main>
+    <main className="min-h-screen w-full">
       <OrganizationBillingClient />
     </main>
   );
