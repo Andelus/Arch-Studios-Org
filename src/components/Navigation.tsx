@@ -40,16 +40,7 @@ export default function Navigation() {
               <span className="text-lg sm:text-xl font-bold">Chateaux AI</span>
             </Link>
             <div className="ml-10 hidden sm:flex space-x-8">
-              <SignedIn>
-                {organization && (
-                  <Link 
-                    href="/organization-billing" 
-                    className="text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 inline-flex items-center px-1 pt-1 text-sm font-medium"
-                  >
-                    Organization Billing
-                  </Link>
-                )}
-              </SignedIn>
+              {/* Navigation links can be added here if needed */}
             </div>
           </div>
           

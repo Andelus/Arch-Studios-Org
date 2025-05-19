@@ -12,7 +12,7 @@ const inter = Inter({ subsets: ['latin'] });
 interface OrganizationSubscription {
   id: string;
   status: 'active' | 'expired' | 'pending';
-  plan_type: 'unlimited' | 'custom';
+  plan_type: 'unlimited' | 'custom' | 'trial';
   amount: number;
   start_date: string;
   end_date: string;
@@ -21,6 +21,8 @@ interface OrganizationSubscription {
   payment_method_id?: string;
   created_at: string;
   updated_at: string;
+  is_trial: boolean;
+  trial_credits: number;
 }
 
 interface FormValues {
@@ -533,16 +535,20 @@ export default function OrganizationBillingClient() {
                 {subscription ? (
                   <>
                     <div className={`${styles.statusBadge} ${
+                      subscription.is_trial ? styles.statusTrial :
                       subscription.status === 'active' ? styles.statusActive : 
                       subscription.status === 'expired' ? styles.statusExpired : 
                       styles.statusPending
                     }`}>
-                      {subscription.status === 'active' ? 'Active' : 
+                      {subscription.is_trial ? 'Trial' :
+                       subscription.status === 'active' ? 'Active' : 
                        subscription.status === 'expired' ? 'Expired' : 
                        'Pending'}
                     </div>
                     <div>
-                      {subscription.plan_type === 'unlimited' ? 'Unlimited Plan' : 'Custom Plan'}
+                      {subscription.is_trial ? 'Free Trial' :
+                       subscription.plan_type === 'unlimited' ? 'Unlimited Plan' : 
+                       'Custom Plan'}
                     </div>
                   </>
                 ) : (
@@ -561,7 +567,7 @@ export default function OrganizationBillingClient() {
                   <div className={styles.detailsItem}>
                     <div className={styles.detailsLabel}>Billing Amount</div>
                     <div className={styles.detailsValue}>
-                      ${subscription.amount.toFixed(2)}/month
+                      {subscription.is_trial ? 'Free Trial' : `$${subscription.amount.toFixed(2)}/month`}
                     </div>
                   </div>
                   <div className={styles.detailsItem}>
@@ -581,9 +587,18 @@ export default function OrganizationBillingClient() {
                   <div className={styles.detailsItem}>
                     <div className={styles.detailsLabel}>Plan Type</div>
                     <div className={styles.detailsValue}>
-                      {subscription.plan_type === 'unlimited' ? 'Unlimited' : 'Custom'}
+                      {subscription.is_trial ? 'Free Trial' : 
+                       subscription.plan_type === 'unlimited' ? 'Unlimited' : 'Custom'}
                     </div>
                   </div>
+                  {subscription.is_trial && (
+                    <div className={styles.detailsItem}>
+                      <div className={styles.detailsLabel}>Trial Credits</div>
+                      <div className={styles.detailsValue}>
+                        {subscription.trial_credits.toLocaleString()}
+                      </div>
+                    </div>
+                  )}
                   <div className={styles.detailsItem}>
                     <div className={styles.detailsLabel}>Renewal Date</div>
                     <div className={styles.detailsValue}>
@@ -630,25 +645,34 @@ export default function OrganizationBillingClient() {
               )}
 
               <div className={styles.actionButtons}>
-                <button 
-                  className={`${styles.button} ${styles.primaryButton}`}
-                  onClick={() => setBillingModalOpen(true)}
-                >
-                  <svg 
-                    width="18" 
-                    height="18" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
+                {subscription.is_trial ? (
+                  <button 
+                    className={`${styles.button} ${styles.primaryButton}`}
+                    onClick={handleSubscribe}
                   >
-                    <path d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
-                    <line x1="1" y1="10" x2="23" y2="10"></line>
-                  </svg>
-                  Manage Subscription
-                </button>
+                    Upgrade to Unlimited Plan
+                  </button>
+                ) : (
+                  <button 
+                    className={`${styles.button} ${styles.primaryButton}`}
+                    onClick={() => setBillingModalOpen(true)}
+                  >
+                    <svg 
+                      width="18" 
+                      height="18" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+                      <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                    Manage Subscription
+                  </button>
+                )}
                 {usageStats && (
                   <button 
                     className={`${styles.button} ${styles.secondaryButton}`}
@@ -675,6 +699,45 @@ export default function OrganizationBillingClient() {
         <div className={styles.planSection}>
           <h2 className={styles.sectionTitle}>Available Plans</h2>
           <div className={styles.divider}></div>
+          
+          {subscription?.is_trial && (
+            <div className={`${styles.planCard} ${styles.trialCard}`}>
+              <div className={styles.planTitle}>Free Trial</div>
+              <div className={styles.planDescription}>
+                You're currently on a free trial with {subscription.trial_credits} credits remaining.
+              </div>
+              
+              <div className={styles.planPrice}>
+                <span className={styles.trialLabel}>Free</span>
+                <span className={styles.pricePeriod}> with 1,000 credits</span>
+              </div>
+              
+              <ul className={styles.featuresList}>
+                <li className={styles.featureItem}>
+                  <span className={styles.checkmark}>✓</span> 1,000 shared credits
+                </li>
+                <li className={styles.featureItem}>
+                  <span className={styles.checkmark}>✓</span> 10 credits per model generation
+                </li>
+                <li className={styles.featureItem}>
+                  <span className={styles.checkmark}>✓</span> Access for all organization members
+                </li>
+                <li className={styles.featureItem}>
+                  <span className={styles.checkmark}>✓</span> Organization asset library
+                </li>
+              </ul>
+              
+              <div className={styles.planActions}>
+                <button 
+                  className={`${styles.button} ${styles.secondaryButton}`}
+                  onClick={fetchUsageStatistics}
+                  disabled={isLoadingStats}
+                >
+                  {isLoadingStats ? 'Refreshing...' : 'Refresh Credits'}
+                </button>
+              </div>
+            </div>
+          )}
           
           <div className={styles.planCard}>
             <div className={styles.planTitle}>Unlimited Plan</div>
@@ -708,9 +771,10 @@ export default function OrganizationBillingClient() {
               <button 
                 className={`${styles.button} ${styles.primaryButton}`}
                 onClick={handleSubscribe}
-                disabled={subscription?.status === 'active'}
+                disabled={subscription?.status === 'active' && !subscription?.is_trial}
               >
-                {subscription?.status === 'active' ? 'Current Plan' : 'Subscribe Now'}
+                {subscription?.status === 'active' && !subscription?.is_trial ? 'Current Plan' : 
+                 subscription?.is_trial ? 'Upgrade from Trial' : 'Subscribe Now'}
               </button>
             </div>
           </div>
