@@ -158,6 +158,21 @@
   color: #d32f2f;
 }
 
+.notificationType.team_invitation {
+  background-color: #e1f5fe;
+  color: #0288d1;
+}
+
+.notificationType.invitation_accepted {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.notificationType.invitation_reminder {
+  background-color: #e8eaf6;
+  color: #3f51b5;
+}
+
 .notificationContent {
   flex-grow: 1;
 }
@@ -273,5 +288,20 @@
   
   .dismissButton:hover {
     background-color: #333;
+  }
+  
+  .notificationType.team_invitation {
+    background-color: rgba(2, 136, 209, 0.2);
+    color: #4fc3f7;
+  }
+  
+  .notificationType.invitation_accepted {
+    background-color: rgba(46, 125, 50, 0.2);
+    color: #81c784;
+  }
+  
+  .notificationType.invitation_reminder {
+    background-color: rgba(63, 81, 181, 0.2);
+    color: #9fa8da;
   }
 }

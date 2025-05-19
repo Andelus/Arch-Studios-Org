@@ -229,6 +229,35 @@
   border-top: 1px dashed #eaeaea;
   font-weight: 500;
   transition: background-color 0.2s;
+  position: relative;
+}
+
+.addProject:hover::after {
+  content: "Admin privileges required";
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.addProject:hover::before {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(0, 0, 0, 0.8);
+  z-index: 100;
 }
 
 .addProject:hover {

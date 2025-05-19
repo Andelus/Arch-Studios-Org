@@ -382,6 +382,34 @@
   background-color: #f0f0f0;
 }
 
+/* Pending Invitations Container */
+.pendingInvitationsContainer {
+  margin-top: 2rem;
+  border-top: 1px solid #eaeaea;
+  padding-top: 1rem;
+}
+
+/* Add spacing between member list and invitations */
+.membersList + .pendingInvitationsContainer {
+  margin-top: 2rem;
+}
+
+/* Invitation Badge */
+.invitationBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f44336;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  margin-left: 8px;
+  font-weight: bold;
+}
+
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
   .modalContent {

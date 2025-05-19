@@ -5,12 +5,13 @@ import styles from './NotificationCenter.module.css';
 
 export interface Notification {
   id: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder';
   title: string;
   message: string;
   time: string; // ISO timestamp
   isRead: boolean;
   link?: string;
+  metadata?: Record<string, any>; // Additional data that might be useful for rendering
 }
 
 interface NotificationCenterProps {
@@ -64,7 +65,7 @@ export default function NotificationCenter({
     }
   };
   
-  const getNotificationIcon = (type: 'info' | 'success' | 'warning' | 'error') => {
+  const getNotificationIcon = (type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder') => {
     switch (type) {
       case 'info':
         return 'fas fa-info-circle';
@@ -74,6 +75,14 @@ export default function NotificationCenter({
         return 'fas fa-exclamation-triangle';
       case 'error':
         return 'fas fa-times-circle';
+      case 'team_invitation':
+        return 'fas fa-user-plus';
+      case 'invitation_accepted':
+        return 'fas fa-user-check';
+      case 'invitation_reminder':
+        return 'fas fa-bell';
+      default:
+        return 'fas fa-info-circle';
     }
   };
   

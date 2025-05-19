@@ -1,0 +1,215 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: #fff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.adminNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(79, 172, 254, 0.1);
+  color: #4facfe;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.adminNotice i {
+  color: #4facfe;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: #666;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.closeButton:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.modalForm {
+  padding: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: 1.25rem;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.formGroup input,
+.formGroup textarea,
+.formGroup select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus,
+.formGroup select:focus {
+  border-color: #4facfe;
+  outline: none;
+}
+
+.formRow {
+  display: flex;
+  gap: 1rem;
+}
+
+.formRow .formGroup {
+  flex: 1;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eaeaea;
+}
+
+.primaryButton {
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.primaryButton:hover {
+  opacity: 0.9;
+}
+
+.secondaryButton {
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #eaeaea;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.secondaryButton:hover {
+  background-color: #f0f0f0;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .modalContent {
+    background-color: #1e1e1e;
+  }
+  
+  .modalHeader {
+    border-bottom-color: #333;
+  }
+  
+  .adminNotice {
+    background-color: rgba(79, 172, 254, 0.15);
+    color: #78c6ff;
+  }
+  
+  .modalHeader h2 {
+    color: #e0e0e0;
+  }
+  
+  .closeButton {
+    color: #aaa;
+  }
+  
+  .closeButton:hover {
+    background-color: #333;
+    color: #e0e0e0;
+  }
+  
+  .formGroup label {
+    color: #bbb;
+  }
+  
+  .formGroup input,
+  .formGroup textarea,
+  .formGroup select {
+    background-color: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+  
+  .formGroup input:focus,
+  .formGroup textarea:focus,
+  .formGroup select:focus {
+    border-color: #4facfe;
+  }
+  
+  .modalActions {
+    border-top-color: #333;
+  }
+  
+  .secondaryButton {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+  
+  .secondaryButton:hover {
+    background-color: #3a3a3a;
+  }
+}

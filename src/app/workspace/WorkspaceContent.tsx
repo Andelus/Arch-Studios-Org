@@ -7,12 +7,14 @@ import Link from "next/link";
 import styles from "./Workspace.module.css";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { useTeam } from "@/contexts/TeamContext";
+import type { TeamMember } from "@/contexts/TeamContext";
 import TeamManagementModal from "@/components/TeamManagementModal";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useNotifications } from "@/hooks/useNotifications";
 import AssetManager from "@/components/AssetManager";
 import CommunicationPanel from "@/components/CommunicationPanel";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
+import ProjectCreationModal from "@/components/ProjectCreationModal";
 
 // Types
 interface Project {
@@ -126,6 +128,7 @@ export default function WorkspaceContent() {
   const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const { notifications, addNotification, markAsRead, markAllAsRead, dismissNotification } = useNotifications();
   const { 
     projectMembers, 
@@ -136,8 +139,41 @@ export default function WorkspaceContent() {
     isTeamManagementModalOpen,
     openTeamManagementModal,
     closeTeamManagementModal,
-    currentProjectId
+    currentProjectId,
+    setTeamMembers
   } = useTeam();
+  const {
+    initializeProject
+  } = useWorkspace();
+
+  // Function to generate unique IDs for projects and other entities
+  const generateId = (prefix: string) => {
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
+  };
+
+  // Function to check if the current user has admin privileges
+  const isUserAdmin = (projectId?: string): boolean => {
+    // If no user is signed in, they're not an admin
+    if (!user || !isSignedIn) return false;
+    
+    // If checking for general permissions (no specific project)
+    if (!projectId) {
+      // Check if the user is an admin in any project
+      return Object.values(projectMembers).some(members => 
+        members.some(member => 
+          member.id === user.id && member.permission === 'admin'
+        )
+      );
+    }
+    
+    // Check if the user is an admin in this specific project
+    const members = projectMembers[projectId];
+    if (!members) return false;
+    
+    return members.some(member => 
+      member.id === user.id && member.permission === 'admin'
+    );
+  };
 
   useEffect(() => {
     if (isLoaded) {
@@ -264,10 +300,19 @@ export default function WorkspaceContent() {
                   </span>
                 </div>
               ))}
-              <div className={styles.addProject}>
-                <i className="fas fa-plus"></i>
-                <span>New Project</span>
-              </div>
+              {/* Only show New Project button to admins */}
+              {isUserAdmin() && (
+                <div 
+                  className={styles.addProject}
+                  onClick={() => {
+                    setIsProjectModalOpen(true);
+                    setShowProjectDropdown(false);
+                  }}
+                >
+                  <i className="fas fa-plus"></i>
+                  <span>New Project</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -555,6 +600,71 @@ export default function WorkspaceContent() {
           }}
         />
       )}
+
+      {/* Project Creation Modal */}
+      <ProjectCreationModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        onCreateProject={(projectData) => {
+          // Check admin permissions again as a security measure
+          if (!isUserAdmin()) {
+            addNotification(
+              'error',
+              'Permission Denied',
+              'You need admin privileges to create new projects.'
+            );
+            return;
+          }
+          
+          // Create a new project with unique ID
+          const projectId = generateId('proj');
+          const newProject: Project = {
+            id: projectId,
+            name: projectData.name,
+            description: projectData.description,
+            status: projectData.status,
+            lastUpdated: new Date().toISOString(),
+            dueDate: projectData.dueDate,
+            progress: 0, // New projects start at 0% progress
+            members: user ? [{
+              id: user.id,
+              name: `${user.firstName} ${user.lastName}`, 
+              avatar: user.imageUrl || '',
+              role: 'Project Manager',
+              status: 'online'
+            }] : []
+          };
+          
+          // Add the new project to the projects list
+          setProjects(prev => [...prev, newProject]);
+          
+          // Select the newly created project
+          setSelectedProject(newProject);
+          
+          // Update team context with the new project's team members
+          if (user) {
+            setTeamMembers(projectId, [{
+              id: user.id,
+              name: `${user.firstName} ${user.lastName}`,
+              email: user.emailAddresses?.[0]?.emailAddress || '',
+              avatar: user.imageUrl || '',
+              role: 'Project Manager',
+              status: 'online',
+              permission: 'admin' // Admin permission for project creator
+            }]);
+          }
+          
+          // Initialize workspace context for the new project
+          initializeProject(projectId);
+          
+          // Show success notification
+          addNotification(
+            'success',
+            'Project Created',
+            `${projectData.name} has been successfully created.`
+          );
+        }}
+      />
     </div>
   );
 }

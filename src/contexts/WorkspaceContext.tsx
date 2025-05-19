@@ -53,6 +53,7 @@ interface WorkspaceContextType {
   ) => Promise<void>;
   deleteAsset: (projectId: string, assetId: string) => void;
   editAsset: (projectId: string, assetId: string, updates: Partial<Asset>) => void;
+  initializeProject: (projectId: string) => void;
   
   // Communication
   channels: Record<string, Channel[]>;
@@ -395,6 +396,64 @@ export const WorkspaceProvider: React.FC<{
       `The ${name} channel has been created successfully.`
     );
   };
+  
+  // Initialize a new project with default assets and channels
+  const initializeProject = (projectId: string) => {
+    // Initialize empty assets array for this project
+    setProjectAssets(prev => ({
+      ...prev,
+      [projectId]: []
+    }));
+    
+    // Create default channels for this project
+    const generalChannel = {
+      id: generateId('ch'),
+      name: 'general',
+      description: 'General discussion for the project',
+      projectId,
+      isPrivate: false,
+      unreadCount: 0
+    };
+    
+    const announcementsChannel = {
+      id: generateId('ch'),
+      name: 'announcements',
+      description: 'Important announcements and updates',
+      projectId,
+      isPrivate: false,
+      unreadCount: 0
+    };
+    
+    setChannels(prev => ({
+      ...prev,
+      [projectId]: [generalChannel, announcementsChannel]
+    }));
+    
+    // Initialize empty messages for the channels
+    setMessages(prev => ({
+      ...prev,
+      [generalChannel.id]: [],
+      [announcementsChannel.id]: []
+    }));
+    
+    // Create a welcome message in the general channel
+    const welcomeMessage = {
+      id: generateId('msg'),
+      content: 'Welcome to the new project! This channel is for general discussion.',
+      sender: {
+        id: 'system',
+        name: 'System',
+        avatar: ''
+      },
+      timestamp: new Date().toISOString(),
+      isAnnouncement: false
+    };
+    
+    setMessages(prev => ({
+      ...prev,
+      [generalChannel.id]: [welcomeMessage]
+    }));
+  };
 
   return (
     <WorkspaceContext.Provider value={{
@@ -403,6 +462,7 @@ export const WorkspaceProvider: React.FC<{
       uploadAsset,
       deleteAsset,
       editAsset,
+      initializeProject,
       
       // Communication
       channels,

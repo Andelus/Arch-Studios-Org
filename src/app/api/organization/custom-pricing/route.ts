@@ -56,26 +56,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // Send notification email to finance team
+    // Log the request in the system
     try {
-      const { sendEmail } = await import('@/lib/email-service');
-      await sendEmail({
-        subject: `New Custom Pricing Request: ${companyName}`,
-        to: 'finance@chateauxai.com',
-        template: 'custom-pricing-request',
-        data: { 
-          companyName, 
-          contactName, 
-          email, 
-          requirements,
-          employeeCount,
-          budget,
-          organizationId
-        }
+      // In a real implementation, you might want to send a notification to admin users
+      console.log('Custom pricing request received:', {
+        organizationId,
+        companyName, 
+        contactName, 
+        email, 
+        requirements,
+        employeeCount,
+        budget
       });
-    } catch (emailError) {
-      console.error('Failed to send notification email:', emailError);
-      // Don't fail the request if email fails
+    } catch (notificationError) {
+      console.error('Failed to log notification:', notificationError);
+      // Don't fail the request if notification fails
     }
 
     return NextResponse.json({

@@ -1,4 +1,4 @@
-import { sendEmail } from '@/lib/email-service';
+import { sendEmail } from './email-service';
 
 /**
  * Send email notification for organization subscription events

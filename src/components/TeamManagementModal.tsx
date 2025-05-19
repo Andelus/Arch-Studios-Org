@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './TeamManagementModal.module.css';
+import PendingInvitations from './PendingInvitations';
+import { useTeam, TeamInvitation } from '@/contexts/TeamContext';
 
 interface Member {
   id: string;
@@ -44,6 +46,16 @@ export default function TeamManagementModal({
   const [invitePermission, setInvitePermission] = useState<'admin' | 'editor' | 'viewer'>('editor');
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   
+  // Get pending invitations from the Team context
+  const { pendingInvitations, fetchPendingInvitations, resendInvitation } = useTeam();
+  
+  // Fetch pending invitations when the modal opens
+  useEffect(() => {
+    if (isOpen && projectId) {
+      fetchPendingInvitations(projectId);
+    }
+  }, [isOpen, projectId, fetchPendingInvitations]);
+  
   if (!isOpen) return null;
   
   const handleSubmitInvite = (e: React.FormEvent) => {
@@ -56,6 +68,14 @@ export default function TeamManagementModal({
       setActiveTab('members');
     }
   };
+
+  // Handle resending an invitation
+  const handleResendInvitation = async (invitationId: string) => {
+    await resendInvitation(invitationId);
+  };
+  
+  // Get pending invitations for this project
+  const projectInvitations = pendingInvitations[projectId] || [];
   
   return (
     <div className={styles.modalOverlay}>
@@ -73,6 +93,9 @@ export default function TeamManagementModal({
             onClick={() => setActiveTab('members')}
           >
             <i className="fas fa-users"></i> Team Members
+            {projectInvitations && projectInvitations.length > 0 && (
+              <span className={styles.invitationBadge}>{projectInvitations.length}</span>
+            )}
           </button>
           <button 
             className={`${styles.tabButton} ${activeTab === 'invite' ? styles.activeTab : ''}`}
@@ -84,112 +107,119 @@ export default function TeamManagementModal({
         
         <div className={styles.modalBody}>
           {activeTab === 'members' ? (
-            <div className={styles.membersList}>
-              <table className={styles.membersTable}>
-                <thead>
-                  <tr>
-                    <th className={styles.nameColumn}>Name</th>
-                    <th>Role</th>
-                    <th>Permission</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map(member => (
-                    <tr key={member.id} className={styles.memberRow}>
-                      <td className={styles.nameCell}>
-                        <div className={styles.memberAvatar}>
-                          {member.avatar ? (
-                            <img src={member.avatar} alt={member.name} />
-                          ) : (
-                            <span>{member.name.charAt(0)}</span>
-                          )}
-                          <div className={`${styles.statusDot} ${styles[member.status]}`}></div>
-                        </div>
-                        <div className={styles.memberInfo}>
-                          <div className={styles.memberName}>{member.name}</div>
-                          <div className={styles.memberEmail}>{member.email}</div>
-                        </div>
-                      </td>
-                      <td>
-                        {editingMemberId === member.id ? (
-                          <input 
-                            type="text" 
-                            value={member.role}
-                            onChange={(e) => onUpdateMember(member.id, { role: e.target.value })}
-                            className={styles.editInput}
-                          />
-                        ) : (
-                          member.role
-                        )}
-                      </td>
-                      <td>
-                        {editingMemberId === member.id ? (
-                          <select 
-                            value={member.permission}
-                            onChange={(e) => onUpdateMember(member.id, { 
-                              permission: e.target.value as 'admin' | 'editor' | 'viewer' 
-                            })}
-                            className={styles.selectInput}
-                          >
-                            {PERMISSIONS.map(perm => (
-                              <option key={perm.id} value={perm.id}>{perm.name}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className={`${styles.permissionBadge} ${styles[member.permission]}`}>
-                            {member.permission.charAt(0).toUpperCase() + member.permission.slice(1)}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`${styles.statusBadge} ${styles[member.status]}`}>
-                          {member.status}
-                        </span>
-                      </td>
-                      <td className={styles.actionsCell}>
-                        {editingMemberId === member.id ? (
-                          <>
-                            <button 
-                              className={styles.iconButton}
-                              onClick={() => setEditingMemberId(null)}
-                              title="Save changes"
-                            >
-                              <i className="fas fa-check"></i>
-                            </button>
-                            <button 
-                              className={`${styles.iconButton} ${styles.cancelButton}`}
-                              onClick={() => setEditingMemberId(null)}
-                              title="Cancel editing"
-                            >
-                              <i className="fas fa-times"></i>
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button 
-                              className={styles.iconButton} 
-                              onClick={() => setEditingMemberId(member.id)}
-                              title="Edit member"
-                            >
-                              <i className="fas fa-pencil-alt"></i>
-                            </button>
-                            <button 
-                              className={`${styles.iconButton} ${styles.removeButton}`}
-                              onClick={() => onRemoveMember(member.id)}
-                              title="Remove member"
-                            >
-                              <i className="fas fa-trash-alt"></i>
-                            </button>
-                          </>
-                        )}
-                      </td>
+            <>
+              <div className={styles.membersList}>
+                <table className={styles.membersTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.nameColumn}>Name</th>
+                      <th>Role</th>
+                      <th>Permission</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {members.map(member => (
+                      <tr key={member.id} className={styles.memberRow}>
+                        <td className={styles.nameCell}>
+                          <div className={styles.memberAvatar}>
+                            {member.avatar ? (
+                              <img src={member.avatar} alt={member.name} />
+                            ) : (
+                              <span>{member.name.charAt(0)}</span>
+                            )}
+                            <div className={`${styles.statusDot} ${styles[member.status]}`}></div>
+                          </div>
+                          <div className={styles.memberInfo}>
+                            <div className={styles.memberName}>{member.name}</div>
+                            <div className={styles.memberEmail}>{member.email}</div>
+                          </div>
+                        </td>
+                        <td>
+                          {editingMemberId === member.id ? (
+                            <input 
+                              type="text" 
+                              value={member.role}
+                              onChange={(e) => onUpdateMember(member.id, { role: e.target.value })}
+                              className={styles.editInput}
+                            />
+                          ) : (
+                            member.role
+                          )}
+                        </td>
+                        <td>
+                          {editingMemberId === member.id ? (
+                            <select 
+                              value={member.permission}
+                              onChange={(e) => onUpdateMember(member.id, { 
+                                permission: e.target.value as 'admin' | 'editor' | 'viewer' 
+                              })}
+                              className={styles.selectInput}
+                            >
+                              {PERMISSIONS.map(perm => (
+                                <option key={perm.id} value={perm.id}>{perm.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className={`${styles.permissionBadge} ${styles[member.permission]}`}>
+                              {member.permission.charAt(0).toUpperCase() + member.permission.slice(1)}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`${styles.statusBadge} ${styles[member.status]}`}>
+                            {member.status}
+                          </span>
+                        </td>
+                        <td className={styles.actionsCell}>
+                          {editingMemberId === member.id ? (
+                            <>
+                              <button 
+                                className={styles.iconButton}
+                                onClick={() => setEditingMemberId(null)}
+                                title="Save changes"
+                              >
+                                <i className="fas fa-check"></i>
+                              </button>
+                              <button 
+                                className={`${styles.iconButton} ${styles.cancelButton}`}
+                                onClick={() => setEditingMemberId(null)}
+                                title="Cancel editing"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button 
+                                className={styles.iconButton} 
+                                onClick={() => setEditingMemberId(member.id)}
+                                title="Edit member"
+                              >
+                                <i className="fas fa-pencil-alt"></i>
+                              </button>
+                              <button 
+                                className={`${styles.iconButton} ${styles.removeButton}`}
+                                onClick={() => onRemoveMember(member.id)}
+                                title="Remove member"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Display pending invitations section */}
+              <div className={styles.pendingInvitationsContainer}>
+                <PendingInvitations projectId={projectId} />
+              </div>
+            </>
           ) : (
             <form onSubmit={handleSubmitInvite} className={styles.inviteForm}>
               <div className={styles.formGroup}>
