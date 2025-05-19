@@ -132,6 +132,28 @@ export default function WorkspaceContent() {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | undefined>(undefined);
+  
+  // Calculate project progress based on task completion
+  const calculateProjectProgress = (projectId: string): number => {
+    const projectTasks = tasks.filter(task => task.projectId === projectId);
+    if (projectTasks.length === 0) return 0;
+    
+    const completedTasks = projectTasks.filter(task => task.status === 'Done');
+    return Math.round((completedTasks.length / projectTasks.length) * 100);
+  };
+
+  // Update project progress whenever tasks change
+  const updateProjectProgress = (projectId: string) => {
+    const progress = calculateProjectProgress(projectId);
+    setProjects(prev => prev.map(project => 
+      project.id === projectId ? { 
+        ...project, 
+        progress, 
+        lastUpdated: new Date().toISOString() 
+      } : project
+    ));
+  };
+  
   const { notifications, addNotification, markAsRead, markAllAsRead, dismissNotification } = useNotifications();
   const { 
     projectMembers, 
@@ -198,6 +220,9 @@ export default function WorkspaceContent() {
     setTasks(prev => [...prev, newTask]);
     setIsTaskModalOpen(false);
     
+    // Update project progress after adding a new task
+    updateProjectProgress(selectedProject.id);
+    
     // Show success notification
     addNotification(
       'success',
@@ -236,6 +261,9 @@ export default function WorkspaceContent() {
     setIsTaskModalOpen(false);
     setTaskToEdit(undefined);
     
+    // Update project progress after updating a task
+    updateProjectProgress(updatedTask.projectId);
+    
     // Show success notification
     addNotification(
       'success',
@@ -248,7 +276,13 @@ export default function WorkspaceContent() {
     const taskToDelete = tasks.find((task: Task) => task.id === taskId);
     if (!taskToDelete) return;
     
+    // Store the projectId before removing the task
+    const projectId = taskToDelete.projectId;
+    
     setTasks(prev => prev.filter((task: Task) => task.id !== taskId));
+    
+    // Update project progress after deleting a task
+    updateProjectProgress(projectId);
     
     // Show notification
     addNotification(
@@ -258,11 +292,52 @@ export default function WorkspaceContent() {
     );
   };
   
+  const handleDeleteProject = (projectId: string) => {
+    // Find project to delete
+    const projectToDelete = projects.find((project: Project) => project.id === projectId);
+    if (!projectToDelete) return;
+    
+    // Check if user is admin
+    if (!isUserAdmin(projectId)) {
+      addNotification(
+        'error',
+        'Permission Denied',
+        'You need admin privileges to delete projects.'
+      );
+      return;
+    }
+    
+    // Remove the project
+    setProjects(prev => prev.filter((project: Project) => project.id !== projectId));
+    
+    // If currently viewing the deleted project, set to null or another project
+    if (selectedProject && selectedProject.id === projectId) {
+      const remainingProjects = projects.filter(p => p.id !== projectId);
+      if (remainingProjects.length > 0) {
+        setSelectedProject(remainingProjects[0]);
+      } else {
+        setSelectedProject(null);
+      }
+    }
+    
+    // Remove associated tasks
+    setTasks(prev => prev.filter(task => task.projectId !== projectId));
+    
+    // Show notification
+    addNotification(
+      'info',
+      'Project Deleted',
+      `"${projectToDelete.name}" has been deleted.`
+    );
+  };
+  
   const openTaskModal = () => {
     setTaskToEdit(undefined); // Reset any previous task
     setIsTaskModalOpen(true);
   };
 
+  // Function was duplicated, removed duplicate
+  
   useEffect(() => {
     if (isLoaded) {
       setLoading(false);
@@ -371,15 +446,33 @@ export default function WorkspaceContent() {
                 <div
                   key={project.id}
                   className={`${styles.projectOption} ${selectedProject?.id === project.id ? styles.activeProject : ''}`}
-                  onClick={() => {
-                    setSelectedProject(project);
-                    setShowProjectDropdown(false);
-                  }}
                 >
-                  <span className={styles.projectName}>{project.name}</span>
-                  <span className={`${styles.projectStatus} ${styles[project.status.toLowerCase().replace(' ', '')]}`}>
-                    {project.status}
-                  </span>
+                  <div 
+                    className={styles.projectOptionContent}
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setShowProjectDropdown(false);
+                    }}
+                  >
+                    <span className={styles.projectName}>{project.name}</span>
+                    <span className={`${styles.projectStatus} ${styles[project.status.toLowerCase().replace(' ', '')]}`}>
+                      {project.status}
+                    </span>
+                  </div>
+                  {isUserAdmin(project.id) && (
+                    <button 
+                      className={styles.projectDeleteButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Are you sure you want to delete "${project.name}"?`)) {
+                          handleDeleteProject(project.id);
+                        }
+                      }}
+                      title="Delete Project"
+                    >
+                      <i className="fas fa-trash-alt"></i>
+                    </button>
+                  )}
                 </div>
               ))}
               {/* Only show New Project button to admins */}
@@ -421,6 +514,18 @@ export default function WorkspaceContent() {
                 >
                   <i className="fas fa-plus"></i> Add Task
                 </button>
+                {isUserAdmin(selectedProject.id) && (
+                  <button 
+                    className={styles.dangerButton}
+                    onClick={() => {
+                      if (window.confirm(`Are you sure you want to delete "${selectedProject.name}"?`)) {
+                        handleDeleteProject(selectedProject.id);
+                      }
+                    }}
+                  >
+                    <i className="fas fa-trash-alt"></i> Delete
+                  </button>
+                )}
               </div>
             </div>
             <p className={styles.projectDescription}>{selectedProject.description}</p>

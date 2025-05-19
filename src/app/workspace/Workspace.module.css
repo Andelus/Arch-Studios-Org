@@ -170,7 +170,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  cursor: pointer;
   transition: background-color 0.2s;
   border-bottom: 1px solid #f0f0f0;
 }
@@ -181,6 +180,28 @@
 
 .projectOption:hover {
   background-color: #f8f9fa;
+}
+
+.projectDeleteButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.2s;
+  margin-left: 8px;
+  opacity: 0.6;
+}
+
+.projectDeleteButton:hover {
+  background-color: #ffebee;
+  color: #e53935;
+  opacity: 1;
 }
 
 .activeProject {
@@ -1098,16 +1119,24 @@
     color: #aaa;
   }
   
+  .dangerButton {
+    background-color: #3a2222;
+    color: #ff6b6b;
+    border-color: #4a2c2c;
+  }
+  
+  .dangerButton:hover {
+    background-color: #4a2c2c;
+    border-color: #5a3535;
+  }
+  
+  .projectDeleteButton:hover {
+    background-color: #3a2222;
+    color: #ff6b6b;
+  }
+  
   .metricCard {
     background-color: #333;
-  }
-  
-  .metricLabel {
-    color: #aaa;
-  }
-  
-  .metricValue {
-    color: #e0e0e0;
   }
   
   .memberCard {

@@ -235,6 +235,214 @@
   color: #666;
 }
 
+/* Notification Detail View */
+.notificationDetailView {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 400px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.2s ease-out;
+  max-height: 500px;
+}
+
+.detailHeader {
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.detailHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  flex-grow: 1;
+  text-align: center;
+}
+
+.backButton, .closeButton {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: #666;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.backButton:hover, .closeButton:hover {
+  background-color: #f0f0f0;
+}
+
+.detailContent {
+  padding: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+
+.detailType {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+}
+
+.detailType.info {
+  background-color: #e3f2fd;
+  color: #0277bd;
+}
+
+.detailType.success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.detailType.warning {
+  background-color: #fff3e0;
+  color: #ff9800;
+}
+
+.detailType.error {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.detailType.team_invitation {
+  background-color: #e1f5fe;
+  color: #0288d1;
+}
+
+.detailType.invitation_accepted {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.detailType.invitation_reminder {
+  background-color: #e8eaf6;
+  color: #3f51b5;
+}
+
+.detailInfo {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.detailTime {
+  font-size: 0.85rem;
+  color: #777;
+  margin-bottom: 1rem;
+}
+
+.detailMessage {
+  margin: 0;
+  font-size: 1rem;
+  color: #444;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.metadataSection {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eaeaea;
+}
+
+.metadataItem {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.detailLink {
+  display: inline-block;
+  margin-top: 1rem;
+  color: #4facfe;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.detailLink:hover {
+  text-decoration: underline;
+}
+
+.detailActions {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #eaeaea;
+  background-color: #f9f9f9;
+}
+
+.markReadButton, .dismissNotificationButton {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+}
+
+.markReadButton {
+  background-color: #e3f2fd;
+  color: #0277bd;
+}
+
+.markReadButton:hover {
+  background-color: #bbdefb;
+}
+
+.dismissNotificationButton {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.dismissNotificationButton:hover {
+  background-color: #ffcdd2;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   .notificationToggle {
@@ -303,5 +511,69 @@
   .notificationType.invitation_reminder {
     background-color: rgba(63, 81, 181, 0.2);
     color: #9fa8da;
+  }
+  
+  .notificationDetailView {
+    background-color: #1e1e1e;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .detailHeader {
+    border-bottom: 1px solid #333;
+  }
+  
+  .detailHeader h3 {
+    color: #e0e0e0;
+  }
+  
+  .backButton, .closeButton {
+    color: #aaa;
+  }
+  
+  .backButton:hover, .closeButton:hover {
+    background-color: #333;
+  }
+  
+  .detailTitle {
+    color: #e0e0e0;
+  }
+  
+  .detailTime {
+    color: #aaa;
+  }
+  
+  .detailMessage {
+    color: #ccc;
+  }
+  
+  .metadataSection {
+    border-top: 1px solid #333;
+  }
+  
+  .metadataItem {
+    color: #aaa;
+  }
+  
+  .detailActions {
+    border-top: 1px solid #333;
+    background-color: #272727;
+  }
+  
+  .markReadButton {
+    background-color: #0d47a1;
+    color: #e3f2fd;
+  }
+  
+  .markReadButton:hover {
+    background-color: #1565c0;
+  }
+  
+  .dismissNotificationButton {
+    background-color: #b71c1c;
+    color: #ffebee;
+  }
+  
+  .dismissNotificationButton:hover {
+    background-color: #c62828;
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './NotificationCenter.module.css';
 
 export interface Notification {
@@ -29,6 +29,9 @@ export default function NotificationCenter({
 }: NotificationCenterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const detailViewRef = useRef<HTMLDivElement>(null);
   
   // Update unread count when notifications change
   useEffect(() => {
@@ -36,14 +39,39 @@ export default function NotificationCenter({
     setUnreadCount(count);
   }, [notifications]);
   
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          detailViewRef.current && !detailViewRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        if (selectedNotification) {
+          setTimeout(() => setSelectedNotification(null), 300); // Wait for animation to finish
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedNotification]);
+  
   const handleToggle = () => {
     setIsOpen(!isOpen);
+    // Close detail view when closing dropdown
+    if (isOpen && selectedNotification) {
+      setSelectedNotification(null);
+    }
   };
   
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.isRead) {
       onMarkAsRead(notification.id);
     }
+    setSelectedNotification(notification);
+  };
+  
+  const handleBackToList = () => {
+    setSelectedNotification(null);
   };
   
   const getTimeDisplay = (time: string) => {
@@ -63,6 +91,19 @@ export default function NotificationCenter({
     } else {
       return date.toLocaleDateString();
     }
+  };
+  
+  const getDetailedTimeDisplay = (time: string) => {
+    const date = new Date(time);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   };
   
   const getNotificationIcon = (type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder') => {
@@ -96,7 +137,11 @@ export default function NotificationCenter({
       </button>
       
       {isOpen && (
-        <div className={styles.notificationsDropdown}>
+        <div 
+          className={styles.notificationsDropdown} 
+          ref={dropdownRef}
+          style={{ display: selectedNotification ? 'none' : 'flex' }}
+        >
           <div className={styles.notificationsHeader}>
             <h3>Notifications</h3>
             {notifications.length > 0 && (
@@ -151,6 +196,88 @@ export default function NotificationCenter({
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+      
+      {/* Notification Detail View */}
+      {isOpen && selectedNotification && (
+        <div 
+          className={styles.notificationDetailView} 
+          ref={detailViewRef}
+        >
+          <div className={styles.detailHeader}>
+            <button 
+              className={styles.backButton}
+              onClick={handleBackToList}
+            >
+              <i className="fas fa-arrow-left"></i>
+            </button>
+            <h3>Notification Details</h3>
+            <button 
+              className={styles.closeButton}
+              onClick={() => {
+                setSelectedNotification(null);
+                setIsOpen(false);
+              }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div className={styles.detailContent}>
+            <div className={`${styles.detailType} ${styles[selectedNotification.type]}`}>
+              <i className={getNotificationIcon(selectedNotification.type)}></i>
+            </div>
+            <div className={styles.detailInfo}>
+              <h4 className={styles.detailTitle}>{selectedNotification.title}</h4>
+              <span className={styles.detailTime}>
+                {getDetailedTimeDisplay(selectedNotification.time)}
+              </span>
+              <p className={styles.detailMessage}>{selectedNotification.message}</p>
+              
+              {/* Show any additional metadata if available */}
+              {selectedNotification.metadata && (
+                <div className={styles.metadataSection}>
+                  {Object.entries(selectedNotification.metadata).map(([key, value]) => (
+                    <div key={key} className={styles.metadataItem}>
+                      <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {selectedNotification.link && (
+                <a 
+                  href={selectedNotification.link} 
+                  className={styles.detailLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <i className="fas fa-external-link-alt"></i> Open Related Content
+                </a>
+              )}
+            </div>
+          </div>
+          
+          <div className={styles.detailActions}>
+            {!selectedNotification.isRead && (
+              <button 
+                className={styles.markReadButton}
+                onClick={() => onMarkAsRead(selectedNotification.id)}
+              >
+                <i className="fas fa-check"></i> Mark as Read
+              </button>
+            )}
+            <button 
+              className={styles.dismissNotificationButton}
+              onClick={() => {
+                onDismiss(selectedNotification.id);
+                setSelectedNotification(null);
+              }}
+            >
+              <i className="fas fa-trash-alt"></i> Dismiss
+            </button>
           </div>
         </div>
       )}
