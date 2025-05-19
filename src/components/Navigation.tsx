@@ -51,6 +51,12 @@ export default function Navigation() {
           <div className="flex items-center space-x-4">
             <SignedIn>
               <div className="flex items-center space-x-3">
+                <Link href="/workspace" className="mr-2">
+                  <div className="px-3 py-1.5 bg-gradient-to-r from-green-400 to-emerald-300 text-white rounded-md font-medium text-sm flex items-center space-x-1 border border-green-300/30 shadow-lg shadow-green-500/30 hover:shadow-green-400/40 transition-all duration-200 hover:scale-105 animate-pulse">
+                    <i className="fas fa-laptop-code mr-1"></i>
+                    <span className="text-shadow font-bold">Workspace</span>
+                  </div>
+                </Link>
                 <OrganizationSwitcher 
                   hidePersonal={true}
                   appearance={{

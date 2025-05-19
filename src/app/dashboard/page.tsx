@@ -328,62 +328,8 @@ export default function DashboardPage() {
                 </button>
                 {hasOrganization && (
                   <div className={`${styles.dropdownContent} ${isOrgDropdownOpen ? styles.show : ''}`}>
-                    <Link href="/organization" onClick={() => setIsOrgDropdownOpen(false)}>View Organization</Link>
                     <Link href="/organization-billing" onClick={() => setIsOrgDropdownOpen(false)}>Organization Billing</Link>
-                    <Link href="/settings" onClick={() => setIsOrgDropdownOpen(false)}>Settings</Link>                <button 
-                  className={styles.manageOrgButton}
-                  onClick={() => {
-                    // Open Clerk's organization profile modal
-                    if (window.Clerk && userMemberships?.data?.[0]?.organization) {
-                      window.Clerk.openOrganizationProfile(
-                        userMemberships.data[0].organization.id,
-                        {
-                          appearance: {
-                            // Use the system theme hook
-                            baseTheme: systemTheme,
-                            variables: {
-                              colorPrimary: "#4facfe",
-                            },
-                            elements: {
-                              // Light mode styles (default)
-                              card: {
-                                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-                                border: "1px solid rgba(0, 0, 0, 0.05)",
-                              },
-                              formButtonPrimary: {
-                                backgroundColor: "#4facfe",
-                                "&:hover": {
-                                  backgroundColor: "#357abd"
-                                }
-                              },
-                              input: {
-                                border: "1px solid rgba(0, 0, 0, 0.1)"
-                              },
-                              // Dark mode styles
-                              "card.dark": {
-                                backgroundColor: "#0d0d0d",
-                                border: "1px solid rgba(255, 255, 255, 0.1)",
-                                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
-                              },
-                              "formButtonPrimary.dark": {
-                                backgroundColor: "#4facfe",
-                                "&:hover": {
-                                  backgroundColor: "#357abd"
-                                }
-                              },
-                              "input.dark": {
-                                border: "1px solid rgba(255, 255, 255, 0.1)"
-                              }
-                            }
-                          }
-                        }
-                      );
-                      setIsOrgDropdownOpen(false);
-                    }
-                  }}
-                >
-                  Organization Profile
-                </button>
+                    <Link href="/analytics" onClick={() => setIsOrgDropdownOpen(false)}>Analytics</Link>
                   </div>
                 )}
               </div>
