@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     
     // Check authentication from multiple sources
     const auth = getAuth(req);
-    let userId = auth.userId;
+    const userId = auth.userId;
     
     // Also check for Authorization header (Bearer token)
     const authHeader = req.headers.get('authorization');
@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
 
     const { planId, autoBuy, bypassChecks } = await req.json();
     
-    let plan: any;
     let profile: any = { email: '' };
     
     if (!bypassChecks) {
@@ -109,7 +108,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    plan = planData;
+    const plan = planData;
 
     // Ensure proper URL formatting for live mode
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://chateauxai.com';

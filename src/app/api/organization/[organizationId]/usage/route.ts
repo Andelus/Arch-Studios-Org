@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET(
   req: Request,
-  { params }: { params: { organizationId: string } }
+  { params }: { params: Promise<{ organizationId: string }> }
 ) {
   try {
-    const { organizationId } = params;
+    const { organizationId } = await params;
     const authResponse = await auth();
     const { userId, orgId } = authResponse;
 
