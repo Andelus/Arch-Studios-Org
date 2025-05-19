@@ -3,35 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { Webhook } from 'svix';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  updateClerkUserMetadata, 
+  getSupabaseProfileIdFromClerk, 
+  ensureProfileExists
+} from '@/utils/clerk-supabase';
 
 // Initialize Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// Function to update Clerk user metadata if needed in the future
-async function updateClerkUserMetadata(userId: string, metadata: Record<string, any>) {
-  try {
-    const response = await fetch(`https://api.clerk.dev/v1/users/${userId}/metadata`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        public_metadata: metadata
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update Clerk metadata');
-    }
-  } catch (error) {
-    console.error('Error updating Clerk metadata:', error);
-    throw error;
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -89,45 +71,19 @@ export async function POST(req: Request) {
 
       console.log('Creating profile for user:', { id, email: primaryEmail });
 
-      // Create user profile in the database
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: id,  // Use Clerk's UUID as the profile ID
-          email: primaryEmail,
-          credits_balance: 1000, // Give initial trial credits
-          auto_buy_enabled: false,
-          subscription_status: 'TRIAL',
-          current_plan_id: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+      try {
+        // Use our utility function to create the profile and handle the mapping
+        const profileId = await ensureProfileExists(id, primaryEmail);
+        console.log('Profile created successfully with ID:', profileId);
+        
+        return NextResponse.json({ 
+          message: 'Profile created successfully',
+          profileId
         });
-
-      if (error) {
-        console.error('Database Insert Error:', error);
+      } catch (error: any) {
+        console.error('Error creating profile:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
-
-      // No need to store auth_uuid or update Clerk metadata anymore
-      // The profile ID is the Clerk user ID
-
-      // Create initial credit transaction for trial credits
-      const { error: transactionError } = await supabase
-        .from('credit_transactions')
-        .insert({
-          user_id: id,
-          amount: 1000,
-          type: 'INITIAL_TRIAL_CREDIT',
-          description: 'Initial trial credits',
-          created_at: new Date().toISOString()
-        });
-
-      if (transactionError) {
-        console.error('Transaction Error:', transactionError);
-      }
-
-      console.log('Profile and initial transaction created successfully');
-      return NextResponse.json({ message: 'Profile created successfully' });
     }
 
     // Handle organization events
@@ -163,30 +119,49 @@ export async function POST(req: Request) {
      if (type === 'organizationMembership.created') {
       console.log('Processing organizationMembership.created event');
       const { organization, public_user_data } = data;
-      const userId = public_user_data.user_id;
+      const clerkUserId = public_user_data.user_id;
       const organizationId = organization.id;
       
       console.log('User added to organization:', {
         organizationId,
         organizationName: organization.name,
-        userId
+        clerkUserId
       });
       
-      // Update the user's profile with their organization ID
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          organization_id: organizationId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-      
-      if (error) {
-        console.error('Error updating user profile with organization:', error);
+      try {
+        // Get the Supabase UUID from our utility function
+        const supabaseProfileId = await getSupabaseProfileIdFromClerk(clerkUserId);
+        
+        if (!supabaseProfileId) {
+          console.error('No Supabase profile ID could be determined for user:', clerkUserId);
+          return NextResponse.json({ error: 'No Supabase profile found for this user' }, { status: 404 });
+        }
+        
+        console.log(`Updating profile ${supabaseProfileId} with organization ${organizationId}`);
+        
+        // Update the user's profile with their organization ID
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            organization_id: organizationId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', supabaseProfileId);
+          
+        if (updateError) {
+          console.error('Error updating user profile with organization:', updateError);
+          return NextResponse.json({ error: updateError.message }, { status: 500 });
+        }
+        
+        return NextResponse.json({ 
+          message: 'Organization membership processed successfully',
+          profileId: supabaseProfileId,
+          organizationId 
+        });
+      } catch (error: any) {
+        console.error('Error processing organization membership:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
-      
-      return NextResponse.json({ message: 'Organization membership processed successfully' });
     }
     
     // Return a 200 for any other event types
