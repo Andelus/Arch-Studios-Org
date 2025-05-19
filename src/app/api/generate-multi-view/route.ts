@@ -21,6 +21,7 @@ interface DatabaseProfile {
   credits_balance: number;
   current_plan_id: string | null;
   subscription_status: string;
+  organization_id: string | null;
   subscription_plan: {
     image_credit_cost: number;
     name: string;
@@ -100,6 +101,7 @@ export async function POST(request: Request) {
         credits_balance,
         current_plan_id,
         subscription_status,
+        organization_id,
         subscription_plan:subscription_plans (
           image_credit_cost,
           name
@@ -126,36 +128,65 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check subscription status
-    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Subscription expired',
-        message: 'Your subscription has expired or been cancelled. Please renew your subscription to continue.',
-        status: 403
-      });
+    // If user belongs to an organization, check organization subscription first
+    let skipPersonalCreditCheck = false;
+    if (profile.organization_id) {
+      try {
+        // Import the handler
+        const { handleOrganizationModelGeneration } = await import('@/lib/organization-asset-manager');
+        
+        // Try to use organization subscription - multi-view generation costs the same as rendering
+        const orgResult = await handleOrganizationModelGeneration(profile.organization_id, 'multi_view');
+        
+        if (orgResult.canGenerate) {
+          console.log('Using organization subscription for multi-view generation');
+          skipPersonalCreditCheck = true;
+          
+          // If we're using trial credits, log info about remaining credits
+          if (orgResult.trialCreditsUsed) {
+            console.log(`Organization trial credits used. Remaining: ${orgResult.creditsRemaining}`);
+          }
+        } else {
+          console.log('Organization subscription unavailable. Falling back to personal credits.');
+        }
+      } catch (error) {
+        console.error('Error checking organization subscription:', error);
+        // Fall back to personal credits
+      }
     }
+    
+    if (!skipPersonalCreditCheck) {
+      // Check subscription status
+      if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+        return NextResponse.json({ 
+          success: false,
+          error: 'Subscription expired',
+          message: 'Your subscription has expired or been cancelled. Please renew your subscription to continue.',
+          status: 403
+        });
+      }
 
-    // Validate quality level access
-    if (!canAccessQuality(profile, quality)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Quality level not available',
-        message: getQualityErrorMessage(quality),
-        status: 403
-      });
-    }
+      // Validate quality level access
+      if (!canAccessQuality(profile, quality)) {
+        return NextResponse.json({
+          success: false,
+          error: 'Quality level not available',
+          message: getQualityErrorMessage(quality),
+          status: 403
+        });
+      }
 
-    // Calculate credit cost (100 credits per image)
-    const creditCost = views.length * 100;
+      // Calculate credit cost (10 credits per image)
+      const creditCost = views.length * 10;
 
-    if (profile.credits_balance < creditCost) {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Insufficient credits',
-        message: `This operation requires ${creditCost} credits. You have ${profile.credits_balance} credits. Please purchase more credits or upgrade your plan.`,
-        status: 403
-      });
+      if (profile.credits_balance < creditCost) {
+        return NextResponse.json({ 
+          success: false,
+          error: 'Insufficient credits',
+          message: `This operation requires ${creditCost} credits. You have ${profile.credits_balance} credits. Please purchase more credits or upgrade your plan.`,
+          status: 403
+        });
+      }
     }
 
     // Generate images for each selected view
@@ -193,17 +224,23 @@ export async function POST(request: Request) {
         });
       }
 
-      // Deduct credits and record transaction atomically
-      const { error: dbError } = await supabase.rpc('handle_generation_deduction', {
-        p_user_id: userId,
-        p_generation_type: 'MULTI_VIEW',
-        p_credit_amount: creditCost,
-        p_description: `Generated ${views.length} multi-view images: ${prompt.substring(0, 100)}`
-      });
+      // Deduct credits only if using personal credits (not org subscription)
+      if (!skipPersonalCreditCheck) {
+        // Calculate credit cost (10 credits per image)
+        const creditCost = views.length * 10;
+        
+        // Deduct credits and record transaction atomically
+        const { error: dbError } = await supabase.rpc('handle_generation_deduction', {
+          p_user_id: userId,
+          p_generation_type: 'MULTI_VIEW',
+          p_credit_amount: creditCost,
+          p_description: `Generated ${views.length} multi-view images: ${prompt.substring(0, 100)}`
+        });
 
-      if (dbError) {
-        console.error('Database error during credit deduction:', dbError);
-        throw new Error(`Failed to process credit deduction: ${dbError.message}`);
+        if (dbError) {
+          console.error('Database error during credit deduction:', dbError);
+          throw new Error(`Failed to process credit deduction: ${dbError.message}`);
+        }
       }
       
       // Save the multi-view images to user_assets table
@@ -244,11 +281,15 @@ export async function POST(request: Request) {
         console.error('Exception saving multi-view asset:', assetError);
       }
 
+      // Calculate credit cost for display purposes
+      const creditCost = views.length * 10;
+      
       // Return success with images and remaining credits
       return NextResponse.json({
         success: true,
         images: generatedImages,
-        creditsRemaining: profile.credits_balance - creditCost,
+        creditsRemaining: skipPersonalCreditCheck ? profile.credits_balance : profile.credits_balance - creditCost,
+        usingOrganizationSubscription: skipPersonalCreditCheck,
         generate3D
       });
     

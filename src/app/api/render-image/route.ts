@@ -21,6 +21,7 @@ interface UserProfile {
   credits_balance: number;
   subscription_status: string;
   id: string;
+  organization_id: string | null;
 }
 
 export async function POST(request: Request) {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     // Check user's credits and subscription
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credits_balance, subscription_status')
+      .select('credits_balance, subscription_status, organization_id')
       .eq('id', userId)
       .single() as { data: UserProfile | null; error: any };
 
@@ -57,19 +58,48 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check subscription status
-    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Your subscription has expired. Please renew to continue.' },
-        { status: 403 }
-      );
+    // If user belongs to an organization, check organization subscription first
+    let skipPersonalCreditCheck = false;
+    if (profile.organization_id) {
+      try {
+        // Import the handler
+        const { handleOrganizationModelGeneration } = await import('@/lib/organization-asset-manager');
+        
+        // Try to use organization subscription
+        const orgResult = await handleOrganizationModelGeneration(profile.organization_id, 'render');
+        
+        if (orgResult.canGenerate) {
+          console.log('Using organization subscription for render generation');
+          skipPersonalCreditCheck = true;
+          
+          // If we're using trial credits, log info about remaining credits
+          if (orgResult.trialCreditsUsed) {
+            console.log(`Organization trial credits used. Remaining: ${orgResult.creditsRemaining}`);
+          }
+        } else {
+          console.log('Organization subscription unavailable. Falling back to personal credits.');
+        }
+      } catch (error) {
+        console.error('Error checking organization subscription:', error);
+        // Fall back to personal credits
+      }
     }
+    
+    if (!skipPersonalCreditCheck) {
+      // Check subscription status
+      if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+        return NextResponse.json(
+          { error: 'Your subscription has expired. Please renew to continue.' },
+          { status: 403 }
+        );
+      }
 
-    if (profile.credits_balance < 1) {
-      return NextResponse.json(
-        { error: 'Insufficient credits' },
-        { status: 402 }
-      );
+      if (profile.credits_balance < 1) {
+        return NextResponse.json(
+          { error: 'Insufficient credits' },
+          { status: 402 }
+        );
+      }
     }
 
     try {
@@ -142,24 +172,30 @@ Style: ${styleModifiers[style as keyof typeof styleModifiers]}`;
         return NextResponse.json({ error: 'No image data returned from OpenAI' }, { status: 500 });
       }
 
-      // Deduct 1 credit from the user
-      const { error: creditError } = await supabase
-        .from('profiles')
-        .update({ credits_balance: profile.credits_balance - 1 })
-        .eq('id', userId);
+      // Standard credit cost for render generation
+      const creditCost = 10;
 
-      if (creditError) {
-        console.error('Error deducting credits:', creditError);
-        return NextResponse.json(
-          { error: 'Failed to deduct credits' },
-          { status: 500 }
-        );
+      // Deduct credits only if using personal credits (not org subscription)
+      if (!skipPersonalCreditCheck) {
+        const { error: creditError } = await supabase
+          .from('profiles')
+          .update({ credits_balance: profile.credits_balance - creditCost })
+          .eq('id', userId);
+
+        if (creditError) {
+          console.error('Error deducting credits:', creditError);
+          return NextResponse.json(
+            { error: 'Failed to deduct credits' },
+            { status: 500 }
+          );
+        }
       }
 
-      // Return the processed image
+      // Return the processed image with appropriate credit information
       return NextResponse.json({ 
         image: generatedImageBase64,
-        creditsRemaining: profile.credits_balance - 1
+        creditsRemaining: skipPersonalCreditCheck ? profile.credits_balance : profile.credits_balance - creditCost,
+        usingOrganizationSubscription: skipPersonalCreditCheck
       });
 
     } catch (error: any) {

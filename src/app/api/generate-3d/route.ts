@@ -176,10 +176,8 @@ export async function POST(req: Request) {
           );
         }
 
-        // Determine credit cost - reduced to 10 credits for trial users (as per new requirements)
-        const creditCost = profile.subscription_status === 'TRIAL' ? 10 :
-          profile.subscription_plan?.model_credit_cost ??
-          (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+        // Standard credit cost for 3D generation is 10 credits
+        const creditCost = 10;
 
         if (profile.credits_balance < creditCost) {
           return NextResponse.json(
@@ -198,10 +196,8 @@ export async function POST(req: Request) {
         );
       }
 
-      // Determine credit cost - reduced to 10 credits for trial users (as per new requirements)
-      const creditCost = profile.subscription_status === 'TRIAL' ? 10 :
-        profile.subscription_plan?.model_credit_cost ??
-        (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+      // Standard credit cost for 3D generation is 10 credits
+      const creditCost = 10;
 
       if (profile.credits_balance < creditCost) {
         return NextResponse.json(
@@ -259,10 +255,8 @@ export async function POST(req: Request) {
       }
       
       if (!skipPersonalCreditDeduction) {
-        // Determine credit cost for personal deduction
-        const creditCost = profile.subscription_status === 'TRIAL' ? 10 :
-          profile.subscription_plan?.model_credit_cost ??
-          (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+        // Standard credit cost for 3D generation is 10 credits
+        const creditCost = 10;
         
         // Deduct credits atomically with a transaction
         const { error: transactionError } = await supabase.rpc('deduct_credits_and_log', {

@@ -7,6 +7,7 @@ interface CreditDisplayProps {
 export default function CreditDisplay({ onCreditUpdate }: CreditDisplayProps) {
   const [credits, setCredits] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
 
   const fetchCredits = async () => {
     try {
@@ -14,6 +15,13 @@ export default function CreditDisplay({ onCreditUpdate }: CreditDisplayProps) {
       if (response.ok) {
         const data = await response.json();
         setCredits(data.credits_balance || 0);
+
+        // Check if user has an active subscription
+        setHasActiveSubscription(
+          data.subscription_status === 'ACTIVE' ||
+          (data.organization_subscription?.status === 'active' && !data.organization_subscription?.is_trial)
+        );
+
         onCreditUpdate?.(data.credits_balance || 0);
       }
     } catch (error) {
@@ -27,7 +35,8 @@ export default function CreditDisplay({ onCreditUpdate }: CreditDisplayProps) {
     fetchCredits();
   }, []);
 
-  if (isLoading) {
+  // Don't render anything if loading or if user has an active subscription
+  if (isLoading || hasActiveSubscription) {
     return null;
   }
 

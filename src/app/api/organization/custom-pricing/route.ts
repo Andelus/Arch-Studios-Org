@@ -56,15 +56,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Send notification email to admins (implementation would depend on email provider)
-    // This is a placeholder for actual email sending logic
+    // Send notification email to finance team
     try {
-      // await sendNotificationEmail({
-      //   subject: `New Custom Pricing Request: ${companyName}`,
-      //   to: process.env.ADMIN_EMAIL,
-      //   template: 'custom-pricing-request',
-      //   data: { companyName, contactName, email, requirements }
-      // });
+      const { sendEmail } = await import('@/lib/email-service');
+      await sendEmail({
+        subject: `New Custom Pricing Request: ${companyName}`,
+        to: 'finance@chateauxai.com',
+        template: 'custom-pricing-request',
+        data: { 
+          companyName, 
+          contactName, 
+          email, 
+          requirements,
+          employeeCount,
+          budget,
+          organizationId
+        }
+      });
     } catch (emailError) {
       console.error('Failed to send notification email:', emailError);
       // Don't fail the request if email fails

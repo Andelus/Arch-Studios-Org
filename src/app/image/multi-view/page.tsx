@@ -403,14 +403,14 @@ export default function MultiViewGeneration() {
               <>
                 <i className="fa-solid fa-wand-magic-sparkles"></i> 
                 Generate {selectedViews.length} {selectedViews.length === 1 ? 'View' : 'Views'}
-                <span className={styles.creditCost}>{selectedViews.length * 100} credits</span>
+                <span className={styles.creditCost}>{selectedViews.length * 10} credits</span>
               </>
             )}
           </button>
           
           <div className={styles.creditInfo}>
             <i className="fa-solid fa-coins"></i>
-            <span>Cost: {selectedViews.length * 100} credits ({selectedViews.length} views × 100 credits)</span>
+            <span>Cost: {selectedViews.length * 10} credits ({selectedViews.length} views × 10 credits)</span>
           </div>
         </div>
 
@@ -494,7 +494,7 @@ export default function MultiViewGeneration() {
                   onClick={handle3DGeneration}
                 >
                   <i className="fa-solid fa-cube"></i> Create 3D Model
-                  <span className={styles.cost3D}>(100 credits)</span>
+                  <span className={styles.cost3D}>(10 credits)</span>
                 </button>
               </div>
             </>
@@ -526,9 +526,9 @@ export default function MultiViewGeneration() {
                 </div>
               </div>
               <div className={styles.emptyStateHelp}>
-                <i className="fa-solid fa-coins"></i> Each view costs 100 credits
+                <i className="fa-solid fa-coins"></i> Each view costs 10 credits
                 <br />
-                <i className="fa-solid fa-cube"></i> Create a 3D model from multiple views for 100 credits
+                <i className="fa-solid fa-cube"></i> Create a 3D model from multiple views for 10 credits
               </div>
             </div>
           )}

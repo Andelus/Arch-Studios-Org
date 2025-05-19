@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 import { fal } from "@fal-ai/client";
 import { saveUserAsset } from '@/lib/asset-manager';
+import { handleOrganizationModelGeneration } from '@/lib/organization-asset-manager';
 
 // Initialize Fal AI client if API key is available
 const falApiKey = process.env.FAL_KEY || process.env.FAL_AI_API_KEY;
@@ -59,6 +60,7 @@ interface UserProfile {
   credits_balance: number;
   current_plan_id: string | null;
   subscription_status: string;
+  organization_id: string | null;
   subscription_plan?: SubscriptionPlan;
 }
 
@@ -77,16 +79,13 @@ interface FluxRequestInput {
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Unauthorized',
-        status: 401 
-      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's profile and subscription plan with a timeout
+    // Fetch user profile with organization data
     const { data: profile, error: profileError } = await Promise.race([
       supabase
         .from('profiles')
@@ -94,6 +93,7 @@ export async function POST(req: Request) {
           credits_balance,
           current_plan_id,
           subscription_status,
+          organization_id,
           subscription_plan:subscription_plans (
             image_credit_cost
           )
@@ -123,28 +123,73 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check subscription status
-    if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Subscription expired',
-        message: 'Your subscription has expired or been cancelled. Please renew your subscription to continue.',
-        status: 403
-      });
-    }
+    // Check if user belongs to an organization
+    if (profile.organization_id) {
+      // Try to use organization subscription first
+      const orgResult = await handleOrganizationModelGeneration(profile.organization_id, 'image');
+      
+      if (orgResult.canGenerate) {
+        console.log('Using organization subscription for image generation');
+        
+        // If we're using trial credits, log info about remaining credits
+        if (orgResult.trialCreditsUsed) {
+          console.log(`Organization trial credits used. Remaining: ${orgResult.creditsRemaining}`);
+        }
+        
+        // Continue with generation without deducting user credits
+      } else {
+        // Organization can't cover this - fall back to user's personal subscription/credits
+        console.log('Organization subscription unavailable or insufficient credits. Falling back to personal credits.');
+        
+        // Check subscription status
+        if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+          return NextResponse.json({ 
+            success: false,
+            error: 'Subscription expired',
+            message: 'Your subscription has expired or been cancelled. Please renew your subscription to continue.',
+            status: 403
+          });
+        }
 
-    // Calculate credit cost
-    const creditCost = profile.subscription_status === 'TRIAL' ? 100 :
-      profile.subscription_plan?.image_credit_cost ?? 
-      (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+        // Calculate credit cost
+        const creditCost = profile.subscription_status === 'TRIAL' ? 100 :
+          profile.subscription_plan?.image_credit_cost ?? 
+          (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
 
-    if (profile.credits_balance < creditCost) {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Insufficient credits',
-        message: 'Please purchase more credits or upgrade your plan.',
-        status: 403
-      });
+        if (profile.credits_balance < creditCost) {
+          return NextResponse.json({ 
+            success: false,
+            error: 'Insufficient credits',
+            message: 'Please purchase more credits or upgrade your plan.',
+            status: 403
+          });
+        }
+      }
+    } else {
+      // User is not part of an organization - use personal credits
+      // Check subscription status
+      if (profile.subscription_status !== 'TRIAL' && profile.subscription_status !== 'ACTIVE') {
+        return NextResponse.json({ 
+          success: false,
+          error: 'Subscription expired',
+          message: 'Your subscription has expired or been cancelled. Please renew your subscription to continue.',
+          status: 403
+        });
+      }
+
+      // Calculate credit cost
+      const creditCost = profile.subscription_status === 'TRIAL' ? 100 :
+        profile.subscription_plan?.image_credit_cost ?? 
+        (profile.current_plan_id?.toLowerCase().includes('pro') ? 100 : 100);
+
+      if (profile.credits_balance < creditCost) {
+        return NextResponse.json({ 
+          success: false,
+          error: 'Insufficient credits',
+          message: 'Please purchase more credits or upgrade your plan.',
+          status: 403
+        });
+      }
     }
 
     const { prompt: userPrompt, style, material, size, cleanBackground } = await req.json();
@@ -298,6 +343,9 @@ export async function POST(req: Request) {
       if (!imageAccessible) {
         throw new Error('Generated image URL is not accessible after multiple attempts');
       }
+
+      // Standard credit cost for image generation
+      const creditCost = 10;
 
       // Update credits and record transaction atomically
       const { error: dbError } = await supabase.rpc('process_image_generation', {

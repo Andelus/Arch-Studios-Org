@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     }
 
     // Standard credit cost for all operations
-    const creditCost = 100;
+    const creditCost = 10;
 
     if (profile.credits_balance < creditCost) {
       return NextResponse.json({ 
