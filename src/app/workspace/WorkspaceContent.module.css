@@ -1,0 +1,456 @@
+/* WorkspaceContent styles */
+
+.workspaceContainer {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 280px;
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.projectControls {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.createButton {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.createButton:hover {
+  background-color: var(--primary-hover);
+}
+
+.filterButton {
+  background-color: var(--secondary-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.filterButton:hover:not(:disabled) {
+  background-color: var(--hover-color);
+}
+
+.filterButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.projectList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.projectItem {
+  padding: 12px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.projectItem:hover {
+  background-color: var(--hover-color);
+}
+
+.projectItem.active {
+  background-color: var(--selected-bg);
+  color: var(--selected-text);
+}
+
+.projectName {
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.projectMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted-text);
+}
+
+.templateBadge, .folderBadge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+
+.templateBadge {
+  background-color: var(--template-badge-bg);
+  color: var(--template-badge-text);
+}
+
+.folderBadge {
+  background-color: var(--folder-badge-bg);
+  color: var(--folder-badge-text);
+}
+
+.status {
+  background-color: var(--status-badge-bg);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+}
+
+.progress {
+  font-weight: 500;
+}
+
+.mainContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 1.2rem;
+  color: var(--muted-text);
+}
+
+.noProject {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--muted-text);
+  text-align: center;
+  padding: 2rem;
+}
+
+.projectHeader {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.projectInfo h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.projectInfo p {
+  margin: 4px 0 0;
+  color: var(--muted-text);
+}
+
+.projectActions {
+  display: flex;
+  gap: 8px;
+}
+
+.viewControls {
+  display: flex;
+  gap: 4px;
+}
+
+.viewButton {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.viewButton.active {
+  background-color: var(--selected-bg);
+  color: var(--selected-text);
+  border-color: var(--selected-bg);
+}
+
+.viewButton:not(.active):hover {
+  background-color: var(--hover-color);
+}
+
+.adminActions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+.teamButton {
+  background-color: var(--team-button-bg);
+  color: var(--team-button-text);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.teamButton:hover {
+  background-color: var(--team-button-hover);
+}
+
+.deleteButton {
+  background-color: var(--delete-button-bg);
+  color: var(--delete-button-text);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.deleteButton:hover {
+  background-color: var(--delete-button-hover);
+}
+
+.projectContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.tabControls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.tabButton {
+  background-color: transparent;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+}
+
+.tabButton.active {
+  color: var(--primary-color);
+}
+
+.tabButton.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--primary-color);
+}
+
+.tabButton:not(.active):hover {
+  background-color: var(--hover-color);
+}
+
+.tasksContainer {
+  position: relative;
+}
+
+.addTaskButton {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 16px;
+}
+
+.addTaskButton:hover {
+  background-color: var(--primary-hover);
+}
+
+.taskBoard {
+  display: flex;
+  gap: 16px;
+  height: calc(100vh - 230px);
+}
+
+.taskColumn {
+  flex: 1;
+  background-color: var(--card-bg);
+  border-radius: 6px;
+  padding: 12px;
+  min-width: 250px;
+  max-width: 350px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.taskColumn h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 1rem;
+}
+
+.taskCard {
+  background-color: var(--task-card-bg);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.taskCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.taskCard h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.taskCard p {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--muted-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.low {
+  border-left-color: var(--priority-low);
+}
+
+.medium {
+  border-left-color: var(--priority-medium);
+}
+
+.high {
+  border-left-color: var(--priority-high);
+}
+
+.assignee, .dueDate {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-right: 6px;
+}
+
+.assignee {
+  background-color: var(--assignee-badge-bg);
+  color: var(--assignee-badge-text);
+}
+
+.dueDate {
+  background-color: var(--date-badge-bg);
+  color: var(--date-badge-text);
+}
+
+.taskList {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.taskRow {
+  display: flex;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.taskRow:last-child {
+  border-bottom: none;
+}
+
+.taskRow:hover {
+  background-color: var(--hover-color);
+}
+
+.taskTitle {
+  flex: 2;
+  font-weight: 500;
+}
+
+.taskStatus, .taskAssignee, .taskDueDate {
+  flex: 1;
+  font-size: 0.85rem;
+}
+
+.taskStatus {
+  background-color: var(--status-badge-bg);
+  color: var(--status-badge-text);
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.deleteTaskButton {
+  background-color: transparent;
+  color: var(--delete-button-text);
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.taskRow:hover .deleteTaskButton,
+.taskCard:hover .deleteTaskButton {
+  opacity: 1;
+}
+
+.deleteTaskButton:hover {
+  background-color: var(--delete-button-bg);
+  border-radius: 4px;
+}
+
+.assetsContainer {
+  height: calc(100vh - 230px);
+  overflow-y: auto;
+}
+
+.communicationContainer {
+  height: calc(100vh - 230px);
+  overflow: hidden;
+}
