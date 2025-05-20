@@ -197,6 +197,8 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
             <i className="fas fa-search"></i>
             <input 
               type="text" 
+              id="asset-search"
+              name="asset-search"
               placeholder="Search assets..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -205,6 +207,8 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
           
           <div className={styles.filterTypeDropdown}>
             <select 
+              id="filter-type"
+              name="filter-type"
               value={filterType || ''} 
               onChange={(e) => setFilterType(e.target.value || null)}
             >
@@ -219,6 +223,8 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
           
           <div className={styles.filterStatusDropdown}>
             <select 
+              id="filter-status"
+              name="filter-status"
               value={filterStatus || ''} 
               onChange={(e) => setFilterStatus(e.target.value || null)}
             >
@@ -392,11 +398,12 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
                 {!uploadFile ? (
                   <div className={styles.dropZoneInner}>
                     <i className="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & drop file here, or click to select</p>
-                    <input 
-                      type="file" 
-                      onChange={handleFileChange}
-                    />
+                    <p>Drag & drop file here, or click to select</p>              <input 
+                type="file"
+                id="file-upload"
+                name="file-upload"
+                onChange={handleFileChange}
+              />
                   </div>
                 ) : (
                   <div className={styles.selectedFile}>
@@ -450,7 +457,9 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
                     </div>
                   ))}
                   <input 
-                    type="text" 
+                    type="text"
+                    id="tag-input"
+                    name="tag-input"
                     onKeyDown={handleTagInput}
                     placeholder={uploadTags.length ? '' : 'Add tags...'}
                   />

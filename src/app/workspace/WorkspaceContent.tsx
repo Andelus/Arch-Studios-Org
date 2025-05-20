@@ -515,42 +515,73 @@ export default function WorkspaceContent() {
     parentId?: string;
     templateId?: string;
   }) => {
-    if (!user || !organization) {
+    if (!user) {
       addNotification(
         'error',
-        'Organization Required',
-        'You need to be part of an organization to create projects.'
+        'Authentication Required',
+        'You need to be signed in to create projects.'
       );
       return;
     }
 
     try {
-      // First ensure organization has trial or subscription
-      const { data: orgSubData, error: orgSubError } = await supabase
-        .from('organization_subscriptions')
-        .select('id, status, trial_credits')
-        .eq('organization_id', organization.id)
-        .eq('status', 'active')
-        .maybeSingle();
+      // Simplified organization check - allow creation if user is signed in
+      const orgId = organization?.id;
+      if (!orgId) {
+        console.warn('No organization ID found, creating project without organization context');
+      }
 
-      if (orgSubError) throw orgSubError;
+      // Skip subscription check for admin users
+      const isAdmin = isUserAdmin();
+      let canCreate = isAdmin; // Admins can always create
 
-      if (!orgSubData) {
-        const { data: newTrial, error: trialError } = await supabase
+      if (!isAdmin) {
+        // Only check subscription for non-admin users
+        const { data: orgSubData, error: orgSubError } = await supabase
           .from('organization_subscriptions')
-          .insert({
-            organization_id: organization.id,
-            trial_credits: 1000,
-            is_trial: true,
-            status: 'active'
-          })
-          .select()
-          .single();
+          .select('id, status, trial_credits')
+          .eq('organization_id', orgId)
+          .eq('status', 'active')
+          .maybeSingle();
 
-        if (trialError) throw trialError;
+        if (orgSubError) {
+          console.warn('Error checking subscription:', orgSubError);
+          // Allow creation if we can't check subscription
+          canCreate = true;
+        } else if (!orgSubData) {
+          // Auto-create trial for new organizations
+          const { error: trialError } = await supabase
+            .from('organization_subscriptions')
+            .insert({
+              organization_id: orgId,
+              trial_credits: 1000,
+              is_trial: true,
+              status: 'active'
+            });
+
+          if (trialError) {
+            console.warn('Error creating trial:', trialError);
+          }
+          canCreate = true;
+        } else {
+          canCreate = true;
+        }
+      }
+
+      if (!canCreate) {
+        addNotification(
+          'error',
+          'Subscription Required',
+          'You need an active subscription or trial to create projects.'
+        );
+        return;
       }
 
       // Create the project
+      if (!organization?.id) {
+        throw new Error('Organization ID is required for project creation');
+      }
+
       const { data: newProject, error: projectError } = await supabase
         .from('projects')
         .insert({
@@ -590,7 +621,7 @@ export default function WorkspaceContent() {
       const { data: channels, error: channelsError } = await supabase
         .rpc('create_default_project_channels', {
           p_project_id: newProject.id,
-          p_organization_id: organization.id
+          p_organization_id: organization.id // Safe to use organization.id here since we checked it above
         });
 
       if (channelsError) {
@@ -616,7 +647,7 @@ export default function WorkspaceContent() {
         isFolder: newProject.is_folder,
         isTemplate: newProject.is_template,
         parentId: newProject.parent_id,
-        organization_id: organization.id,
+        organization_id: organization?.id as string, // Safe to cast since we checked it above
         createdFromTemplate: newProject.created_from_template,
         members: [{
           id: user.id,

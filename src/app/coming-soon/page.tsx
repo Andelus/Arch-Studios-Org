@@ -363,7 +363,12 @@ function ImageEditorContent() {
                     <div className={styles.renderOptions}>
                       <div className={styles.optionGroup}>
                         <label className={styles.optionLabel}>Category</label>
-                        <select className={styles.optionSelect} value={category} onChange={(e) => setCategory(e.target.value)}>
+                        <select 
+                          id="image-category"
+                          name="image-category"
+                          className={styles.optionSelect} 
+                          value={category} 
+                          onChange={(e) => setCategory(e.target.value)}>
                           <option value="interior">Interior</option>
                           <option value="exterior">Exterior</option>
                           <option value="masterplan">Masterplan</option>
@@ -375,7 +380,12 @@ function ImageEditorContent() {
 
                       <div className={styles.optionGroup}>
                         <label className={styles.optionLabel}>Output Type</label>
-                        <select className={styles.optionSelect} value={outputType} onChange={(e) => setOutputType(e.target.value)}>
+                        <select 
+                          id="output-type"
+                          name="output-type"
+                          className={styles.optionSelect} 
+                          value={outputType} 
+                          onChange={(e) => setOutputType(e.target.value)}>
                           <option value="3D">3D Visualization</option>
                           <option value="photo">Photo</option>
                           <option value="drawing">Drawing</option>
@@ -386,7 +396,12 @@ function ImageEditorContent() {
 
                       <div className={styles.optionGroup}>
                         <label className={styles.optionLabel}>Style</label>
-                        <select className={styles.optionSelect} value={renderStyle} onChange={(e) => setRenderStyle(e.target.value)}>
+                        <select 
+                          id="render-style"
+                          name="render-style"
+                          className={styles.optionSelect} 
+                          value={renderStyle} 
+                          onChange={(e) => setRenderStyle(e.target.value)}>
                           <option value="realistic">Realistic</option>
                           <option value="cgi">CGI</option>
                           <option value="night">Night</option>
@@ -395,14 +410,14 @@ function ImageEditorContent() {
                           <option value="sketch">Sketch</option>
                           <option value="illustration">Illustration</option>
                         </select>
-                      </div>
-
-                      <textarea
-                        className={styles.promptInput}
-                        placeholder="Describe what you want to create..."
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                      />
+                      </div>              <textarea
+                id="image-prompt"
+                name="image-prompt"
+                className={styles.promptInput}
+                placeholder="Describe what you want to create..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
                     </div>
                     
                     <div className={styles.aiAssist}>
