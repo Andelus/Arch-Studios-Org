@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { useNotifications } from '@/hooks/useNotifications';
