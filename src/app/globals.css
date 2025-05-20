@@ -2,23 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode theme (default) */
 :root {
+  /* Core colors */
   --background: #ffffff;
   --foreground: #171717;
+  --card-bg: #ffffff;
+  --sidebar-bg: #f9fafb;
+  --border-color: #e5e7eb;
+  
+  /* UI colors */
+  --primary-color: #4facfe;
+  --secondary-color: #9daec2;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --info-color: #3b82f6;
+  
+  /* Text */
+  --text-primary: #171717;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-disabled: #d1d5db;
+  
+  /* UI states */
+  --hover-bg: rgba(0, 0, 0, 0.04);
+  --active-bg: rgba(0, 0, 0, 0.08);
+  --disabled-bg: rgba(0, 0, 0, 0.05);
+  
+  /* Avatar placeholder */
+  --avatar-bg: #4facfe;
+  --avatar-text: #ffffff;
+  
+  /* Profile icon colors */
+  --profile-color-1: #4a6da7;
+  --profile-color-2: #ff8a65;
+  --profile-color-3: #9575cd;
+  --profile-color-4: #4db6ac;
+  --profile-color-5: #f06292;
+  
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark mode theme */
+[data-theme="dark"] {
+  /* Core colors */
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card-bg: #111111;
+  --sidebar-bg: #0d0d0d;
+  --border-color: rgba(255, 255, 255, 0.1);
+  
+  /* UI colors - brighten slightly for dark mode */
+  --primary-color: #5fb8ff;
+  --secondary-color: #a8b9cc;
+  --success-color: #34d399;
+  --warning-color: #fbbf24;
+  --error-color: #f87171;
+  --info-color: #60a5fa;
+  
+  /* Text */
+  --text-primary: #ededed;
+  --text-secondary: #a3a3a3;
+  --text-muted: #6b7280;
+  --text-disabled: #4b5563;
+  
+  /* UI states */
+  --hover-bg: rgba(255, 255, 255, 0.08);
+  --active-bg: rgba(255, 255, 255, 0.12);
+  --disabled-bg: rgba(255, 255, 255, 0.05);
+  
+  /* Avatar placeholder */
+  --avatar-bg: #2e3b4e;
+  --avatar-text: #ededed;
+  
+  /* Profile icon colors - brighten for dark mode */
+  --profile-color-1: #5c84cc;
+  --profile-color-2: #ff9d76;
+  --profile-color-3: #a98be0;
+  --profile-color-4: #64d8cb;
+  --profile-color-5: #f48fb1;
+  
+  /* Shadow */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 25px rgba(0, 0, 0, 0.3);
 }
 
 body {

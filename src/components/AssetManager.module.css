@@ -463,6 +463,157 @@
   cursor: not-allowed;
 }
 
+/* Asset status indicators */
+.assetStatus {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0 0 0 4px;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  z-index: 2;
+}
+
+/* Status types */
+.status-pending {
+  background-color: var(--warning-color, #f59e0b);
+}
+
+.status-approved {
+  background-color: var(--success-color, #10b981);
+}
+
+.status-rejected {
+  background-color: var(--error-color, #ef4444);
+}
+
+.status-changes-requested {
+  background-color: var(--info-color, #3b82f6);
+}
+
+/* Status indicator in metadata */
+.metadataValue.status-pending {
+  color: var(--warning-color, #f59e0b);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.metadataValue.status-approved {
+  color: var(--success-color, #10b981);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.metadataValue.status-rejected {
+  color: var(--error-color, #ef4444);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.metadataValue.status-changes-requested {
+  color: var(--info-color, #3b82f6);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Review section enhancements */
+.reviewSection {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+}
+
+.reviewInfo {
+  margin-bottom: 0.75rem;
+}
+
+.reviewTip {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.reviewCommentInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 1rem;
+  font-family: inherit;
+}
+
+.reviewCommentInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.2);
+}
+
+.reviewActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.reviewButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.reviewButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.approveButton {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.approveButton:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--success-color) 90%, black);
+}
+
+.rejectButton {
+  background-color: var(--error-color);
+  color: white;
+}
+
+.rejectButton:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--error-color) 90%, black);
+}
+
+.changeButton {
+  background-color: var(--info-color);
+  color: white;
+}
+
+.changeButton:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--info-color) 90%, black);
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .assetManagerHeader {

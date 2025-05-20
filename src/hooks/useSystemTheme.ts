@@ -4,30 +4,62 @@ import { useEffect, useState } from 'react';
 import { dark } from '@clerk/themes';
 import type { BaseThemeTaggedType } from '@clerk/types';
 
+export type Theme = 'light' | 'dark';
+
+interface UseSystemThemeReturn {
+  theme: Theme;
+  clerkTheme: BaseThemeTaggedType | undefined;
+  isDark: boolean;
+  setTheme: (theme: Theme) => void;
+}
+
 /**
  * Hook to detect system theme preference (light or dark)
- * This supports SSR by defaulting to a neutral value until client-side code can determine the actual preference
- * @returns The appropriate Clerk theme object (dark) or undefined for light mode
+ * This hook now returns both the Clerk theme object and our custom theme string
+ * It also supports manually setting the theme
+ * @returns Object with theme properties and setters
  */
-export function useSystemTheme(): BaseThemeTaggedType | undefined {
-  // Start with system value if available client-side, default to undefined (which means light mode in Clerk)
-  const [theme, setTheme] = useState<BaseThemeTaggedType | undefined>(() => {
-    if (typeof window === 'undefined') return undefined;
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? dark : undefined;
+export function useSystemTheme(): UseSystemThemeReturn {
+  // Start with system value if available client-side, default to light
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'light';
+    
+    // First check localStorage for saved preference
+    const savedTheme = localStorage.getItem('arch-studios-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+    
+    // Otherwise use system preference
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
   
+  // Apply theme to document
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Save to localStorage
+    localStorage.setItem('arch-studios-theme', theme);
+    
+    // Apply theme to document
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, [theme]);
+  
+  // Listen for system theme changes
   useEffect(() => {
     // Check if window is defined (client-side)
     if (typeof window === 'undefined') return;
     
-    // Set the initial theme based on user preference
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setTheme(isDark ? dark : undefined);
+    // Only listen for system changes if no user preference is stored
+    if (localStorage.getItem('arch-studios-theme')) return;
     
-    // Add listener for theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
-      setTheme(e.matches ? dark : undefined);
+      setThemeState(e.matches ? 'dark' : 'light');
     };
     
     // Use the appropriate event listener method
@@ -41,5 +73,16 @@ export function useSystemTheme(): BaseThemeTaggedType | undefined {
     }
   }, []);
   
-  return theme;
+  // Set theme function that persists to localStorage
+  const setTheme = (newTheme: Theme) => {
+    localStorage.setItem('arch-studios-theme', newTheme);
+    setThemeState(newTheme);
+  };
+  
+  return {
+    theme,
+    clerkTheme: theme === 'dark' ? dark : undefined,
+    isDark: theme === 'dark',
+    setTheme
+  };
 }

@@ -11,9 +11,20 @@ interface Asset {
   thumbnailUrl?: string;
   dateUploaded: string;
   uploadedBy: string;
+  uploaderId: string;
   size: string;
   description?: string;
   tags: string[];
+  status: 'pending' | 'approved' | 'rejected' | 'changes-requested';
+  approvalData?: {
+    reviewerId?: string;
+    reviewerName?: string;
+    reviewDate?: string;
+    comments?: string;
+    category?: 'concept' | 'schematic' | 'documentation-ready';
+  };
+  version?: number;
+  previousVersions?: string[]; // IDs of previous versions
 }
 
 interface Message {
@@ -48,11 +59,15 @@ interface WorkspaceContextType {
   uploadAsset: (
     projectId: string, 
     file: File, 
-    description: string, 
-    tags: string[]
+    description: string,
+    tags: string[],
+    category?: 'concept' | 'schematic' | 'documentation-ready'
   ) => Promise<void>;
   deleteAsset: (projectId: string, assetId: string) => void;
   editAsset: (projectId: string, assetId: string, updates: Partial<Asset>) => void;
+  approveAsset: (projectId: string, assetId: string, comment?: string) => void;
+  rejectAsset: (projectId: string, assetId: string, comment: string) => void;
+  requestChanges: (projectId: string, assetId: string, comment: string) => void;
   initializeProject: (projectId: string) => void;
   
   // Communication
@@ -83,9 +98,11 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
       url: '/assets/facade-design.pdf',
       dateUploaded: '2025-05-14T15:30:00Z',
       uploadedBy: 'Alex Johnson',
+      uploaderId: 'user-1',
       size: '2.4 MB',
       description: 'Final facade design with updated client requirements',
-      tags: ['facade', 'client-approved', 'final']
+      tags: ['facade', 'client-approved', 'final'],
+      status: 'approved'
     },
     {
       id: 'asset-2',
@@ -95,8 +112,10 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
       thumbnailUrl: '/assets/thumbnails/lobby-viz-thumb.jpg',
       dateUploaded: '2025-05-12T10:15:00Z',
       uploadedBy: 'Maria Garcia',
+      uploaderId: 'user-2',
       size: '3.8 MB',
-      tags: ['interior', 'visualization', 'lobby']
+      tags: ['interior', 'visualization', 'lobby'],
+      status: 'approved'
     },
     {
       id: 'asset-3',
@@ -105,9 +124,11 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
       url: '/assets/building-model-v2.2.glb',
       dateUploaded: '2025-05-10T09:45:00Z',
       uploadedBy: 'Sam Patel',
+      uploaderId: 'user-3',
       size: '15.7 MB',
       description: 'Updated 3D model with roof garden and solar panels',
-      tags: ['3D-model', 'exterior', 'update']
+      tags: ['3D-model', 'exterior', 'update'],
+      status: 'pending'
     }
   ],
   'proj-2': [
@@ -118,9 +139,11 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
       url: '/assets/site-plan.pdf',
       dateUploaded: '2025-05-16T11:20:00Z',
       uploadedBy: 'Alex Johnson',
+      uploaderId: 'user-1',
       size: '1.8 MB',
       description: 'Site plan with topography and landscape elements',
-      tags: ['site-plan', 'landscape']
+      tags: ['site-plan', 'landscape'],
+      status: 'changes-requested'
     }
   ]
 };
@@ -254,7 +277,8 @@ export const WorkspaceProvider: React.FC<{
     projectId: string,
     file: File,
     description: string,
-    tags: string[]
+    tags: string[],
+    category?: 'concept' | 'schematic' | 'documentation-ready'
   ) => {
     // In a real app, we'd upload to storage and get a URL
     // For this demo, we'll simulate a successful upload
@@ -284,9 +308,13 @@ export const WorkspaceProvider: React.FC<{
       thumbnailUrl: type === 'image' ? `/assets/thumbnails/${file.name}` : undefined,
       dateUploaded: new Date().toISOString(),
       uploadedBy: 'Current User', // In a real app, this would be the current user
+      uploaderId: 'user-current', // In a real app, this would be the current user's ID
       size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
       description: description || undefined,
-      tags: tags || []
+      tags: tags || [],
+      status: 'pending',
+      version: 1,
+      approvalData: category ? { category } : undefined
     };
     
     // Update state
@@ -295,11 +323,31 @@ export const WorkspaceProvider: React.FC<{
       [projectId]: [...(prev[projectId] || []), newAsset]
     }));
     
-    // Notify
+    // Notify uploader
     addNotification(
       'success',
       'Asset Uploaded',
-      `${file.name} has been successfully uploaded.`
+      `${file.name} has been successfully uploaded and is pending review.`,
+      undefined,
+      {
+        assetId: newAsset.id,
+        projectId,
+        action: 'upload'
+      }
+    );
+    
+    // Notify reviewers (in a real app, we'd only notify specific reviewers)
+    addNotification(
+      'info',
+      'New Asset Needs Review',
+      `A new asset "${file.name}" has been uploaded and requires your review.`,
+      undefined,
+      {
+        assetId: newAsset.id, 
+        projectId,
+        action: 'review-required',
+        forRole: 'reviewer'
+      }
     );
     
     return Promise.resolve();
@@ -334,6 +382,150 @@ export const WorkspaceProvider: React.FC<{
       'success',
       'Asset Updated',
       'The asset has been successfully updated.'
+    );
+  };
+  
+  // Asset Review Functions
+  const approveAsset = (projectId: string, assetId: string, comment?: string) => {
+    // Update state by mapping through assets and updating the matching one
+    setProjectAssets(prev => ({
+      ...prev,
+      [projectId]: prev[projectId].map(asset => 
+        asset.id === assetId ? {
+          ...asset,
+          status: 'approved',
+          approvalData: {
+            ...asset.approvalData,
+            reviewerId: 'current-user', // In a real app, this would be from auth
+            reviewerName: 'Current User', // In a real app, this would be from auth
+            reviewDate: new Date().toISOString(),
+            comments: comment || 'Approved without comments'
+          }
+        } : asset
+      )
+    }));
+    
+    // Get asset information for improved notification
+    const asset = projectAssets[projectId]?.find(asset => asset.id === assetId);
+    const assetName = asset?.name || 'Asset';
+    
+    // Notify with improved message and metadata
+    addNotification(
+      'success',
+      'Asset Approved',
+      `"${assetName}" has been approved and is now available for use.`,
+      undefined,
+      {
+        assetId,
+        projectId,
+        action: 'approve'
+      }
+    );
+  };
+  
+  const rejectAsset = (projectId: string, assetId: string, comment: string) => {
+    // Update state by mapping through assets and updating the matching one
+    setProjectAssets(prev => ({
+      ...prev,
+      [projectId]: prev[projectId].map(asset => 
+        asset.id === assetId ? {
+          ...asset,
+          status: 'rejected',
+          approvalData: {
+            ...asset.approvalData,
+            reviewerId: 'current-user', // In a real app, this would be from auth
+            reviewerName: 'Current User', // In a real app, this would be from auth
+            reviewDate: new Date().toISOString(),
+            comments: comment
+          }
+        } : asset
+      )
+    }));
+    
+    // Get asset information for improved notification
+    const asset = projectAssets[projectId]?.find(asset => asset.id === assetId);
+    const assetName = asset?.name || 'Asset';
+    const uploader = asset?.uploaderId;
+    
+    // Notify reviewer
+    addNotification(
+      'info',
+      'Asset Rejected',
+      `"${assetName}" has been rejected with comments.`,
+      undefined,
+      {
+        assetId,
+        projectId,
+        action: 'reject'
+      }
+    );
+    
+    // In a real app, we would also send a notification to the uploader
+    // This simulates notifying the uploader
+    addNotification(
+      'warning',
+      'Your Asset Was Rejected',
+      `Your asset "${assetName}" was rejected by a reviewer. Please check the comments.`,
+      undefined,
+      {
+        assetId,
+        projectId,
+        action: 'reject-notification',
+        forUser: uploader
+      }
+    );
+  };
+  
+  const requestChanges = (projectId: string, assetId: string, comment: string) => {
+    // Update state by mapping through assets and updating the matching one
+    setProjectAssets(prev => ({
+      ...prev,
+      [projectId]: prev[projectId].map(asset => 
+        asset.id === assetId ? {
+          ...asset,
+          status: 'changes-requested',
+          approvalData: {
+            ...asset.approvalData,
+            reviewerId: 'current-user', // In a real app, this would be from auth
+            reviewerName: 'Current User', // In a real app, this would be from auth
+            reviewDate: new Date().toISOString(),
+            comments: comment
+          }
+        } : asset
+      )
+    }));
+    
+    // Get asset information for improved notification
+    const asset = projectAssets[projectId]?.find(asset => asset.id === assetId);
+    const assetName = asset?.name || 'Asset';
+    const uploader = asset?.uploaderId;
+    
+    // Notify reviewer
+    addNotification(
+      'info',
+      'Changes Requested',
+      `You've requested changes to "${assetName}".`,
+      undefined,
+      {
+        assetId,
+        projectId,
+        action: 'request-changes'
+      }
+    );
+    
+    // In a real app, we would also send a notification to the uploader
+    // This simulates notifying the uploader
+    addNotification(
+      'warning',
+      'Changes Requested',
+      `A reviewer has requested changes to your asset "${assetName}". Please check the review comments.`,
+      undefined,
+      {
+        assetId,
+        projectId,
+        action: 'changes-requested-notification',
+        forUser: uploader
+      }
     );
   };
   
@@ -462,6 +654,9 @@ export const WorkspaceProvider: React.FC<{
       uploadAsset,
       deleteAsset,
       editAsset,
+      approveAsset,
+      rejectAsset,
+      requestChanges,
       initializeProject,
       
       // Communication

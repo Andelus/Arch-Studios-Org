@@ -90,7 +90,8 @@ export function useNotifications() {
   
   // Add a new notification
   const addNotification = async (
-    type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder',
+    type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder' | 
+          'asset_approved' | 'asset_rejected' | 'asset_changes_requested' | 'asset_submitted',
     title: string,
     message: string,
     link?: string,

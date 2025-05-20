@@ -10,11 +10,11 @@ import { useTeam } from "@/contexts/TeamContext";
 import type { TeamMember } from "@/contexts/TeamContext";
 import TeamManagementModal from "@/components/TeamManagementModal";
 import { useNotifications } from "@/hooks/useNotifications";
-import AssetManager from "@/components/AssetManager";
-import CommunicationPanel from "@/components/CommunicationPanel";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/WorkspaceContext";
 import ProjectCreationModal from "@/components/ProjectCreationModal";
 import TaskCreationModal from "@/components/TaskCreationModal";
+import { AssetManagerIntegration } from "./AssetManagerIntegration";
+import { CommunicationPanelIntegration } from "./CommunicationPanelIntegration";
 
 // Types
 interface Project {
@@ -168,7 +168,14 @@ export default function WorkspaceContent() {
     setTeamMembers
   } = useTeam();
   const {
-    initializeProject
+    initializeProject,
+    projectAssets,
+    uploadAsset,
+    deleteAsset,
+    editAsset,
+    approveAsset,
+    rejectAsset,
+    requestChanges
   } = useWorkspace();
 
   // Function to generate unique IDs for projects and other entities
@@ -790,65 +797,23 @@ export default function WorkspaceContent() {
           <div className={styles.assetsSection}>
             <div className={styles.sectionHeader}>
               <h3>Project Assets</h3>
-              <button className={styles.primaryButton}>
+              <button 
+                className={styles.primaryButton}
+                onClick={() => {
+                  // The upload modal is managed in AssetManager, so we need to trigger it there
+                  // We'll dispatch a custom event to open it
+                  document.dispatchEvent(new Event('triggerAssetUpload'));
+                }}
+              >
                 <i className="fas fa-upload"></i> Upload Asset
               </button>
             </div>
             <div className={styles.assetsContent}>
-              <AssetManager
-                assets={[
-                  {
-                    id: 'asset-1',
-                    name: 'Floor Plan Draft.pdf',
-                    type: 'document',
-                    url: '#',
-                    thumbnailUrl: '/thumbnails/pdf.png',
-                    dateUploaded: new Date().toISOString(),
-                    uploadedBy: user?.firstName + ' ' + user?.lastName || 'Unknown User',
-                    size: '2.4 MB',
-                    description: 'Initial floor plan draft for client review',
-                    tags: ['floor plan', 'draft', 'client']
-                  },
-                  {
-                    id: 'asset-2',
-                    name: 'Building Exterior.jpg',
-                    type: 'image',
-                    url: '#',
-                    thumbnailUrl: '/thumbnails/image.png',
-                    dateUploaded: new Date().toISOString(),
-                    uploadedBy: user?.firstName + ' ' + user?.lastName || 'Unknown User',
-                    size: '5.7 MB',
-                    description: 'Exterior rendering for client presentation',
-                    tags: ['render', 'exterior', 'presentation']
-                  }
-                ]}
+              <AssetManagerIntegration
                 projectId={selectedProject.id}
-                onAssetUpload={(file, description, tags) => {
-                  // This would be connected to the workspace context in a real implementation
-                  console.log("Asset upload:", file, description, tags);
-                  addNotification(
-                    'success',
-                    'Asset Uploaded',
-                    `${file.name} has been uploaded successfully.`
-                  );
-                }}
-                onDeleteAsset={(assetId) => {
-                  // This would be connected to the workspace context in a real implementation
-                  console.log("Delete asset:", assetId);
-                  addNotification(
-                    'info',
-                    'Asset Deleted',
-                    `The asset has been removed from the project.`
-                  );
-                }}
-                onEditAsset={(assetId, updates) => {
-                  // This would be connected to the workspace context in a real implementation
-                  console.log("Edit asset:", assetId, updates);
-                  addNotification(
-                    'success',
-                    'Asset Updated',
-                    `Asset details have been updated.`
-                  );
+                isAdmin={isUserAdmin(selectedProject.id)}
+                notifications={{
+                  addNotification
                 }}
               />
             </div>
@@ -860,66 +825,22 @@ export default function WorkspaceContent() {
           <div className={styles.communicationSection}>
             <div className={styles.sectionHeader}>
               <h3>Project Communication</h3>
+              <button 
+                className={styles.primaryButton}
+                onClick={() => {
+                  // Trigger the chat modal in CommunicationPanel
+                  document.dispatchEvent(new Event('triggerChatOpen'));
+                }}
+              >
+                <i className="fas fa-comment-alt"></i> New Message
+              </button>
             </div>
             <div className={styles.communicationContent}>
-              <CommunicationPanel 
+              <CommunicationPanelIntegration 
                 projectId={selectedProject.id}
                 currentUserId={user?.id || ''}
-                messages={[
-                  {
-                    id: 'msg-1',
-                    content: 'Hi team! I have uploaded the latest floor plan drafts to the Assets section. Please review and provide feedback by tomorrow.',
-                    sender: {
-                      id: 'user-1',
-                      name: 'Alex Johnson',
-                      avatar: '/avatars/alex.jpg'
-                    },
-                    timestamp: new Date(Date.now() - 8600000).toISOString()
-                  },
-                  {
-                    id: 'msg-2',
-                    content: 'I will take a look at them this afternoon.',
-                    sender: {
-                      id: 'user-2',
-                      name: 'Maria Garcia',
-                      avatar: '/avatars/maria.jpg'
-                    },
-                    timestamp: new Date(Date.now() - 7200000).toISOString()
-                  },
-                  {
-                    id: 'msg-3',
-                    content: 'The client meeting has been moved to Thursday at 2 PM. Please update your calendars.',
-                    sender: {
-                      id: 'user-1',
-                      name: 'Alex Johnson',
-                      avatar: '/avatars/alex.jpg'
-                    },
-                    timestamp: new Date(Date.now() - 3600000).toISOString(),
-                    isAnnouncement: true
-                  }
-                ]}
-                channels={[
-                  { id: 'general', name: 'General', description: 'Project-wide announcements and discussions', isPrivate: false, unreadCount: 1 },
-                  { id: 'design', name: 'Design', description: 'Design team discussions', isPrivate: false },
-                  { id: 'technical', name: 'Technical', description: 'Technical discussions and issues', isPrivate: false }
-                ]}
-                onSendMessage={(content: string, channelId: string, attachments?: File[]) => {
-                  // This would be connected to the workspace context in a real implementation
-                  console.log("Send message:", content, channelId, attachments);
-                  addNotification(
-                    'info',
-                    'Message Sent',
-                    `Your message has been sent to the ${channelId} channel.`
-                  );
-                }}
-                onCreateChannel={(name: string, isPrivate: boolean, description?: string) => {
-                  // This would be connected to the workspace context in a real implementation
-                  console.log("Create channel:", name, isPrivate, description);
-                  addNotification(
-                    'success',
-                    'Channel Created',
-                    `The ${name} channel has been created.`
-                  );
+                notifications={{
+                  addNotification
                 }}
               />
             </div>

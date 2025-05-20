@@ -721,6 +721,6 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
       )}
     </div>
   );
-});
+}
 
 export default AssetManager;

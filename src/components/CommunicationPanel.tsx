@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import styles from './CommunicationPanel.module.css';
+import AnimatedProfileIcon from './AnimatedProfileIcon';
 
 interface Message {
   id: string;
@@ -36,6 +37,9 @@ interface CommunicationPanelProps {
   channels: Channel[];
   onSendMessage: (content: string, channelId: string, attachments?: File[]) => void;
   onCreateChannel: (name: string, isPrivate: boolean, description?: string) => void;
+  initialChatModalOpen?: boolean;
+  onCloseChatModal?: () => void;
+  onChangeChannel?: (channelId: string) => void;
 }
 
 export default function CommunicationPanel({
@@ -44,7 +48,10 @@ export default function CommunicationPanel({
   messages,
   channels,
   onSendMessage,
-  onCreateChannel
+  onCreateChannel,
+  initialChatModalOpen = false,
+  onCloseChatModal,
+  onChangeChannel
 }: CommunicationPanelProps) {
   const [activeChannelId, setActiveChannelId] = useState<string>(channels[0]?.id || '');
   const [messageInput, setMessageInput] = useState('');
@@ -53,6 +60,9 @@ export default function CommunicationPanel({
   const [newChannelName, setNewChannelName] = useState('');
   const [newChannelDescription, setNewChannelDescription] = useState('');
   const [newChannelIsPrivate, setNewChannelIsPrivate] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(initialChatModalOpen);
+  const [newMessageContent, setNewMessageContent] = useState('');
+  const [newMessageChannelId, setNewMessageChannelId] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +71,21 @@ export default function CommunicationPanel({
   useEffect(() => {
     scrollToBottom();
   }, [messages, activeChannelId]);
+  
+  // Handle changes to activeChannelId
+  useEffect(() => {
+    if (onChangeChannel) {
+      onChangeChannel(activeChannelId);
+    }
+  }, [activeChannelId, onChangeChannel]);
+  
+  // Handle initialChatModalOpen prop changes
+  useEffect(() => {
+    setIsChatModalOpen(initialChatModalOpen);
+    if (initialChatModalOpen && channels.length > 0) {
+      setNewMessageChannelId(activeChannelId || channels[0].id);
+    }
+  }, [initialChatModalOpen, channels, activeChannelId]);
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,6 +118,30 @@ export default function CommunicationPanel({
       setNewChannelDescription('');
       setNewChannelIsPrivate(false);
       setIsCreatingChannel(false);
+    }
+  };
+  
+  // New Chat Modal Functions
+  const handleCloseChatModal = () => {
+    setIsChatModalOpen(false);
+    setNewMessageContent('');
+    if (onCloseChatModal) {
+      onCloseChatModal();
+    }
+  };
+  
+  const handleNewMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessageContent.trim() && newMessageChannelId) {
+      onSendMessage(newMessageContent.trim(), newMessageChannelId);
+      setNewMessageContent('');
+      handleCloseChatModal();
+      
+      // If the message was sent to a different channel than the active one,
+      // switch to that channel to show the sent message
+      if (newMessageChannelId !== activeChannelId) {
+        setActiveChannelId(newMessageChannelId);
+      }
     }
   };
   
@@ -199,13 +248,11 @@ export default function CommunicationPanel({
                 )}
                 <div className={styles.messageContent}>
                   <div className={styles.messageSender}>
-                    {message.sender.avatar ? (
-                      <img src={message.sender.avatar} alt={message.sender.name} />
-                    ) : (
-                      <div className={styles.avatarPlaceholder}>
-                        {message.sender.name.charAt(0)}
-                      </div>
-                    )}
+                    <AnimatedProfileIcon 
+                      name={message.sender.name}
+                      size="medium"
+                      status={message.sender.id === currentUserId ? 'online' : undefined}
+                    />
                     <span className={styles.senderName}>{message.sender.name}</span>
                     <span className={styles.messageTime}>{formatTime(message.timestamp)}</span>
                   </div>
@@ -367,6 +414,70 @@ export default function CommunicationPanel({
                   disabled={!newChannelName.trim()}
                 >
                   Create Channel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* New Message Modal */}
+      {isChatModalOpen && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <h3>New Message</h3>
+              <button 
+                className={styles.closeButton}
+                onClick={handleCloseChatModal}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form className={styles.modalContent} onSubmit={handleNewMessage}>
+              <div className={styles.formGroup}>
+                <label htmlFor="message-channel">Channel</label>
+                <select
+                  id="message-channel"
+                  value={newMessageChannelId}
+                  onChange={(e) => setNewMessageChannelId(e.target.value)}
+                  required
+                >
+                  {channels.map(channel => (
+                    <option key={channel.id} value={channel.id}>
+                      {channel.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label htmlFor="message-content">Message</label>
+                <textarea
+                  id="message-content"
+                  value={newMessageContent}
+                  onChange={(e) => setNewMessageContent(e.target.value)}
+                  placeholder="Type your message here..."
+                  required
+                  rows={5}
+                />
+              </div>
+              
+              <div className={styles.modalFooter}>
+                <button 
+                  type="button" 
+                  className={styles.cancelButton}
+                  onClick={handleCloseChatModal}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className={styles.createButton}
+                  disabled={!newMessageContent.trim()}
+                >
+                  Send Message
                 </button>
               </div>
             </form>

@@ -577,3 +577,64 @@
     background-color: #c62828;
   }
 }
+
+/* Asset notification styles */
+
+/* Style for asset approved notifications */
+.notification[data-type="asset_approved"] .notificationIcon {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color, #10b981);
+}
+
+/* Style for asset rejected notifications */
+.notification[data-type="asset_rejected"] .notificationIcon {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--error-color, #ef4444);
+}
+
+/* Style for asset changes requested notifications */
+.notification[data-type="asset_changes_requested"] .notificationIcon {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--info-color, #3b82f6);
+}
+
+/* Style for asset submitted notifications */
+.notification[data-type="asset_submitted"] .notificationIcon {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color, #f59e0b);
+}
+
+/* Animation for new notifications */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notification:first-child {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Enhanced notification content styling */
+.notificationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificationTitle[data-type="asset_approved"],
+.notificationTitle[data-type="asset_rejected"],
+.notificationTitle[data-type="asset_changes_requested"],
+.notificationTitle[data-type="asset_submitted"] {
+  font-weight: 600;
+}
+
+/* Add a subtle highlight for unread asset notifications */
+.notification[data-unread="true"][data-type^="asset_"] {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-left: 3px solid var(--primary-color, #4facfe);
+}

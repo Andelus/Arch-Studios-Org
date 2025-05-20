@@ -1,0 +1,130 @@
+
+.profileIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  position: relative;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Size variants */
+.small {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.medium {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.large {
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
+}
+
+/* Theme specific styles */
+.light {
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark {
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation */
+.profileIcon:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.initials {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.animatedInitials {
+  animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.profileIcon {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Status indicator */
+.statusIndicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--card-bg);
+  transition: all 0.3s ease;
+}
+
+.online {
+  background-color: var(--success-color);
+  animation: pulse-status 2s infinite;
+}
+
+.offline {
+  background-color: var(--text-muted);
+}
+
+.away {
+  background-color: var(--warning-color);
+  animation: blink 3s infinite;
+}
+
+@keyframes pulse-status {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* Make sure we define the color variables in global CSS */
+:root {
+  --profile-color-1: #4a6da7;
+  --profile-color-2: #ff8a65;
+  --profile-color-3: #9575cd;
+  --profile-color-4: #4db6ac;
+  --profile-color-5: #f06292;
+}
+
+[data-theme="dark"] {
+  --profile-color-1: #5c84cc;
+  --profile-color-2: #ff9d76;
+  --profile-color-3: #a98be0;
+  --profile-color-4: #64d8cb;
+  --profile-color-5: #f48fb1;
+}

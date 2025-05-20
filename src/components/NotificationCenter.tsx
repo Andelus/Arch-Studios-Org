@@ -5,7 +5,8 @@ import styles from './NotificationCenter.module.css';
 
 export interface Notification {
   id: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder';
+  type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder' | 
+        'asset_approved' | 'asset_rejected' | 'asset_changes_requested' | 'asset_submitted';
   title: string;
   message: string;
   time: string; // ISO timestamp
@@ -106,7 +107,7 @@ export default function NotificationCenter({
     });
   };
   
-  const getNotificationIcon = (type: 'info' | 'success' | 'warning' | 'error' | 'team_invitation' | 'invitation_accepted' | 'invitation_reminder') => {
+  const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'info':
         return 'fas fa-info-circle';
@@ -122,6 +123,14 @@ export default function NotificationCenter({
         return 'fas fa-user-check';
       case 'invitation_reminder':
         return 'fas fa-bell';
+      case 'asset_approved':
+        return 'fas fa-file-check';
+      case 'asset_rejected':
+        return 'fas fa-file-times';
+      case 'asset_changes_requested':
+        return 'fas fa-file-edit';
+      case 'asset_submitted':
+        return 'fas fa-file-upload';
       default:
         return 'fas fa-info-circle';
     }

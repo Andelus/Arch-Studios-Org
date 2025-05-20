@@ -46,9 +46,33 @@ This document outlines steps to verify that all components properly adapt to the
 3. **Delayed Theme Application**: Theme changes not being applied immediately upon system theme change
 4. **Inconsistent Styling**: Some components following the theme while others don't
 
+### 7. AnimatedProfileIcon
+- Verify that the profile icon adapts to light and dark modes
+- Check that the status indicators (online, offline, away) display correctly in both themes
+- Test the animation transitions on hover in both light and dark mode
+- Ensure that the profile icon colors vary consistently across user names
+
+### 8. Asset Manager
+- Verify that the asset manager UI adapts to the system theme
+- Test the approval workflow UI in both light and dark modes
+- Ensure status indicators for assets are clearly visible in both themes
+
+### 9. Theme Toggle
+- Test the manual theme toggle functionality
+- Verify that the selected theme is persisted in localStorage
+- Check that theme transitions are smooth with proper CSS animations
+- Test that all components immediately update when theme is toggled
+
+### 10. Mobile Responsiveness
+- Verify that the theme system works correctly on mobile devices
+- Test the theme toggle function on smaller screens
+- Ensure all theme-dependent UI elements adapt properly at all screen sizes
+
 ## Further Testing
 
 When testing with different browsers, pay attention to how each handles:
 - The `prefers-color-scheme` media query
 - Transitions between light and dark mode
 - How quickly the theme changes are reflected in the UI
+- CSS variable inheritance and fallback values
+- Animation and transition performance in each theme

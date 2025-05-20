@@ -9,7 +9,8 @@ import { supabase } from './supabase';
 interface NotificationData {
   user_id?: string;
   email?: string;
-  type: 'team_invitation' | 'invitation_accepted' | 'invitation_reminder' | 'system';
+  type: 'team_invitation' | 'invitation_accepted' | 'invitation_reminder' | 'system' | 
+        'asset_approved' | 'asset_rejected' | 'asset_changes_requested' | 'asset_submitted';
   title: string;
   message: string;
   link?: string;
@@ -170,4 +171,158 @@ export async function sendInvitationAcceptedNotification(
       role: role
     }
   });
+}
+
+// Asset notification types
+interface AssetNotificationData {
+  assetId: string;
+  assetName: string;
+  projectId?: string;
+  projectName?: string;
+  reviewerId?: string;
+  reviewerName?: string;
+  uploaderId: string;
+  comments?: string;
+}
+
+/**
+ * Send a notification about an asset being approved
+ * 
+ * @param data Information about the approved asset
+ * @returns Promise resolving to success status
+ */
+export async function sendAssetApprovedNotification(data: AssetNotificationData): Promise<boolean> {
+  try {
+    const message = data.comments 
+      ? `Your asset "${data.assetName}" has been approved by ${data.reviewerName}. Comment: ${data.comments}`
+      : `Your asset "${data.assetName}" has been approved by ${data.reviewerName}.`;
+      
+    return await sendNotification({
+      user_id: data.uploaderId,
+      type: 'asset_approved',
+      title: 'Asset Approved',
+      message,
+      link: `/workspace/assets/${data.assetId}`,
+      metadata: {
+        assetId: data.assetId,
+        assetName: data.assetName,
+        projectId: data.projectId,
+        projectName: data.projectName,
+        reviewerId: data.reviewerId,
+        reviewerName: data.reviewerName,
+        comments: data.comments
+      }
+    });
+  } catch (error) {
+    console.error('Failed to send asset approved notification:', error);
+    return false;
+  }
+}
+
+/**
+ * Send a notification about an asset being rejected
+ * 
+ * @param data Information about the rejected asset
+ * @returns Promise resolving to success status
+ */
+export async function sendAssetRejectedNotification(data: AssetNotificationData): Promise<boolean> {
+  if (!data.comments) {
+    console.error('Comments are required for rejected assets');
+    return false;
+  }
+  
+  try {
+    return await sendNotification({
+      user_id: data.uploaderId,
+      type: 'asset_rejected',
+      title: 'Asset Rejected',
+      message: `Your asset "${data.assetName}" has been rejected by ${data.reviewerName}. Reason: ${data.comments}`,
+      link: `/workspace/assets/${data.assetId}`,
+      metadata: {
+        assetId: data.assetId,
+        assetName: data.assetName,
+        projectId: data.projectId,
+        projectName: data.projectName,
+        reviewerId: data.reviewerId,
+        reviewerName: data.reviewerName,
+        comments: data.comments
+      }
+    });
+  } catch (error) {
+    console.error('Failed to send asset rejected notification:', error);
+    return false;
+  }
+}
+
+/**
+ * Send a notification about an asset needing changes
+ * 
+ * @param data Information about the asset needing changes
+ * @returns Promise resolving to success status
+ */
+export async function sendAssetChangesRequestedNotification(data: AssetNotificationData): Promise<boolean> {
+  if (!data.comments) {
+    console.error('Comments are required for change requests');
+    return false;
+  }
+  
+  try {
+    return await sendNotification({
+      user_id: data.uploaderId,
+      type: 'asset_changes_requested',
+      title: 'Asset Changes Requested',
+      message: `Changes have been requested for your asset "${data.assetName}" by ${data.reviewerName}. Details: ${data.comments}`,
+      link: `/workspace/assets/${data.assetId}`,
+      metadata: {
+        assetId: data.assetId,
+        assetName: data.assetName,
+        projectId: data.projectId,
+        projectName: data.projectName,
+        reviewerId: data.reviewerId,
+        reviewerName: data.reviewerName,
+        comments: data.comments
+      }
+    });
+  } catch (error) {
+    console.error('Failed to send asset changes requested notification:', error);
+    return false;
+  }
+}
+
+/**
+ * Send a notification about an asset being submitted for review
+ * 
+ * @param data Information about the submitted asset
+ * @param reviewerIds Array of user IDs who should receive the notification
+ * @returns Promise resolving to success status
+ */
+export async function sendAssetSubmittedNotification(
+  data: Omit<AssetNotificationData, 'reviewerId' | 'reviewerName'>, 
+  reviewerIds: string[]
+): Promise<boolean> {
+  try {
+    // Send notifications to all reviewers
+    const results = await Promise.all(reviewerIds.map(reviewerId => 
+      sendNotification({
+        user_id: reviewerId,
+        type: 'asset_submitted',
+        title: 'Asset Submitted for Review',
+        message: `A new asset "${data.assetName}" has been submitted for review.`,
+        link: `/workspace/assets/${data.assetId}`,
+        metadata: {
+          assetId: data.assetId,
+          assetName: data.assetName,
+          projectId: data.projectId,
+          projectName: data.projectName,
+          uploaderId: data.uploaderId
+        }
+      })
+    ));
+    
+    // Return true if all notifications were sent successfully
+    return results.every(result => result);
+  } catch (error) {
+    console.error('Failed to send asset submitted notifications:', error);
+    return false;
+  }
 }
