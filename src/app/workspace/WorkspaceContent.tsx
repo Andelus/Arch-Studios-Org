@@ -430,41 +430,67 @@ export default function WorkspaceContent() {
   const [draggedProject, setDraggedProject] = useState<Project | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   
-  const handleDragStart = (project: Project) => {
+  const handleDragStart = (project: Project, e?: React.DragEvent<HTMLDivElement>) => {
     // Only allow dragging projects (not folders or templates)
     if (!project.isFolder && !project.isTemplate) {
       setDraggedProject(project);
+      // Add visual feedback for dragged element
+      const dragIcon = document.createElement('div');
+      dragIcon.className = styles.dragIcon;
+      dragIcon.innerHTML = `<i class="fas fa-project-diagram"></i> ${project.name}`;
+      document.body.appendChild(dragIcon);
+      dragIcon.style.display = 'none';
     }
   };
   
   const handleDragOver = (e: React.DragEvent, folderId: string) => {
     e.preventDefault();
-    setDragOverFolderId(folderId);
+    // Only allow dropping into folders (not projects or templates)
+    const folder = projects.find(p => p.id === folderId);
+    if (folder?.isFolder && draggedProject && draggedProject.id !== folderId) {
+      setDragOverFolderId(folderId);
+      // Add class to folder icon for visual feedback
+      const folderElement = e.currentTarget as HTMLElement;
+      folderElement.classList.add(styles.dropTarget);
+    }
   };
   
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
     setDragOverFolderId(null);
+    // Remove visual feedback class
+    const folderElement = e.currentTarget as HTMLElement;
+    folderElement.classList.remove(styles.dropTarget);
   };
   
   const handleDrop = (e: React.DragEvent, folderId: string) => {
     e.preventDefault();
     if (draggedProject && folderId !== draggedProject.id) {
-      // Move project to the folder
-      setProjects(prev => 
-        prev.map(p => 
-          p.id === draggedProject.id 
-            ? { ...p, parentId: folderId } 
-            : p
-        )
-      );
-      
-      // Show success notification
-      addNotification(
-        'success',
-        'Project Moved',
-        `"${draggedProject.name}" has been moved to the folder.`
-      );
+      const targetFolder = projects.find(p => p.id === folderId);
+      if (targetFolder?.isFolder) {
+        // Move project to the folder
+        setProjects(prev => 
+          prev.map(p => 
+            p.id === draggedProject.id 
+              ? { ...p, parentId: folderId } 
+              : p
+          )
+        );
+        
+        // Show success notification
+        addNotification(
+          'success',
+          'Project Moved',
+          `"${draggedProject.name}" has been moved to the "${targetFolder.name}" folder.`
+        );
+      }
     }
+    
+    // Remove visual feedback class
+    const folderElement = e.currentTarget as HTMLElement;
+    folderElement.classList.remove(styles.dropTarget);
+    
+    // Reset drag state
     setDraggedProject(null);
     setDragOverFolderId(null);
   };
@@ -619,11 +645,24 @@ export default function WorkspaceContent() {
                       setShowProjectDropdown(false);
                     }}
                     draggable
-                    onDragStart={() => handleDragStart(project)}
+                    onDragStart={(e) => handleDragStart(project, e)}
                   >
                     <div className={styles.projectIconName}>
                       {project.isFolder ? (
-                        <i className="fas fa-folder" style={{color: '#ffc107'}}></i>
+                        <i className="fas fa-folder" 
+                           style={{
+                             color: '#ffc107',
+                             background: dragOverFolderId === project.id ? 'rgba(255, 193, 7, 0.15)' : 'transparent',
+                             padding: '3px',
+                             borderRadius: '4px',
+                             transform: dragOverFolderId === project.id ? 'scale(1.1)' : 'scale(1)',
+                             transition: 'all 0.2s ease'
+                           }} 
+                           onDragOver={(e) => handleDragOver(e, project.id)}
+                           onDragLeave={handleDragLeave}
+                           onDrop={(e) => handleDrop(e, project.id)}
+                           data-is-folder="true"
+                        ></i>
                       ) : project.isTemplate ? (
                         <i className="fas fa-copy" style={{color: '#ff9a9e'}}></i>
                       ) : (
@@ -735,6 +774,48 @@ export default function WorkspaceContent() {
             </div>
           )}
         </div>
+
+        {/* Filtered Projects Section - Shows when using template filter */}
+        {activeFilter && filteredProjects.length > 0 && (
+          <div className={styles.filteredProjectsSection}>
+            <div className={styles.filterHeader}>
+              <h3>{filterTitle}</h3>
+              <button 
+                className={styles.clearFilterButton}
+                onClick={clearFilters}
+              >
+                <i className="fas fa-times"></i> Clear Filter
+              </button>
+            </div>
+            <div className={styles.filteredProjectsList}>
+              {filteredProjects.map(project => (
+                <div 
+                  key={project.id} 
+                  className={`${styles.filteredProjectItem} ${project.isTemplate ? styles.templateItem : project.isFolder ? styles.folderItem : ''}`}
+                  onClick={() => {
+                    setSelectedProject(project);
+                    // Don't clear filter to allow user to switch between filtered projects
+                  }}
+                >
+                  <div className={styles.projectIconName}>
+                    <i className="fas fa-project-diagram" style={{color: '#4facfe'}}></i>
+                    <span className={styles.projectName}>
+                      {project.name}
+                    </span>
+                  </div>
+                  <span className={`${styles.projectStatus} ${styles[project.status.toLowerCase().replace(' ', '')]}`}>
+                    {project.status}
+                  </span>
+                  <div className={styles.filteredProjectMeta}>
+                    <span className={styles.filteredProjectDate}>
+                      Created: {new Date(project.createdFromTemplate?.createdAt || project.lastUpdated).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Project Summary */}
         {selectedProject && (

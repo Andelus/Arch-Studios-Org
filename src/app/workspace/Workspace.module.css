@@ -1170,6 +1170,126 @@
   color: #333;
 }
 
+/* Drag and Drop Styles */
+.draggable {
+  cursor: grab;
+}
+
+.draggable:active {
+  cursor: grabbing;
+}
+
+.dropTarget {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.dropTarget::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px dashed #4facfe;
+  border-radius: 6px;
+  pointer-events: none;
+  animation: pulse 1.5s infinite;
+  z-index: 1;
+}
+
+.folderItemDragOver {
+  background-color: rgba(255, 193, 7, 0.15);
+  transform: scale(1.03);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* Template and Folder Item Styles */
+.folderItem {
+  border-left: 3px solid #ffc107;
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+.templateItem {
+  border-left: 3px solid #ff9a9e;
+  background-color: rgba(255, 154, 158, 0.05);
+}
+
+.templateBadge {
+  background: linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%);
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.projectIconName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-grow: 1;
+}
+
+.projectIconName i {
+  font-size: 1rem;
+  margin-right: 0.25rem;
+}
+
+/* Icon colors to distinguish between different project types */
+.projectIconName i.fa-project-diagram {
+  color: #4facfe;
+}
+
+.projectIconName i.fa-folder {
+  color: #ffc107;
+}
+
+.projectIconName i.fa-copy {
+  color: #ff9a9e;
+}
+
+.itemTypeLabel {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: normal;
+  margin-left: 0.25rem;
+}
+
+.templateReference {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #ff6b81;
+  background-color: rgba(255, 154, 158, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+.templateReference:before {
+  content: '';
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  background-color: #ff9a9e;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+}
+
 /* Dark mode styles - using theme classes instead of media queries */
 /* Dark mode styles moved to fixed-dark-theme.css */
   
