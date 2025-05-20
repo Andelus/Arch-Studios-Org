@@ -431,11 +431,22 @@ export const WorkspaceProvider: React.FC<{
   
   // Communication Functions - Updated to use chat-service
   const loadChannelsForProject = useCallback(async (projectId: string) => {
-    if (!user) return;
+    if (!user) {
+      console.warn("Cannot load channels: User not authenticated");
+      return;
+    }
     
     try {
+      console.log(`Loading channels for project: ${projectId}, user: ${user.id}`);
       const { data, error } = await getChannelsForProject(projectId, user.id);
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading channels:", error);
+        throw new Error(`Failed to load channels: ${error.message || 'Unknown error'}`);
+      }
+      
+      if (!data || data.length === 0) {
+        console.log(`No channels found for project: ${projectId}. This may be normal for a new project.`);
+      }
       
       if (data) {
         // Convert to WorkspaceChannel format
@@ -489,12 +500,21 @@ export const WorkspaceProvider: React.FC<{
           [`channel-updates-${projectId}`]: unsubscribe
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading channels for project:', error);
+      
+      // Set default channels array to avoid UI issues
+      setChannels(prev => ({
+        ...prev,
+        [projectId]: prev[projectId] || []
+      }));
+      
+      const errorMessage = error?.message || 'Unknown error occurred';
+      
       addNotification(
-        'error',
-        'Failed to load channels',
-        'There was an error loading the communication channels.'
+        'warning',
+        'Channel loading issue',
+        `Could not load communication channels. ${errorMessage}. Please try refreshing the page.`
       );
     }
   }, [user, addNotification]);
@@ -837,19 +857,26 @@ export const WorkspaceProvider: React.FC<{
     
     // Create default channels
     try {
+      console.log(`Initializing default channels for project: ${projectId}, organization: ${organizationId}`);
       const { data, error } = await initializeDefaultChannels(projectId, organizationId);
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Error initializing default channels:", error);
+        throw new Error(`Failed to initialize channels: ${error.message || 'Unknown error'}`);
+      }
+      
+      console.log(`Default channels created successfully for project: ${projectId}`);
       
       // Load channels for the project
       if (user) {
         await loadChannelsForProject(projectId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initializing project channels:', error);
       addNotification(
-        'error',
-        'Channel Setup Failed',
-        'Failed to create default communication channels.'
+        'warning',
+        'Channel Setup Issue',
+        `Unable to set up communication channels: ${error?.message || 'Unknown error'}. Please try again or contact support.`
       );
     }
   }, [user, loadChannelsForProject, addNotification]);

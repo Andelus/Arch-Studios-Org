@@ -25,6 +25,14 @@ interface Project {
   lastUpdated: string;
   dueDate?: string;
   progress: number;
+  isFolder?: boolean;
+  parentId?: string;
+  isTemplate?: boolean;
+  createdFromTemplate?: {
+    templateId: string;
+    templateName: string;
+    createdAt: string;
+  };
   members: {
     id: string;
     name: string;
@@ -132,6 +140,12 @@ export default function WorkspaceContent() {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | undefined>(undefined);
+  const [createAsFolder, setCreateAsFolder] = useState(false);
+  const [createAsTemplate, setCreateAsTemplate] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>('');
+  const [filterTitle, setFilterTitle] = useState<string>('');
   
   // Calculate project progress based on task completion
   const calculateProjectProgress = (projectId: string): number => {
@@ -145,6 +159,40 @@ export default function WorkspaceContent() {
   // Update project progress whenever tasks change
   const updateProjectProgress = (projectId: string) => {
     const progress = calculateProjectProgress(projectId);
+    
+  // Function to view all projects created from a specific template
+  const viewTemplateUsage = (templateId: string) => {
+    const template = projects.find(p => p.id === templateId);
+    if (!template) return;
+    
+    const fromTemplateProjects = projects.filter(p => 
+      p.createdFromTemplate?.templateId === templateId
+    );
+    
+    setFilteredProjects(fromTemplateProjects);
+    setActiveFilter('template-usage');
+    setFilterTitle(`Projects using "${template.name}" template`);
+    
+    // Show notification about how many projects were found
+    addNotification(
+      'info',
+      'Template Usage',
+      `Found ${fromTemplateProjects.length} project${fromTemplateProjects.length !== 1 ? 's' : ''} created from this template.`
+    );
+  };
+  
+  // Reset filtered projects and clear filters
+  const clearFilters = () => {
+    setFilteredProjects([]);
+    setActiveFilter('');
+    setFilterTitle('');
+    
+    addNotification(
+      'info',
+      'Filters Cleared',
+      'Showing all projects.'
+    );
+  };
     setProjects(prev => prev.map(project => 
       project.id === projectId ? { 
         ...project, 
@@ -314,6 +362,39 @@ export default function WorkspaceContent() {
       return;
     }
     
+    // Determine item type and provide appropriate confirmation message
+    let confirmMessage = `Are you sure you want to delete "${projectToDelete.name}"?`;
+    
+    if (projectToDelete.isTemplate) {
+      confirmMessage = `Are you sure you want to delete the template "${projectToDelete.name}"? This will no longer be available for creating new projects.`;
+    } else if (projectToDelete.isFolder) {
+      // For folders, warn about potential child projects
+      const childProjects = projects.filter(p => p.parentId === projectId);
+      if (childProjects.length > 0) {
+        confirmMessage = `Are you sure you want to delete the folder "${projectToDelete.name}"? This will also delete ${childProjects.length} contained project(s).`;
+      } else {
+        confirmMessage = `Are you sure you want to delete the empty folder "${projectToDelete.name}"?`;
+      }
+    }
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+    
+    // If deleting a folder, also delete all child projects
+    if (projectToDelete.isFolder) {
+      // Get all direct child projects
+      const childProjectIds = projects
+        .filter(p => p.parentId === projectId)
+        .map(p => p.id);
+      
+      // Remove all child projects
+      setProjects(prev => prev.filter(p => !childProjectIds.includes(p.id)));
+      
+      // Also remove any tasks associated with child projects
+      setTasks(prev => prev.filter(task => !childProjectIds.includes(task.projectId)));
+    }
+    
     // Remove the project
     setProjects(prev => prev.filter((project: Project) => project.id !== projectId));
     
@@ -344,6 +425,83 @@ export default function WorkspaceContent() {
   };
 
   // Function was duplicated, removed duplicate
+  
+  // Drag and drop state and handlers
+  const [draggedProject, setDraggedProject] = useState<Project | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  
+  const handleDragStart = (project: Project) => {
+    // Only allow dragging projects (not folders or templates)
+    if (!project.isFolder && !project.isTemplate) {
+      setDraggedProject(project);
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDragOverFolderId(folderId);
+  };
+  
+  const handleDragLeave = () => {
+    setDragOverFolderId(null);
+  };
+  
+  const handleDrop = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    if (draggedProject && folderId !== draggedProject.id) {
+      // Move project to the folder
+      setProjects(prev => 
+        prev.map(p => 
+          p.id === draggedProject.id 
+            ? { ...p, parentId: folderId } 
+            : p
+        )
+      );
+      
+      // Show success notification
+      addNotification(
+        'success',
+        'Project Moved',
+        `"${draggedProject.name}" has been moved to the folder.`
+      );
+    }
+    setDraggedProject(null);
+    setDragOverFolderId(null);
+  };
+  
+  // Function to view all projects created from a specific template
+  const viewTemplateUsage = (templateId: string) => {
+    const template = projects.find(p => p.id === templateId);
+    if (!template) return;
+    
+    const fromTemplateProjects = projects.filter(p => 
+      p.createdFromTemplate?.templateId === templateId
+    );
+    
+    setFilteredProjects(fromTemplateProjects);
+    setActiveFilter('template-usage');
+    setFilterTitle(`Projects using "${template.name}" template`);
+    
+    // Show notification about how many projects were found
+    addNotification(
+      'info',
+      'Template Usage',
+      `Found ${fromTemplateProjects.length} project${fromTemplateProjects.length !== 1 ? 's' : ''} created from this template.`
+    );
+  };
+  
+  // Reset filtered projects and clear filters
+  const clearFilters = () => {
+    setFilteredProjects([]);
+    setActiveFilter('');
+    setFilterTitle('');
+    
+    addNotification(
+      'info',
+      'Filters Cleared',
+      'Showing all projects.'
+    );
+  };
   
   useEffect(() => {
     if (isLoaded) {
@@ -452,7 +610,7 @@ export default function WorkspaceContent() {
               {projects.map(project => (
                 <div
                   key={project.id}
-                  className={`${styles.projectOption} ${selectedProject?.id === project.id ? styles.activeProject : ''}`}
+                  className={`${styles.projectOption} ${selectedProject?.id === project.id ? styles.activeProject : ''} ${project.isFolder ? styles.folderItem : ''} ${project.isTemplate ? styles.templateItem : ''}`}
                 >
                   <div 
                     className={styles.projectOptionContent}
@@ -460,39 +618,118 @@ export default function WorkspaceContent() {
                       setSelectedProject(project);
                       setShowProjectDropdown(false);
                     }}
+                    draggable
+                    onDragStart={() => handleDragStart(project)}
                   >
-                    <span className={styles.projectName}>{project.name}</span>
-                    <span className={`${styles.projectStatus} ${styles[project.status.toLowerCase().replace(' ', '')]}`}>
-                      {project.status}
-                    </span>
+                    <div className={styles.projectIconName}>
+                      {project.isFolder ? (
+                        <i className="fas fa-folder" style={{color: '#ffc107'}}></i>
+                      ) : project.isTemplate ? (
+                        <i className="fas fa-copy" style={{color: '#ff9a9e'}}></i>
+                      ) : (
+                        <i className="fas fa-project-diagram" style={{color: '#4facfe'}}></i>
+                      )}
+                      <span className={styles.projectName}>
+                        {project.name}
+                        {project.isFolder && <span className={styles.itemTypeLabel}> (Folder)</span>}
+                        {project.isTemplate && <span className={styles.itemTypeLabel}> (Template)</span>}
+                      </span>
+                    </div>
+                    {!project.isFolder && !project.isTemplate && (
+                      <span className={`${styles.projectStatus} ${styles[project.status.toLowerCase().replace(' ', '')]}`}>
+                        {project.status}
+                      </span>
+                    )}
+                    {project.isTemplate && (
+                      <span className={styles.templateBadge}>Template</span>
+                    )}
                   </div>
                   {isUserAdmin(project.id) && (
-                    <button 
-                      className={styles.projectDeleteButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Are you sure you want to delete "${project.name}"?`)) {
-                          handleDeleteProject(project.id);
-                        }
-                      }}
-                      title="Delete Project"
-                    >
-                      <i className="fas fa-trash-alt"></i>
-                    </button>
+                    <div className={styles.projectActions}>
+                      {project.isTemplate && (
+                        <button 
+                          className={styles.projectActionButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTemplate(project.id);
+                            setIsProjectModalOpen(true);
+                            setShowProjectDropdown(false);
+                          }}
+                          title="Use Template"
+                        >
+                          <i className="fas fa-plus"></i>
+                        </button>
+                      )}
+                      <button 
+                        className={styles.projectDeleteButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Determine item type for appropriate confirmation message
+                          let confirmMessage = `Are you sure you want to delete "${project.name}"?`;
+                          
+                          if (project.isTemplate) {
+                            confirmMessage = `Are you sure you want to delete the template "${project.name}"? This template will no longer be available for creating new projects.`;
+                          } else if (project.isFolder) {
+                            // For folders, warn about potential child projects
+                            const childProjects = projects.filter(p => p.parentId === project.id);
+                            if (childProjects.length > 0) {
+                              confirmMessage = `Are you sure you want to delete the folder "${project.name}"? This will also delete ${childProjects.length} contained project(s).`;
+                            } else {
+                              confirmMessage = `Are you sure you want to delete the empty folder "${project.name}"?`;
+                            }
+                          }
+                          
+                          if (window.confirm(confirmMessage)) {
+                            handleDeleteProject(project.id);
+                          }
+                        }}
+                        title={`Delete ${project.isTemplate ? 'Template' : project.isFolder ? 'Folder' : 'Project'}`}
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
-              {/* Only show New Project button to admins */}
+              {/* Show creation options to admins */}
               {isUserAdmin() && (
-                <div 
-                  className={styles.addProject}
-                  onClick={() => {
-                    setIsProjectModalOpen(true);
-                    setShowProjectDropdown(false);
-                  }}
-                >
-                  <i className="fas fa-plus"></i>
-                  <span>New Project</span>
+                <div className={styles.createOptions}>
+                  <div 
+                    className={styles.addProject}
+                    onClick={() => {
+                      setIsProjectModalOpen(true);
+                      setShowProjectDropdown(false);
+                      // Reset any template selection
+                      setSelectedTemplate(null);
+                    }}
+                  >
+                    <i className="fas fa-plus"></i>
+                    <span>New Project</span>
+                  </div>
+                  <div 
+                    className={styles.addFolder}
+                    onClick={() => {
+                      // Pre-configure for folder creation
+                      setCreateAsFolder(true);
+                      setIsProjectModalOpen(true);
+                      setShowProjectDropdown(false);
+                    }}
+                  >
+                    <i className="fas fa-folder-plus"></i>
+                    <span>New Folder</span>
+                  </div>
+                  <div 
+                    className={styles.addTemplate}
+                    onClick={() => {
+                      // Pre-configure for template creation
+                      setCreateAsTemplate(true);
+                      setIsProjectModalOpen(true);
+                      setShowProjectDropdown(false);
+                    }}
+                  >
+                    <i className="fas fa-copy"></i>
+                    <span>New Template</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -505,27 +742,62 @@ export default function WorkspaceContent() {
             <div className={styles.projectHeader}>
               <h2>{selectedProject.name}</h2>
               <div className={styles.projectActions}>
-                <button 
-                  className={styles.secondaryButton}
-                  onClick={() => {
-                    if (selectedProject) {
-                      openTeamManagementModal(selectedProject.id);
-                    }
-                  }}
-                >
-                  <i className="fas fa-user-plus"></i> Invite
-                </button>
-                <button 
-                  className={styles.primaryButton}
-                  onClick={openTaskModal}
-                >
-                  <i className="fas fa-plus"></i> Add Task
-                </button>
+                {/* Only show Team Management for regular projects */}
+                {!selectedProject.isFolder && !selectedProject.isTemplate && (
+                  <button 
+                    className={styles.secondaryButton}
+                    onClick={() => {
+                      if (selectedProject) {
+                        openTeamManagementModal(selectedProject.id);
+                      }
+                    }}
+                  >
+                    <i className="fas fa-user-plus"></i> Invite
+                  </button>
+                )}
+                
+                {/* Only show Add Task for regular projects */}
+                {!selectedProject.isFolder && !selectedProject.isTemplate && (
+                  <button 
+                    className={styles.primaryButton}
+                    onClick={openTaskModal}
+                  >
+                    <i className="fas fa-plus"></i> Add Task
+                  </button>
+                )}
+                
+                {/* For templates, add a "Use Template" button */}
+                {selectedProject.isTemplate && (
+                  <button 
+                    className={styles.primaryButton}
+                    onClick={() => {
+                      setSelectedTemplate(selectedProject.id);
+                      setIsProjectModalOpen(true);
+                    }}
+                  >
+                    <i className="fas fa-plus"></i> Use Template
+                  </button>
+                )}
                 {isUserAdmin(selectedProject.id) && (
                   <button 
                     className={styles.dangerButton}
                     onClick={() => {
-                      if (window.confirm(`Are you sure you want to delete "${selectedProject.name}"?`)) {
+                      // Create appropriate confirmation message based on type
+                      let confirmMessage = `Are you sure you want to delete "${selectedProject.name}"?`;
+                      
+                      if (selectedProject.isTemplate) {
+                        confirmMessage = `Are you sure you want to delete the template "${selectedProject.name}"? This will affect any future projects that would use it.`;
+                      } else if (selectedProject.isFolder) {
+                        // For folders, warn about potential child projects
+                        const childProjects = projects.filter(p => p.parentId === selectedProject.id);
+                        if (childProjects.length > 0) {
+                          confirmMessage = `Are you sure you want to delete the folder "${selectedProject.name}"? This will also delete ${childProjects.length} contained project(s).`;
+                        } else {
+                          confirmMessage = `Are you sure you want to delete the empty folder "${selectedProject.name}"?`;
+                        }
+                      }
+                      
+                      if (window.confirm(confirmMessage)) {
                         handleDeleteProject(selectedProject.id);
                       }
                     }}
@@ -537,31 +809,90 @@ export default function WorkspaceContent() {
             </div>
             <p className={styles.projectDescription}>{selectedProject.description}</p>
             
-            <div className={styles.projectMetrics}>
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Progress</div>
-                <div className={styles.progressBar}>
-                  <div className={styles.progressFill} style={{ width: `${selectedProject.progress}%` }}></div>
+            {/* Display type-specific information */}
+            {selectedProject.isFolder ? (
+              <div className={styles.folderInfo}>
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Folder Type</div>
+                  <div className={styles.metricValue}>
+                    {projects.filter(p => p.parentId === selectedProject.id).length > 0 ? 'Contains Projects' : 'Empty Folder'}
+                  </div>
                 </div>
-                <div className={styles.metricValue}>{selectedProject.progress}%</div>
-              </div>
-              
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Due Date</div>
-                <div className={styles.metricValue}>
-                  {selectedProject.dueDate 
-                    ? new Date(selectedProject.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : 'Not set'}
-                </div>
-              </div>
-              
-              <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Last Updated</div>
-                <div className={styles.metricValue}>
-                  {new Date(selectedProject.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Created On</div>
+                  <div className={styles.metricValue}>
+                    {new Date(selectedProject.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : selectedProject.isTemplate ? (
+              <div className={styles.templateInfo}>
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Template Type</div>
+                  <div className={styles.metricValue}>
+                    {selectedProject.status}
+                  </div>
+                </div>
+                
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Last Updated</div>
+                  <div className={styles.metricValue}>
+                    {new Date(selectedProject.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </div>
+                
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Template Usage</div>
+                  <div className={styles.metricValue}>
+                    <button 
+                      className={styles.templateUsageButton}
+                      onClick={() => viewTemplateUsage(selectedProject.id)}
+                    >
+                      View projects using this template
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.projectMetrics}>
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Progress</div>
+                  <div className={styles.progressBar}>
+                    <div className={styles.progressFill} style={{ width: `${selectedProject.progress}%` }}></div>
+                  </div>
+                  <div className={styles.metricValue}>{selectedProject.progress}%</div>
+                </div>
+                
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Due Date</div>
+                  <div className={styles.metricValue}>
+                    {selectedProject.dueDate 
+                      ? new Date(selectedProject.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : 'Not set'}
+                  </div>
+                </div>
+                
+                <div className={styles.metricCard}>
+                  <div className={styles.metricLabel}>Last Updated</div>
+                  <div className={styles.metricValue}>
+                    {new Date(selectedProject.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </div>
+                
+                {/* Show template information if project was created from a template */}
+                {selectedProject.createdFromTemplate && (
+                  <div className={styles.metricCard}>
+                    <div className={styles.metricLabel}>Created From Template</div>
+                    <div className={styles.metricValue}>
+                      <span className={styles.templateReference}>
+                        {selectedProject.createdFromTemplate.templateName}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className={styles.teamMembers}>
               <div className={styles.teamMembersHeader}>
@@ -624,48 +955,163 @@ export default function WorkspaceContent() {
           </div>
         )}
 
-        {/* View Toggle */}
-        <div className={styles.viewToggle}>
-          {/* Tabs menu */}
-          <div className={styles.tabsMenu}>
-            <button 
-              className={`${styles.tabButton} ${activeTab === 'tasks' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('tasks')}
-            >
-              <i className="fas fa-tasks"></i> Tasks
-            </button>
-            <button 
-              className={`${styles.tabButton} ${activeTab === 'assets' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('assets')}
-            >
-              <i className="fas fa-file-alt"></i> Assets
-            </button>
-            <button 
-              className={`${styles.tabButton} ${activeTab === 'communication' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('communication')}
-            >
-              <i className="fas fa-comments"></i> Communication
-            </button>
-          </div>
-          
-          {/* Only show view toggle if on tasks tab */}
-          {activeTab === 'tasks' && (
-            <div className={styles.viewTypeToggle}>
+        {/* View Toggle - Only show for regular projects */}
+        {selectedProject && !selectedProject.isFolder && !selectedProject.isTemplate && (
+          <div className={styles.viewToggle}>
+            {/* Tabs menu */}
+            <div className={styles.tabsMenu}>
               <button 
-                className={`${styles.viewButton} ${viewMode === 'board' ? styles.activeView : ''}`}
-                onClick={() => setViewMode('board')}
+                className={`${styles.tabButton} ${activeTab === 'tasks' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('tasks')}
               >
-                <i className="fas fa-columns"></i> Board View
+                <i className="fas fa-tasks"></i> Tasks
               </button>
               <button 
-                className={`${styles.viewButton} ${viewMode === 'list' ? styles.activeView : ''}`}
-                onClick={() => setViewMode('list')}
+                className={`${styles.tabButton} ${activeTab === 'assets' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('assets')}
               >
-                <i className="fas fa-list"></i> List View
+                <i className="fas fa-file-alt"></i> Assets
+              </button>
+              <button 
+                className={`${styles.tabButton} ${activeTab === 'communication' ? styles.activeTab : ''}`}
+                onClick={() => setActiveTab('communication')}
+              >
+                <i className="fas fa-comments"></i> Communication
               </button>
             </div>
-          )}
-        </div>
+            
+            {/* Only show view toggle if on tasks tab */}
+            {activeTab === 'tasks' && (
+              <div className={styles.viewTypeToggle}>
+                <button 
+                  className={`${styles.viewButton} ${viewMode === 'board' ? styles.activeView : ''}`}
+                  onClick={() => setViewMode('board')}
+                >
+                  <i className="fas fa-columns"></i> Board View
+                </button>
+                <button 
+                  className={`${styles.viewButton} ${viewMode === 'list' ? styles.activeView : ''}`}
+                  onClick={() => setViewMode('list')}
+                >
+                  <i className="fas fa-list"></i> List View
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* For folders, show a list of contained projects instead */}
+        {selectedProject && selectedProject.isFolder && (
+          <div className={styles.folderContents}>
+            <h3>Folder Contents</h3>
+            <div className={styles.folderActions}>
+              {isUserAdmin() && (
+                <button 
+                  className={styles.secondaryButton}
+                  onClick={() => {
+                    // Pre-configure for project creation with parent folder
+                    setSelectedTemplate(null);
+                    // Reset folder/template flags
+                    setCreateAsFolder(false);
+                    setCreateAsTemplate(false);
+                    // Open modal with parent folder ID set
+                    setIsProjectModalOpen(true);
+                  }}
+                >
+                  <i className="fas fa-plus"></i> Add Project to Folder
+                </button>
+              )}
+            </div>
+            <div className={styles.folderProjectsList}>
+              {projects.filter(p => p.parentId === selectedProject.id).length > 0 ? (
+                projects.filter(p => p.parentId === selectedProject.id).map(childProject => (
+                  <div 
+                    key={childProject.id} 
+                    className={`${styles.folderProjectItem} ${childProject.isTemplate ? styles.templateItem : childProject.isFolder ? styles.folderItem : ''}`}
+                    onClick={() => setSelectedProject(childProject)}
+                  >
+                    <div className={styles.projectIconName}>
+                      {childProject.isFolder ? (
+                        <i className="fas fa-folder" style={{color: '#ffc107'}}></i>
+                      ) : childProject.isTemplate ? (
+                        <i className="fas fa-copy" style={{color: '#ff9a9e'}}></i>
+                      ) : (
+                        <i className="fas fa-project-diagram" style={{color: '#4facfe'}}></i>
+                      )}
+                      <span className={styles.projectName}>
+                        {childProject.name}
+                        {childProject.isFolder && <span className={styles.itemTypeLabel}> (Folder)</span>}
+                        {childProject.isTemplate && <span className={styles.itemTypeLabel}> (Template)</span>}
+                      </span>
+                    </div>
+                    {!childProject.isFolder && !childProject.isTemplate && (
+                      <span className={`${styles.projectStatus} ${styles[childProject.status.toLowerCase().replace(' ', '')]}`}>
+                        {childProject.status}
+                      </span>
+                    )}
+                    {isUserAdmin(childProject.id) && (
+                      <div className={styles.projectQuickActions}>
+                        <button 
+                          className={styles.projectDeleteButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProject(childProject.id);
+                          }}
+                          title={`Delete ${childProject.isTemplate ? 'Template' : childProject.isFolder ? 'Folder' : 'Project'}`}
+                        >
+                          <i className="fas fa-trash-alt"></i>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className={styles.emptyFolderMessage}>
+                  <i className="fas fa-folder-open"></i>
+                  <p>This folder is empty. Add projects to this folder by clicking the "Add Project to Folder" button above.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* For templates, show template usage information */}
+        {selectedProject && selectedProject.isTemplate && (
+          <div className={styles.templateUsage}>
+            <h3>Template Information</h3>
+            <div className={styles.templateUsageInfo}>
+              <div className={styles.templateDetails}>
+                <div className={styles.templateIcon}>
+                  <i className="fas fa-copy" style={{color: '#ff9a9e'}}></i>
+                </div>
+                <div className={styles.templateMetadata}>
+                  <p className={styles.templateDescription}>This template can be used to create new projects with predefined settings and structure.</p>
+                  <div className={styles.templateStats}>
+                    <div className={styles.templateStat}>
+                      <span className={styles.statLabel}>Type:</span>
+                      <span className={styles.statValue}>{selectedProject.status}</span>
+                    </div>
+                    <div className={styles.templateStat}>
+                      <span className={styles.statLabel}>Created:</span>
+                      <span className={styles.statValue}>
+                        {new Date(selectedProject.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button 
+                className={styles.primaryButton}
+                onClick={() => {
+                  setSelectedTemplate(selectedProject.id);
+                  setIsProjectModalOpen(true);
+                }}
+              >
+                <i className="fas fa-plus"></i> Create Project from Template
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tabs navigation is handled in the viewToggle section above */}
 
@@ -797,16 +1243,7 @@ export default function WorkspaceContent() {
           <div className={styles.assetsSection}>
             <div className={styles.sectionHeader}>
               <h3>Project Assets</h3>
-              <button 
-                className={styles.primaryButton}
-                onClick={() => {
-                  // The upload modal is managed in AssetManager, so we need to trigger it there
-                  // We'll dispatch a custom event to open it
-                  document.dispatchEvent(new Event('triggerAssetUpload'));
-                }}
-              >
-                <i className="fas fa-upload"></i> Upload Asset
-              </button>
+              {/* Removed duplicate upload button as AssetManager has its own */}
             </div>
             <div className={styles.assetsContent}>
               <AssetManagerIntegration
@@ -875,7 +1312,21 @@ export default function WorkspaceContent() {
       {/* Project Creation Modal */}
       <ProjectCreationModal
         isOpen={isProjectModalOpen}
-        onClose={() => setIsProjectModalOpen(false)}
+        createAsFolder={createAsFolder}
+        createAsTemplate={createAsTemplate}
+        parentFolderId={selectedProject?.isFolder ? selectedProject.id : undefined}
+        onClose={() => {
+          setIsProjectModalOpen(false);
+          // Reset the flags when closing the modal
+          setCreateAsFolder(false);
+          setCreateAsTemplate(false);
+        }}
+        templates={projects.filter(p => p.isTemplate).map(p => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          thumbnail: undefined
+        }))}
         onCreateProject={(projectData) => {
           // Check admin permissions again as a security measure
           if (!isUserAdmin()) {
@@ -897,6 +1348,9 @@ export default function WorkspaceContent() {
             lastUpdated: new Date().toISOString(),
             dueDate: projectData.dueDate,
             progress: 0, // New projects start at 0% progress
+            isFolder: projectData.isFolder,
+            isTemplate: projectData.isTemplate || false,
+            parentId: selectedProject?.isFolder ? selectedProject.id : undefined, // Set parent ID if creating in a folder
             members: user ? [{
               id: user.id,
               name: `${user.firstName} ${user.lastName}`, 
@@ -905,6 +1359,29 @@ export default function WorkspaceContent() {
               status: 'online'
             }] : []
           };
+          
+          // If using a template, copy template data
+          if (projectData.templateId) {
+            const template = projects.find(p => p.id === projectData.templateId);
+            if (template) {
+              // Copy selected properties from the template, but keep user-entered name and description
+              newProject.status = template.status;
+              // Copy additional properties that would be useful from a template
+              if (template.isTemplate) {
+                // Preserve the structure and content but with the new project details
+                newProject.progress = 0; // Reset progress
+                // Don't copy members - already set above
+                // Don't set isTemplate flag - this is a project based on a template, not a template itself
+                
+                // Add metadata to track template usage
+                newProject.createdFromTemplate = {
+                  templateId: template.id,
+                  templateName: template.name,
+                  createdAt: new Date().toISOString()
+                };
+              }
+            }
+          }
           
           // Add the new project to the projects list
           setProjects(prev => [...prev, newProject]);
@@ -925,14 +1402,21 @@ export default function WorkspaceContent() {
             }]);
           }
           
-          // Initialize workspace context for the new project
-          // Use default organization ID since ProjectCreationModal doesn't provide one
-          initializeProject(projectId, "default-org-id");
+          // Only initialize workspace if it's not a folder and not a template
+          if (!projectData.isFolder && !projectData.isTemplate) {
+            // Initialize workspace context for the new project
+            // Use default organization ID since ProjectCreationModal doesn't provide one
+            initializeProject(projectId, "default-org-id");
+          }
           
-          // Show success notification
+          // Show success notification with appropriate message
+          let notificationType = 'Project Created';
+          if (projectData.isFolder) notificationType = 'Folder Created';
+          if (projectData.isTemplate) notificationType = 'Template Created';
+          
           addNotification(
             'success',
-            'Project Created',
+            notificationType,
             `${projectData.name} has been successfully created.`
           );
         }}

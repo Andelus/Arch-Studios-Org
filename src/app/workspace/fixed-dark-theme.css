@@ -1,0 +1,115 @@
+/* Dark mode styles using data-theme attribute */
+[data-theme='dark'] .workspaceContainer {
+  background-color: #121212;
+}
+  
+[data-theme='dark'] .header {
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+  
+[data-theme='dark'] .logoText {
+  color: #e0e0e0;
+}
+  
+[data-theme='dark'] .title {
+  color: #e0e0e0;
+}
+  
+[data-theme='dark'] .selectedProject,
+[data-theme='dark'] .projectDropdown {
+  background-color: #2d2d2d;
+  border-color: #333;
+}
+  
+[data-theme='dark'] .projectOption {
+  border-color: #333;
+}
+  
+[data-theme='dark'] .projectOption:hover {
+  background-color: #333;
+}
+  
+[data-theme='dark'] .activeProject {
+  background-color: #1e3a5f;
+}
+  
+[data-theme='dark'] .projectSummary {
+  background-color: #2d2d2d;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+  
+[data-theme='dark'] .projectHeader h2 {
+  color: #e0e0e0;
+}
+  
+[data-theme='dark'] .projectDescription {
+  color: #aaa;
+}
+  
+[data-theme='dark'] .dangerButton {
+  background-color: #3a2222;
+  color: #ff6b6b;
+  border-color: #4a2c2c;
+}
+  
+[data-theme='dark'] .dangerButton:hover {
+  background-color: #4a2c2c;
+  border-color: #5a3535;
+}
+  
+[data-theme='dark'] .projectDeleteButton:hover {
+  background-color: #3a2222;
+  color: #ff6b6b;
+}
+  
+[data-theme='dark'] .metricCard {
+  background-color: #333;
+}
+  
+[data-theme='dark'] .memberCard {
+  background-color: #333;
+  border-color: #444;
+}
+  
+[data-theme='dark'] .memberName {
+  color: #e0e0e0;
+}
+  
+[data-theme='dark'] .memberRole {
+  color: #aaa;
+}
+  
+[data-theme='dark'] .taskColumn {
+  background-color: #252525;
+}
+  
+[data-theme='dark'] .taskCard {
+  background-color: #2d2d2d;
+  border-color: #333;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+  
+[data-theme='dark'] .taskTitle {
+  color: #e0e0e0;
+}
+  
+[data-theme='dark'] .taskDescription {
+  color: #aaa;
+}
+  
+[data-theme='dark'] .message {
+  color: #aaa;
+  background-color: #1e1e1e;
+}
+
+/* Dark mode for AssetManager */
+[data-theme='dark'] .uploadModal {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+[data-theme='dark'] .uploadButton {
+  background-color: #1e3a5f;
+}

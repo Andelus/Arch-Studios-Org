@@ -1,6 +1,7 @@
 "use client";
 
 import "../globals.css";
+import "./fixed-dark-theme.css";
 import { TeamProvider } from "@/contexts/TeamContext";
 import AuthNotificationHandler from "@/components/AuthNotificationHandler";
 import NotificationCenter from "@/components/NotificationCenter";

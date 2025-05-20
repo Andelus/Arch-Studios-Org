@@ -339,6 +339,8 @@ export default function CommunicationPanel({
               <i className="fas fa-paperclip"></i>
               <input 
                 type="file" 
+                id="file-attachment"
+                name="file-attachment"
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 style={{ display: 'none' }} 
@@ -347,6 +349,8 @@ export default function CommunicationPanel({
             </button>
             <input 
               type="text"
+              id="message-input"
+              name="message-input"
               placeholder={`Message ${activeChannel?.name || '...'}`}
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
@@ -404,6 +408,8 @@ export default function CommunicationPanel({
                 <label className={styles.checkboxLabel}>
                   <input 
                     type="checkbox" 
+                    id="channel-private"
+                    name="channel-private"
                     checked={newChannelIsPrivate}
                     onChange={(e) => setNewChannelIsPrivate(e.target.checked)}
                   />

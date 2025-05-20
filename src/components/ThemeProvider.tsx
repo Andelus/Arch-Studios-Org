@@ -33,6 +33,11 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
   // Use our custom hook to detect system theme
   const { theme, clerkTheme, isDark, setTheme } = useSystemTheme();
   
+  // Apply the theme to the document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+  
   // Function to toggle between dark and light mode with smooth transition
   const toggleTheme = () => {
     // Add transition class for smooth theme switching
@@ -48,7 +53,17 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     
     return () => clearTimeout(timeout);
   };
+  
+  // Apply the theme to the document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
+  // Apply the theme to the document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+  
   // Add transition CSS on mount
   useEffect(() => {
     // Add style for theme transition if it doesn't exist

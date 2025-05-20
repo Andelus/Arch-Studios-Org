@@ -4,7 +4,6 @@
   margin: 0 auto;
   padding: 2rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
 
 .workspaceContainer {
   display: flex;
@@ -314,25 +313,39 @@
 
 .projectActions {
   display: flex;
-  gap: 0.75rem;
-}
-
-.primaryButton {
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
   align-items: center;
   gap: 0.5rem;
+  opacity: 0.7;
   transition: opacity 0.2s;
 }
 
-.primaryButton:hover {
-  opacity: 0.9;
+.projectActions:hover {
+  opacity: 1;
+}
+
+.projectActionButton,
+.projectDeleteButton {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.projectActionButton:hover {
+  background-color: rgba(79, 172, 254, 0.1);
+}
+
+.projectDeleteButton:hover {
+  background-color: rgba(255, 73, 73, 0.1);
+}
+
+.projectDeleteButton i {
+  color: #ff4949;
 }
 
 .secondaryButton {
@@ -998,87 +1011,167 @@
   padding: 1rem 0;
 }
 
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .workspaceContainer {
-    height: auto;
-    min-height: 100vh;
-  }
-  
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-  }
-  
-  .navButtons {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .userSection {
-    width: 100%;
-    justify-content: flex-end;
-  }
-  
-  .projectHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .projectActions {
-    width: 100%;
-  }
-  
-  .membersList {
-    flex-direction: column;
-  }
-  
-  .projectMetrics {
-    grid-template-columns: 1fr;
-  }
-  
-  .boardView {
-    grid-template-columns: 1fr;
-  }
-  
-  .tasksTable th:nth-child(4),
-  .tasksTable td:nth-child(4),
-  .tasksTable th:nth-child(5),
-  .tasksTable td:nth-child(5) {
-    display: none;
-  }
-  
-  .viewNavigation {
-    padding-bottom: 0.5rem;
-  }
-  
-  .viewTab {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
-  }
-  
-  .contentArea {
-    padding: 0 0.5rem 0.5rem 0.5rem;
-  }
-  
-  .assetsView, .communicationView {
-    height: calc(100vh - 160px);
-  }
+/* Folder and Template Styles */
+.folderInfo,
+.templateInfo {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-/* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-  .workspaceContainer {
-    background-color: #121212;
-  }
-  
-  .header {
-    background-color: #1e1e1e;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
+.folderContents,
+.templateUsage {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.folderContents h3,
+.templateUsage h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.folderProjectsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.folderProjectItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #eaeaea;
+}
+
+.folderProjectItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.folderProjectItem .projectIconName {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.folderProjectItem .projectName {
+  font-weight: 500;
+}
+
+.projectQuickActions {
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.folderProjectItem:hover .projectQuickActions {
+  opacity: 1;
+}
+
+.emptyFolderMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+  background-color: #fafafa;
+  border-radius: 8px;
+  border: 1px dashed #ddd;
+}
+
+.emptyFolderMessage i {
+  font-size: 3rem;
+  color: #ccc;
+}
+
+.templateUsageInfo {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f0f0f0;
+  border-left: 4px solid #ff9a9e;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.templateDetails {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.templateIcon {
+  background-color: rgba(255, 154, 158, 0.1);
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.templateIcon i {
+  font-size: 1.25rem;
+}
+
+.templateMetadata {
+  flex-grow: 1;
+}
+
+.templateDescription {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.5;
+}
+
+.templateStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.templateStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Dark mode styles - using theme classes instead of media queries */
+/* Dark mode styles moved to fixed-dark-theme.css */
   
   .logoText {
     color: #e0e0e0;
@@ -1174,4 +1267,77 @@
     color: #aaa;
     background-color: #1e1e1e;
   }
+}
+
+.folderItem {
+  border-left: 3px solid #ffc107;
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+.templateItem {
+  border-left: 3px solid #ff9a9e;
+  background-color: rgba(255, 154, 158, 0.05);
+}
+
+.templateBadge {
+  background: linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%);
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.projectIconName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-grow: 1;
+}
+
+.projectIconName i {
+  font-size: 1rem;
+  margin-right: 0.25rem;
+}
+
+/* Icon colors to distinguish between different project types */
+.projectIconName i.fa-project-diagram {
+  color: #4facfe;
+}
+
+.projectIconName i.fa-folder {
+  color: #ffc107;
+}
+
+.projectIconName i.fa-copy {
+  color: #ff9a9e;
+}
+
+.itemTypeLabel {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: normal;
+  margin-left: 0.25rem;
+}
+
+.templateReference {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #ff6b81;
+  background-color: rgba(255, 154, 158, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+.templateReference:before {
+  content: '';
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  background-color: #ff9a9e;
+  border-radius: 50%;
+  margin-right: 0.4rem;
 }
