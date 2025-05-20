@@ -177,6 +177,40 @@ export default function CommunicationPanel({
   
   const activeChannel = channels.find(c => c.id === activeChannelId);
   
+  const renderAttachment = (attachment: { id: string; name: string; url: string; type: string }) => {
+    // Determine the file type icon based on the type
+    let icon = 'fas fa-file';
+    if (attachment.type.includes('image') || attachment.type.startsWith('image/')) {
+      icon = 'fas fa-image';
+    } else if (attachment.type.includes('pdf') || attachment.type === 'application/pdf') {
+      icon = 'fas fa-file-pdf';
+    } else if (attachment.type.includes('word') || attachment.type.includes('document')) {
+      icon = 'fas fa-file-word';
+    } else if (attachment.type.includes('excel') || attachment.type.includes('spreadsheet')) {
+      icon = 'fas fa-file-excel';
+    } else if (attachment.type.includes('zip') || attachment.type.includes('compressed')) {
+      icon = 'fas fa-file-archive';
+    }
+
+    return (
+      <div key={attachment.id} className={styles.attachmentItem}>
+        <div className={styles.attachmentIcon}>
+          <i className={icon}></i>
+        </div>
+        <span className={styles.attachmentName}>{attachment.name}</span>
+        <a 
+          href={attachment.url} 
+          download 
+          className={styles.attachmentDownload}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <i className="fas fa-download"></i>
+        </a>
+      </div>
+    );
+  };
+  
   return (
     <div className={styles.communicationPanel}>
       <div className={styles.sidebar}>
@@ -260,27 +294,7 @@ export default function CommunicationPanel({
                   
                   {message.attachments && message.attachments.length > 0 && (
                     <div className={styles.attachmentList}>
-                      {message.attachments.map(attachment => (
-                        <div key={attachment.id} className={styles.attachmentItem}>
-                          <div className={styles.attachmentIcon}>
-                            {attachment.type.startsWith('image/') ? (
-                              <i className="fas fa-image"></i>
-                            ) : attachment.type.includes('pdf') ? (
-                              <i className="fas fa-file-pdf"></i>
-                            ) : (
-                              <i className="fas fa-file"></i>
-                            )}
-                          </div>
-                          <span className={styles.attachmentName}>{attachment.name}</span>
-                          <a 
-                            href={attachment.url} 
-                            download 
-                            className={styles.attachmentDownload}
-                          >
-                            <i className="fas fa-download"></i>
-                          </a>
-                        </div>
-                      ))}
+                      {message.attachments.map(attachment => renderAttachment(attachment))}
                     </div>
                   )}
                 </div>

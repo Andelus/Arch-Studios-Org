@@ -926,7 +926,8 @@ export default function WorkspaceContent() {
           }
           
           // Initialize workspace context for the new project
-          initializeProject(projectId);
+          // Use default organization ID since ProjectCreationModal doesn't provide one
+          initializeProject(projectId, "default-org-id");
           
           // Show success notification
           addNotification(

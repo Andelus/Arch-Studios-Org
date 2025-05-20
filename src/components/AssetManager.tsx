@@ -3,30 +3,7 @@
 import { useState, forwardRef, useImperativeHandle } from 'react';
 import styles from './AssetManager.module.css';
 import ModelViewer from './ModelViewer';
-
-interface Asset {
-  id: string;
-  name: string;
-  type: 'document' | 'image' | 'video' | 'model' | 'other';
-  url: string;
-  thumbnailUrl?: string;
-  dateUploaded: string;
-  uploadedBy: string;
-  uploaderId?: string;
-  size: string;
-  description?: string;
-  tags: string[];
-  status?: 'pending' | 'approved' | 'rejected' | 'changes-requested';
-  approvalData?: {
-    reviewerId?: string;
-    reviewerName?: string;
-    reviewDate?: string;
-    comments?: string;
-    category?: 'concept' | 'schematic' | 'documentation-ready';
-  };
-  version?: number;
-  previousVersions?: string[];
-}
+import { Asset } from '@/types/asset';
 
 interface AssetManagerProps {
   assets: Asset[];

@@ -1,35 +1,39 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useUser } from '@clerk/nextjs';
+import { 
+  Channel as ChatChannel, 
+  Message as ChatMessage, 
+  MessageAttachment, 
+  createChannel as createChatChannel,
+  getChannelsForProject, 
+  getMessagesForChannel,
+  sendMessage as sendChatMessage,
+  initializeDefaultChannels,
+  subscribeToChannel,
+  subscribeToChannelUpdates,
+  markChannelAsRead,
+  getUnreadMessageCount,
+  deleteChannel as deleteChatChannel,
+  updateChannel as updateChatChannel
+} from '@/lib/chat-service';
+import { supabase } from '@/lib/supabase';
+import { Asset } from '@/types/asset';
 
-interface Asset {
-  id: string;
-  name: string;
-  type: 'document' | 'image' | 'video' | 'model' | 'other';
-  url: string;
-  thumbnailUrl?: string;
-  dateUploaded: string;
-  uploadedBy: string;
-  uploaderId: string;
-  size: string;
-  description?: string;
-  tags: string[];
-  status: 'pending' | 'approved' | 'rejected' | 'changes-requested';
-  approvalData?: {
-    reviewerId?: string;
-    reviewerName?: string;
-    reviewDate?: string;
-    comments?: string;
-    category?: 'concept' | 'schematic' | 'documentation-ready';
-  };
-  version?: number;
-  previousVersions?: string[]; // IDs of previous versions
-}
-
-interface Message {
+// Workspace message interface that combines ChatMessage with UI-specific properties
+interface WorkspaceMessage {
   id: string;
   content: string;
+  channel_id: string;
+  user_id: string;
+  is_announcement: boolean;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, any>;
+  
+  // UI-specific properties 
   sender: {
     id: string;
     name: string;
@@ -42,15 +46,22 @@ interface Message {
     url: string;
     type: string;
   }[];
-  isAnnouncement?: boolean;
 }
 
-interface Channel {
+// Workspace channel interface that combines ChatChannel with UI-specific properties
+interface WorkspaceChannel {
   id: string;
   name: string;
   description?: string;
-  isPrivate: boolean;
+  is_private: boolean;
+  project_id: string;
+  organization_id: string;
+  created_at: string;
+  updated_at: string;
+  
+  // UI-specific properties
   unreadCount?: number;
+  isPrivate: boolean; // Duplicate of is_private for UI compatibility
 }
 
 interface WorkspaceContextType {
@@ -68,33 +79,43 @@ interface WorkspaceContextType {
   approveAsset: (projectId: string, assetId: string, comment?: string) => void;
   rejectAsset: (projectId: string, assetId: string, comment: string) => void;
   requestChanges: (projectId: string, assetId: string, comment: string) => void;
-  initializeProject: (projectId: string) => void;
+  initializeProject: (projectId: string, organizationId: string) => Promise<void>;
   
   // Communication
-  channels: Record<string, Channel[]>;
-  messages: Record<string, Message[]>;
-  sendMessage: (content: string, channelId: string, attachments?: File[]) => void;
+  channels: Record<string, WorkspaceChannel[]>;
+  messages: Record<string, WorkspaceMessage[]>;
+  sendMessage: (content: string, channelId: string, attachments?: File[]) => Promise<void>;
   createChannel: (
     projectId: string,
     name: string, 
     isPrivate: boolean, 
     description?: string
-  ) => void;
+  ) => Promise<void>;
+  updateChannel: (
+    channelId: string,
+    updates: { name?: string; description?: string; isPrivate?: boolean }
+  ) => Promise<void>;
+  deleteChannel: (channelId: string) => Promise<void>;
+  markChannelRead: (channelId: string) => Promise<void>;
   
   // Active state
   activeView: 'project' | 'tasks' | 'assets' | 'communication';
   setActiveView: (view: 'project' | 'tasks' | 'assets' | 'communication') => void;
+  
+  // Utility
+  loadChannelsForProject: (projectId: string) => Promise<void>;
+  loadMessagesForChannel: (channelId: string) => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
-// Sample data for development
+// Sample data for asset development
 const SAMPLE_ASSETS: Record<string, Asset[]> = {
   'proj-1': [
     {
       id: 'asset-1',
       name: 'Facade Design.pdf',
-      type: 'document',
+      type: 'document' as const,
       url: '/assets/facade-design.pdf',
       dateUploaded: '2025-05-14T15:30:00Z',
       uploadedBy: 'Alex Johnson',
@@ -107,7 +128,7 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
     {
       id: 'asset-2',
       name: 'Lobby Visualization.jpg',
-      type: 'image',
+      type: 'image' as const,
       url: '/assets/lobby-viz.jpg',
       thumbnailUrl: '/assets/thumbnails/lobby-viz-thumb.jpg',
       dateUploaded: '2025-05-12T10:15:00Z',
@@ -120,7 +141,7 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
     {
       id: 'asset-3',
       name: 'Building Model v2.2.glb',
-      type: 'model',
+      type: 'model' as const,
       url: '/assets/building-model-v2.2.glb',
       dateUploaded: '2025-05-10T09:45:00Z',
       uploadedBy: 'Sam Patel',
@@ -135,7 +156,7 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
     {
       id: 'asset-4',
       name: 'Site Plan.pdf',
-      type: 'document',
+      type: 'document' as const,
       url: '/assets/site-plan.pdf',
       dateUploaded: '2025-05-16T11:20:00Z',
       uploadedBy: 'Alex Johnson',
@@ -148,125 +169,18 @@ const SAMPLE_ASSETS: Record<string, Asset[]> = {
   ]
 };
 
-const SAMPLE_CHANNELS: Record<string, Channel[]> = {
-  'proj-1': [
-    {
-      id: 'ch-1',
-      name: 'General',
-      description: 'Project-wide announcements and discussions',
-      isPrivate: false
-    },
-    {
-      id: 'ch-2',
-      name: 'Design Team',
-      description: 'For architects and designers to collaborate',
-      isPrivate: false,
-      unreadCount: 3
-    },
-    {
-      id: 'ch-3',
-      name: 'Client Communication',
-      description: 'Discussions to prepare for client meetings',
-      isPrivate: true
-    }
-  ],
-  'proj-2': [
-    {
-      id: 'ch-4',
-      name: 'General',
-      description: 'Project-wide announcements and discussions',
-      isPrivate: false
-    },
-    {
-      id: 'ch-5',
-      name: 'Landscape Planning',
-      description: 'Discussions about landscape design',
-      isPrivate: false
-    }
-  ]
-};
-
-const SAMPLE_MESSAGES: Record<string, Message[]> = {
-  'ch-1': [
-    {
-      id: 'msg-1',
-      content: 'Welcome to the Modern Office Building project! Please check the Project Brief document in the Assets section.',
-      sender: {
-        id: 'user-1',
-        name: 'Alex Johnson',
-        avatar: '/avatars/alex.jpg'
-      },
-      timestamp: '2025-05-10T09:00:00Z',
-      isAnnouncement: true
-    },
-    {
-      id: 'msg-2',
-      content: 'I\'ve uploaded the latest facade design with the revisions we discussed yesterday.',
-      sender: {
-        id: 'user-1',
-        name: 'Alex Johnson',
-        avatar: '/avatars/alex.jpg'
-      },
-      timestamp: '2025-05-14T15:35:00Z',
-      attachments: [
-        {
-          id: 'attach-1',
-          name: 'Facade Design.pdf',
-          url: '/assets/facade-design.pdf',
-          type: 'application/pdf'
-        }
-      ]
-    },
-    {
-      id: 'msg-3',
-      content: 'Looks great! I especially like the sustainable elements you\'ve incorporated.',
-      sender: {
-        id: 'user-2',
-        name: 'Maria Garcia',
-        avatar: '/avatars/maria.jpg'
-      },
-      timestamp: '2025-05-14T16:05:00Z'
-    }
-  ],
-  'ch-2': [
-    {
-      id: 'msg-4',
-      content: 'Team, please review the interior lighting plan by Friday.',
-      sender: {
-        id: 'user-2',
-        name: 'Maria Garcia',
-        avatar: '/avatars/maria.jpg'
-      },
-      timestamp: '2025-05-15T11:20:00Z'
-    }
-  ],
-  'ch-3': [],
-  'ch-4': [
-    {
-      id: 'msg-5',
-      content: 'Welcome to the Lakeside Residence project! Initial concept designs are now available in the Assets section.',
-      sender: {
-        id: 'user-1',
-        name: 'Alex Johnson',
-        avatar: '/avatars/alex.jpg'
-      },
-      timestamp: '2025-05-16T14:00:00Z',
-      isAnnouncement: true
-    }
-  ],
-  'ch-5': []
-};
-
 export const WorkspaceProvider: React.FC<{
   children: React.ReactNode,
   initialProjectId?: string
 }> = ({ children, initialProjectId }) => {
   const [projectAssets, setProjectAssets] = useState<Record<string, Asset[]>>(SAMPLE_ASSETS);
-  const [channels, setChannels] = useState<Record<string, Channel[]>>(SAMPLE_CHANNELS);
-  const [messages, setMessages] = useState<Record<string, Message[]>>(SAMPLE_MESSAGES);
+  const [channels, setChannels] = useState<Record<string, WorkspaceChannel[]>>({});
+  const [messages, setMessages] = useState<Record<string, WorkspaceMessage[]>>({});
   const [activeView, setActiveView] = useState<'project' | 'tasks' | 'assets' | 'communication'>('project');
+  const [subscriptions, setSubscriptions] = useState<Record<string, any>>({});
   
   const { addNotification } = useNotifications();
+  const { user } = useUser();
   
   const generateId = (prefix: string) => {
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
@@ -281,41 +195,33 @@ export const WorkspaceProvider: React.FC<{
     category?: 'concept' | 'schematic' | 'documentation-ready'
   ) => {
     // In a real app, we'd upload to storage and get a URL
-    // For this demo, we'll simulate a successful upload
-    
-    // Determine asset type
-    let type: 'document' | 'image' | 'video' | 'model' | 'other' = 'other';
-    if (file.type.startsWith('image/')) {
-      type = 'image';
-    } else if (file.type.startsWith('video/')) {
-      type = 'video';
-    } else if (file.type.includes('pdf') || file.type.includes('doc') || file.type.includes('sheet')) {
-      type = 'document';
-    } else if (file.name.endsWith('.glb') || file.name.endsWith('.gltf') || file.name.endsWith('.obj')) {
-      type = 'model';
-    }
-    
-    // Create a fake asset URL
-    const url = `/assets/${file.name}`;
-    
-    // Create asset object
+    const fileType = file.type.split('/')[0];
+    // Convert to one of the allowed types
+    const assetType = fileType === 'image' ? 'image' : 
+                      fileType === 'video' ? 'video' : 
+                      fileType === 'model' ? 'model' :
+                      fileType === 'application' && file.name.endsWith('.pdf') ? 'document' :
+                      'other';
+                      
     const newAsset: Asset = {
       id: generateId('asset'),
       name: file.name,
-      type,
-      url,
-      // Only add thumbnail for images
-      thumbnailUrl: type === 'image' ? `/assets/thumbnails/${file.name}` : undefined,
+      type: assetType,
+      url: URL.createObjectURL(file),
       dateUploaded: new Date().toISOString(),
-      uploadedBy: 'Current User', // In a real app, this would be the current user
-      uploaderId: 'user-current', // In a real app, this would be the current user's ID
-      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-      description: description || undefined,
-      tags: tags || [],
-      status: 'pending',
-      version: 1,
-      approvalData: category ? { category } : undefined
+      uploadedBy: user?.fullName || 'Current User',
+      uploaderId: user?.id || 'current-user',
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      description,
+      tags,
+      category,
+      status: 'pending'
     };
+    
+    // Add thumbnail if it's an image
+    if (file.type.startsWith('image/')) {
+      newAsset.thumbnailUrl = newAsset.url;
+    }
     
     // Update state
     setProjectAssets(prev => ({
@@ -323,34 +229,12 @@ export const WorkspaceProvider: React.FC<{
       [projectId]: [...(prev[projectId] || []), newAsset]
     }));
     
-    // Notify uploader
+    // Notify
     addNotification(
       'success',
       'Asset Uploaded',
-      `${file.name} has been successfully uploaded and is pending review.`,
-      undefined,
-      {
-        assetId: newAsset.id,
-        projectId,
-        action: 'upload'
-      }
+      `${file.name} has been uploaded successfully and is pending approval.`
     );
-    
-    // Notify reviewers (in a real app, we'd only notify specific reviewers)
-    addNotification(
-      'info',
-      'New Asset Needs Review',
-      `A new asset "${file.name}" has been uploaded and requires your review.`,
-      undefined,
-      {
-        assetId: newAsset.id, 
-        projectId,
-        action: 'review-required',
-        forRole: 'reviewer'
-      }
-    );
-    
-    return Promise.resolve();
   };
   
   const deleteAsset = (projectId: string, assetId: string) => {
@@ -364,7 +248,7 @@ export const WorkspaceProvider: React.FC<{
     addNotification(
       'info',
       'Asset Deleted',
-      'The asset has been removed from the project.'
+      'The asset has been successfully deleted.'
     );
   };
   
@@ -396,8 +280,8 @@ export const WorkspaceProvider: React.FC<{
           status: 'approved',
           approvalData: {
             ...asset.approvalData,
-            reviewerId: 'current-user', // In a real app, this would be from auth
-            reviewerName: 'Current User', // In a real app, this would be from auth
+            reviewerId: user?.id || 'current-user',
+            reviewerName: user?.fullName || 'Current User',
             reviewDate: new Date().toISOString(),
             comments: comment || 'Approved without comments'
           }
@@ -408,17 +292,33 @@ export const WorkspaceProvider: React.FC<{
     // Get asset information for improved notification
     const asset = projectAssets[projectId]?.find(asset => asset.id === assetId);
     const assetName = asset?.name || 'Asset';
+    const uploader = asset?.uploaderId;
     
-    // Notify with improved message and metadata
+    // Notify reviewer
     addNotification(
       'success',
       'Asset Approved',
-      `"${assetName}" has been approved and is now available for use.`,
+      `You've approved "${assetName}".`,
       undefined,
       {
         assetId,
         projectId,
         action: 'approve'
+      }
+    );
+    
+    // In a real app, we would also send a notification to the uploader
+    // This simulates notifying the uploader
+    addNotification(
+      'success',
+      'Asset Approved',
+      `Your asset "${assetName}" has been approved.`,
+      undefined,
+      {
+        assetId,
+        projectId,
+        action: 'approval-notification',
+        forUser: uploader
       }
     );
   };
@@ -433,8 +333,8 @@ export const WorkspaceProvider: React.FC<{
           status: 'rejected',
           approvalData: {
             ...asset.approvalData,
-            reviewerId: 'current-user', // In a real app, this would be from auth
-            reviewerName: 'Current User', // In a real app, this would be from auth
+            reviewerId: user?.id || 'current-user',
+            reviewerName: user?.fullName || 'Current User',
             reviewDate: new Date().toISOString(),
             comments: comment
           }
@@ -449,9 +349,9 @@ export const WorkspaceProvider: React.FC<{
     
     // Notify reviewer
     addNotification(
-      'info',
+      'warning',
       'Asset Rejected',
-      `"${assetName}" has been rejected with comments.`,
+      `You've rejected "${assetName}".`,
       undefined,
       {
         assetId,
@@ -463,9 +363,9 @@ export const WorkspaceProvider: React.FC<{
     // In a real app, we would also send a notification to the uploader
     // This simulates notifying the uploader
     addNotification(
-      'warning',
-      'Your Asset Was Rejected',
-      `Your asset "${assetName}" was rejected by a reviewer. Please check the comments.`,
+      'error',
+      'Asset Rejected',
+      `Your asset "${assetName}" has been rejected. Please check the review comments.`,
       undefined,
       {
         assetId,
@@ -486,8 +386,8 @@ export const WorkspaceProvider: React.FC<{
           status: 'changes-requested',
           approvalData: {
             ...asset.approvalData,
-            reviewerId: 'current-user', // In a real app, this would be from auth
-            reviewerName: 'Current User', // In a real app, this would be from auth
+            reviewerId: user?.id || 'current-user',
+            reviewerName: user?.fullName || 'Current User',
             reviewDate: new Date().toISOString(),
             comments: comment
           }
@@ -529,123 +429,445 @@ export const WorkspaceProvider: React.FC<{
     );
   };
   
-  // Communication Functions
-  const sendMessage = (content: string, channelId: string, attachments?: File[]) => {
-    // In a real app, we'd handle file uploads and create attachment objects
-    const attachmentObjects = attachments?.map(file => ({
-      id: generateId('attach'),
-      name: file.name,
-      url: `/assets/${file.name}`,
-      type: file.type
-    }));
+  // Communication Functions - Updated to use chat-service
+  const loadChannelsForProject = useCallback(async (projectId: string) => {
+    if (!user) return;
     
-    // Create a new message
-    const newMessage: Message = {
-      id: generateId('msg'),
-      content,
-      sender: {
-        id: 'current-user', // In a real app, this would be the current user's ID
-        name: 'Current User', // In a real app, this would be the current user's name
-        avatar: undefined, // In a real app, this might be the user's avatar URL
-      },
-      timestamp: new Date().toISOString(),
-      attachments: attachmentObjects
-    };
-    
-    // Update state
-    setMessages(prev => ({
-      ...prev,
-      [channelId]: [...(prev[channelId] || []), newMessage]
-    }));
-  };
+    try {
+      const { data, error } = await getChannelsForProject(projectId, user.id);
+      if (error) throw error;
+      
+      if (data) {
+        // Convert to WorkspaceChannel format
+        const workspaceChannels = data.map(channel => ({
+          ...channel,
+          isPrivate: channel.is_private,
+          unreadCount: channel.unread_count || 0
+        }));
+        
+        // Update channels state
+        setChannels(prev => ({
+          ...prev,
+          [projectId]: workspaceChannels
+        }));
+        
+        // Subscribe to channel updates
+        const unsubscribe = subscribeToChannelUpdates(projectId, (updatedChannel) => {
+          setChannels(prev => {
+            const projectChannels = prev[projectId] || [];
+            const channelIndex = projectChannels.findIndex(c => c.id === updatedChannel.id);
+            
+            if (channelIndex >= 0) {
+              // Update existing channel
+              const updatedChannels = [...projectChannels];
+              updatedChannels[channelIndex] = {
+                ...updatedChannel,
+                isPrivate: updatedChannel.is_private,
+                unreadCount: updatedChannels[channelIndex].unreadCount
+              };
+              return {
+                ...prev,
+                [projectId]: updatedChannels
+              };
+            } else {
+              // Add new channel
+              return {
+                ...prev,
+                [projectId]: [...projectChannels, {
+                  ...updatedChannel,
+                  isPrivate: updatedChannel.is_private,
+                  unreadCount: 0
+                }]
+              };
+            }
+          });
+        });
+        
+        // Store the subscription for cleanup
+        setSubscriptions(prev => ({
+          ...prev,
+          [`channel-updates-${projectId}`]: unsubscribe
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading channels for project:', error);
+      addNotification(
+        'error',
+        'Failed to load channels',
+        'There was an error loading the communication channels.'
+      );
+    }
+  }, [user, addNotification]);
   
-  const createChannel = (projectId: string, name: string, isPrivate: boolean, description?: string) => {
-    // Create a new channel
-    const newChannel: Channel = {
-      id: generateId('ch'),
-      name,
-      description,
-      isPrivate,
-      unreadCount: 0
-    };
+  const loadMessagesForChannel = useCallback(async (channelId: string) => {
+    try {
+      const { data, error } = await getMessagesForChannel(channelId);
+      if (error) throw error;
+      
+      if (data) {
+        // Convert to WorkspaceMessage format
+        const workspaceMessages = data.map(message => {
+          // Create message attachments if any
+          const attachments = message.metadata?.attachments?.map((attachment: MessageAttachment) => ({
+            id: attachment.id,
+            name: attachment.file_name,
+            url: attachment.file_url,
+            type: attachment.file_type
+          }));
+          
+          return {
+            ...message,
+            sender: {
+              id: message.user_id,
+              name: message.metadata?.sender_name || 'Unknown',
+              avatar: message.metadata?.sender_avatar
+            },
+            timestamp: message.created_at,
+            attachments
+          };
+        });
+        
+        // Update messages state
+        setMessages(prev => ({
+          ...prev,
+          [channelId]: workspaceMessages
+        }));
+        
+        // Mark channel as read
+        if (user) {
+          await markChannelAsRead(channelId, user.id);
+          
+          // Update local unread count
+          const projectId = Object.keys(channels).find(pId => 
+            channels[pId]?.some(channel => channel.id === channelId)
+          );
+          
+          if (projectId) {
+            setChannels(prev => ({
+              ...prev,
+              [projectId]: prev[projectId].map(channel => 
+                channel.id === channelId ? { ...channel, unreadCount: 0 } : channel
+              )
+            }));
+          }
+        }
+        
+        // Subscribe to new messages
+        const unsubscribe = subscribeToChannel(channelId, (newMessage) => {
+          // Convert the new message to WorkspaceMessage format
+          const attachments = newMessage.metadata?.attachments?.map((attachment: MessageAttachment) => ({
+            id: attachment.id,
+            name: attachment.file_name,
+            url: attachment.file_url,
+            type: attachment.file_type
+          }));
+          
+          const workspaceMessage: WorkspaceMessage = {
+            ...newMessage,
+            sender: {
+              id: newMessage.user_id,
+              name: newMessage.metadata?.sender_name || 'Unknown',
+              avatar: newMessage.metadata?.sender_avatar
+            },
+            timestamp: newMessage.created_at,
+            attachments
+          };
+          
+          // Update messages
+          setMessages(prev => ({
+            ...prev,
+            [channelId]: [...(prev[channelId] || []), workspaceMessage]
+          }));
+          
+          // Update unread count for the channel if this is not from the current user
+          if (user && newMessage.user_id !== user.id) {
+            const channelProjectId = Object.keys(channels).find(projectId => 
+              channels[projectId]?.some(channel => channel.id === channelId)
+            );
+            
+            if (channelProjectId) {
+              setChannels(prev => {
+                const projectChannels = prev[channelProjectId] || [];
+                return {
+                  ...prev,
+                  [channelProjectId]: projectChannels.map(channel => 
+                    channel.id === channelId 
+                      ? { ...channel, unreadCount: (channel.unreadCount || 0) + 1 }
+                      : channel
+                  )
+                };
+              });
+            }
+          }
+        });
+        
+        // Store the subscription for cleanup
+        setSubscriptions(prev => ({
+          ...prev,
+          [`message-updates-${channelId}`]: unsubscribe
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading messages for channel:', error);
+      addNotification(
+        'error',
+        'Failed to load messages',
+        'There was an error loading the messages for this channel.'
+      );
+    }
+  }, [user, channels, addNotification]);
+  
+  const sendMessage = useCallback(async (content: string, channelId: string, attachments?: File[]) => {
+    if (!user) {
+      addNotification(
+        'error',
+        'Not authenticated',
+        'You need to be logged in to send messages.'
+      );
+      return;
+    }
     
-    // Update state
-    setChannels(prev => ({
-      ...prev,
-      [projectId]: [...(prev[projectId] || []), newChannel]
-    }));
+    try {
+      const { data, error } = await sendChatMessage(
+        channelId, 
+        user.id, 
+        content,
+        false, // Not an announcement
+        user.fullName || undefined,
+        user.imageUrl || undefined,
+        attachments
+      );
+      
+      if (error) throw error;
+      
+      // Message will be added via subscription, no need to update state here
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      addNotification(
+        'error',
+        'Failed to send message',
+        'There was an error sending your message. Please try again.'
+      );
+    }
+  }, [user, addNotification]);
+  
+  const createChannel = useCallback(async (
+    projectId: string,
+    name: string,
+    isPrivate: boolean,
+    description?: string
+  ) => {
+    if (!user) return;
     
-    // Initialize empty message array for new channel
-    setMessages(prev => ({
-      ...prev,
-      [newChannel.id]: []
-    }));
+    // Get organization ID from Supabase for the current user and project
+    const { data: orgData, error: orgError } = await supabase
+      .from('projects')
+      .select('organization_id')
+      .eq('id', projectId)
+      .single();
+      
+    if (orgError) {
+      console.error('Error getting organization ID:', orgError);
+      addNotification(
+        'error',
+        'Failed to create channel',
+        'Could not determine organization information.'
+      );
+      return;
+    }
     
-    // Notify
-    addNotification(
-      'success',
-      'Channel Created',
-      `The ${name} channel has been created successfully.`
-    );
-  };
+    const organizationId = orgData.organization_id;
+    if (!organizationId) {
+      addNotification(
+        'error',
+        'Failed to create channel',
+        'Organization ID not found for this project.'
+      );
+      return;
+    }
+    
+    try {
+      const initialMembers = isPrivate ? [user.id] : [];
+      
+      const { data, error } = await createChatChannel(
+        projectId,
+        organizationId,
+        name,
+        isPrivate,
+        description,
+        initialMembers
+      );
+      
+      if (error) throw error;
+      
+      // Channel will be added via subscription, no need to update state here
+      
+      addNotification(
+        'success',
+        'Channel Created',
+        `The ${name} channel has been created successfully.`
+      );
+    } catch (error) {
+      console.error('Error creating channel:', error);
+      addNotification(
+        'error',
+        'Failed to create channel',
+        'There was an error creating the channel. Please try again.'
+      );
+    }
+  }, [user, addNotification]);
+  
+  const updateChannel = useCallback(async (
+    channelId: string, 
+    updates: { name?: string; description?: string; isPrivate?: boolean }
+  ) => {
+    try {
+      const { data, error } = await updateChatChannel(channelId, {
+        name: updates.name,
+        description: updates.description,
+        is_private: updates.isPrivate
+      });
+      
+      if (error) throw error;
+      
+      // Channel will be updated via subscription, no need to update state here
+      
+      addNotification(
+        'success',
+        'Channel Updated',
+        'The channel has been updated successfully.'
+      );
+    } catch (error) {
+      console.error('Error updating channel:', error);
+      addNotification(
+        'error',
+        'Failed to update channel',
+        'There was an error updating the channel. Please try again.'
+      );
+    }
+  }, [addNotification]);
+  
+  const deleteChannel = useCallback(async (channelId: string) => {
+    try {
+      // Find out which project this channel belongs to
+      let projectId = '';
+      for (const [pId, projectChannels] of Object.entries(channels)) {
+        if (projectChannels.some(channel => channel.id === channelId)) {
+          projectId = pId;
+          break;
+        }
+      }
+      
+      // Delete the channel
+      const { error } = await deleteChatChannel(channelId);
+      if (error) throw error;
+      
+      // Update local state
+      if (projectId) {
+        setChannels(prev => ({
+          ...prev,
+          [projectId]: (prev[projectId] || []).filter(channel => channel.id !== channelId)
+        }));
+      }
+      
+      // Remove messages for this channel
+      setMessages(prev => {
+        const newMessages = { ...prev };
+        delete newMessages[channelId];
+        return newMessages;
+      });
+      
+      // Clean up subscriptions
+      if (subscriptions[`message-updates-${channelId}`]) {
+        subscriptions[`message-updates-${channelId}`]();
+        setSubscriptions(prev => {
+          const newSubs = { ...prev };
+          delete newSubs[`message-updates-${channelId}`];
+          return newSubs;
+        });
+      }
+      
+      addNotification(
+        'info',
+        'Channel Deleted',
+        'The channel has been deleted successfully.'
+      );
+    } catch (error) {
+      console.error('Error deleting channel:', error);
+      addNotification(
+        'error',
+        'Failed to delete channel',
+        'There was an error deleting the channel. Please try again.'
+      );
+    }
+  }, [channels, subscriptions, addNotification]);
+  
+  const markChannelRead = useCallback(async (channelId: string) => {
+    if (!user) return;
+    
+    try {
+      await markChannelAsRead(channelId, user.id);
+      
+      // Update local unread count
+      const projectId = Object.keys(channels).find(pId => 
+        channels[pId]?.some(channel => channel.id === channelId)
+      );
+      
+      if (projectId) {
+        setChannels(prev => ({
+          ...prev,
+          [projectId]: prev[projectId].map(channel => 
+            channel.id === channelId ? { ...channel, unreadCount: 0 } : channel
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('Error marking channel as read:', error);
+    }
+  }, [user, channels]);
   
   // Initialize a new project with default assets and channels
-  const initializeProject = (projectId: string) => {
+  const initializeProject = useCallback(async (projectId: string, organizationId: string) => {
     // Initialize empty assets array for this project
     setProjectAssets(prev => ({
       ...prev,
       [projectId]: []
     }));
     
-    // Create default channels for this project
-    const generalChannel = {
-      id: generateId('ch'),
-      name: 'general',
-      description: 'General discussion for the project',
-      projectId,
-      isPrivate: false,
-      unreadCount: 0
+    // Create default channels
+    try {
+      const { data, error } = await initializeDefaultChannels(projectId, organizationId);
+      if (error) throw error;
+      
+      // Load channels for the project
+      if (user) {
+        await loadChannelsForProject(projectId);
+      }
+    } catch (error) {
+      console.error('Error initializing project channels:', error);
+      addNotification(
+        'error',
+        'Channel Setup Failed',
+        'Failed to create default communication channels.'
+      );
+    }
+  }, [user, loadChannelsForProject, addNotification]);
+  
+  // Clean up subscriptions when component unmounts
+  useEffect(() => {
+    return () => {
+      // Unsubscribe from all subscriptions
+      Object.values(subscriptions).forEach(unsubscribe => {
+        // Handle both function types and RealtimeChannel types
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        } else if (unsubscribe && typeof unsubscribe.unsubscribe === 'function') {
+          unsubscribe.unsubscribe();
+        }
+      });
     };
-    
-    const announcementsChannel = {
-      id: generateId('ch'),
-      name: 'announcements',
-      description: 'Important announcements and updates',
-      projectId,
-      isPrivate: false,
-      unreadCount: 0
-    };
-    
-    setChannels(prev => ({
-      ...prev,
-      [projectId]: [generalChannel, announcementsChannel]
-    }));
-    
-    // Initialize empty messages for the channels
-    setMessages(prev => ({
-      ...prev,
-      [generalChannel.id]: [],
-      [announcementsChannel.id]: []
-    }));
-    
-    // Create a welcome message in the general channel
-    const welcomeMessage = {
-      id: generateId('msg'),
-      content: 'Welcome to the new project! This channel is for general discussion.',
-      sender: {
-        id: 'system',
-        name: 'System',
-        avatar: ''
-      },
-      timestamp: new Date().toISOString(),
-      isAnnouncement: false
-    };
-    
-    setMessages(prev => ({
-      ...prev,
-      [generalChannel.id]: [welcomeMessage]
-    }));
-  };
+  }, [subscriptions]);
 
   return (
     <WorkspaceContext.Provider value={{
@@ -664,10 +886,17 @@ export const WorkspaceProvider: React.FC<{
       messages,
       sendMessage,
       createChannel,
+      updateChannel,
+      deleteChannel,
+      markChannelRead,
       
       // Active state
       activeView,
-      setActiveView
+      setActiveView,
+      
+      // Utility
+      loadChannelsForProject,
+      loadMessagesForChannel
     }}>
       {children}
     </WorkspaceContext.Provider>
