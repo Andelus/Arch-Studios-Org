@@ -80,7 +80,7 @@ export default function OnboardingPage() {
               hidePersonal={true}
               appearance={{
                 // Use the system theme hook
-                baseTheme: systemTheme,
+                baseTheme: systemTheme.clerkTheme,
                 variables: {
                   colorPrimary: "#4facfe",
                 },
@@ -113,7 +113,7 @@ export default function OnboardingPage() {
             <CreateOrganization 
               appearance={{
                 // Use the system theme hook
-                baseTheme: systemTheme,
+                baseTheme: systemTheme.clerkTheme,
                 variables: {
                   colorPrimary: "#4facfe",
                 },

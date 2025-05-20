@@ -170,7 +170,7 @@ export const TeamProvider: React.FC<{
   const inviteMember = async (projectId: string, email: string, role: string, permission: 'admin' | 'editor' | 'viewer') => {
     try {
       // Get project name - in real implementation, this would come from API or state
-      let projectName = projectId.startsWith('proj-') ? 
+      const projectName = projectId.startsWith('proj-') ? 
         `Arch Studios Project ${projectId.replace('proj-', '')}` : 
         'Architectural Project';
         

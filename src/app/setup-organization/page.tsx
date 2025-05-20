@@ -86,8 +86,8 @@ export default function SetupOrganizationPage() {
             <CreateOrganization 
               hideSlug={true}
               appearance={{
-                // Use the system theme hook
-                baseTheme: systemTheme,
+                // Use the system theme hook's clerkTheme property
+                baseTheme: systemTheme.clerkTheme,
                 variables: {
                   colorPrimary: "#4facfe",
                 },

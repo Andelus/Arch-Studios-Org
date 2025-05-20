@@ -723,4 +723,7 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
   );
 });
 
+// Add display name to fix ESLint error
+AssetManager.displayName = 'AssetManager';
+
 export default AssetManager;
