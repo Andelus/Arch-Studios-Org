@@ -112,19 +112,4 @@
   100% { opacity: 1; }
 }
 
-/* Make sure we define the color variables in global CSS */
-:root {
-  --profile-color-1: #4a6da7;
-  --profile-color-2: #ff8a65;
-  --profile-color-3: #9575cd;
-  --profile-color-4: #4db6ac;
-  --profile-color-5: #f06292;
-}
-
-[data-theme="dark"] {
-  --profile-color-1: #5c84cc;
-  --profile-color-2: #ff9d76;
-  --profile-color-3: #a98be0;
-  --profile-color-4: #64d8cb;
-  --profile-color-5: #f48fb1;
-}
+/* Color variables are defined in globals.css */
