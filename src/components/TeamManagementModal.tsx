@@ -9,7 +9,6 @@ interface Member {
   id: string;
   name: string;
   avatar: string;
-  email: string;
   role: string;
   status: 'online' | 'offline' | 'away';
   permission: 'admin' | 'editor' | 'viewer';
@@ -19,7 +18,7 @@ interface TeamManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
-  members: Member[];
+  currentMembers: Member[];
   onAddMember: (email: string, role: string, permission: 'admin' | 'editor' | 'viewer') => void;
   onUpdateMember: (memberId: string, updates: Partial<Member>) => void;
   onRemoveMember: (memberId: string) => void;
@@ -35,7 +34,7 @@ export default function TeamManagementModal({
   isOpen,
   onClose,
   projectId,
-  members,
+  currentMembers,
   onAddMember,
   onUpdateMember,
   onRemoveMember
@@ -120,7 +119,7 @@ export default function TeamManagementModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {members.map(member => (
+                    {currentMembers.map(member => (
                       <tr key={member.id} className={styles.memberRow}>
                         <td className={styles.nameCell}>
                           <div className={styles.memberAvatar}>
@@ -133,7 +132,6 @@ export default function TeamManagementModal({
                           </div>
                           <div className={styles.memberInfo}>
                             <div className={styles.memberName}>{member.name}</div>
-                            <div className={styles.memberEmail}>{member.email}</div>
                           </div>
                         </td>
                         <td>

@@ -6,7 +6,7 @@ import styles from './ProjectCreationModal.module.css';
 interface ProjectCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateProject: (projectData: {
+  onSubmit: (projectData: {
     name: string;
     description: string;
     status: 'Planning' | 'In Progress' | 'Review' | 'Completed';
@@ -17,8 +17,8 @@ interface ProjectCreationModalProps {
     isPrivate: boolean;
     isFolder: boolean;
     isTemplate?: boolean;
-    templateId?: string | null;
-    parentId?: string; // Added for folder support
+  templateId?: string;
+  parentId?: string; // Added for folder support
   }) => void;
   isAdmin?: boolean;
   createAsFolder?: boolean; 
@@ -35,7 +35,7 @@ interface ProjectCreationModalProps {
 export default function ProjectCreationModal({
   isOpen,
   onClose,
-  onCreateProject,
+  onSubmit,
   isAdmin = false,
   createAsFolder = false,
   createAsTemplate = false,
@@ -82,7 +82,7 @@ export default function ProjectCreationModal({
       return;
     }
     
-    onCreateProject({
+    onSubmit({
       name,
       description,
       status,
@@ -93,7 +93,7 @@ export default function ProjectCreationModal({
       isPrivate,
       isFolder,
       isTemplate,
-      templateId: selectedTemplate,
+      templateId: selectedTemplate || undefined,
       parentId: parentFolderId
     });
 

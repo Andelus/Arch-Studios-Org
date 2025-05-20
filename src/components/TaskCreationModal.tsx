@@ -6,7 +6,16 @@ import styles from './TaskCreationModal.module.css';
 interface TaskCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTask: (taskData: {
+  onSubmit: (taskData: {
+    title: string;
+    description: string;
+    status: 'To Do' | 'In Progress' | 'Done';
+    assignee?: string;
+    dueDate?: string;
+    priority: 'Low' | 'Medium' | 'High';
+  }) => void;
+  onUpdate?: (taskData: {
+    id: string;
     title: string;
     description: string;
     status: 'To Do' | 'In Progress' | 'Done';
@@ -30,14 +39,14 @@ interface TaskCreationModalProps {
     assignee?: string;
     dueDate?: string;
     priority: 'Low' | 'Medium' | 'High';
-    projectId: string;
   };
 }
 
 export default function TaskCreationModal({
   isOpen,
   onClose,
-  onCreateTask,
+  onSubmit,
+  onUpdate,
   projectId,
   projectMembers,
   taskToEdit
@@ -75,14 +84,24 @@ export default function TaskCreationModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    onCreateTask({
+    const taskData = {
       title,
       description,
       status,
       assignee: assignee || undefined,
       dueDate: dueDate || undefined,
       priority
-    });
+    };
+
+    if (isEditing) {
+      // Call onUpdate if editing an existing task
+      if (onUpdate && taskToEdit?.id) {
+        onUpdate({ ...taskData, id: taskToEdit.id });
+      }
+    } else {
+      // Call onSubmit if creating a new task
+      onSubmit(taskData);
+    }
 
     // Reset form
     setTitle('');

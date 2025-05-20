@@ -7,9 +7,15 @@ import Link from 'next/link';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTeam } from '@/contexts/TeamContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useCommunication } from '@/hooks/useCommunication';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@clerk/nextjs';
 import { useOrganization } from '@clerk/nextjs';
+import AssetManager from '@/components/AssetManager';
+import CommunicationPanel from '@/components/CommunicationPanel';
+import ProjectCreationModal from '@/components/ProjectCreationModal';
+import TaskCreationModal from '@/components/TaskCreationModal';
+import TeamManagementModal from '@/components/TeamManagementModal';
 import type { 
   Project, 
   Task, 
@@ -45,6 +51,8 @@ export default function WorkspaceContent() {
   const { getToken } = useAuth();
   const { organization } = useOrganization();
   const router = useRouter();
+  
+  // State management
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -187,6 +195,46 @@ export default function WorkspaceContent() {
     rejectAsset,
     requestChanges
   } = useWorkspace();
+
+  // Communication state
+  const projectCommunication = useCommunication(selectedProject?.id);
+
+  // Communication handlers
+  const handleSendMessage = async (content: string, channelId: string) => {
+    try {
+      await projectCommunication.sendMessage(content);
+      addNotification(
+        'success',
+        'Message Sent',
+        'Your message has been sent successfully.'
+      );
+    } catch (error) {
+      console.error('Error sending message:', error);
+      addNotification(
+        'error',
+        'Failed to Send Message',
+        'There was an error sending your message. Please try again.'
+      );
+    }
+  };
+
+  const handleCreateChannel = async (name: string, isPrivate: boolean, description?: string) => {
+    try {
+      await projectCommunication.createChannel({ name, isPrivate, description });
+      addNotification(
+        'success',
+        'Channel Created',
+        `The channel "${name}" has been created successfully.`
+      );
+    } catch (error) {
+      console.error('Error creating channel:', error);
+      addNotification(
+        'error',
+        'Failed to Create Channel',
+        'There was an error creating the channel. Please try again.'
+      );
+    }
+  };
 
   // Function to calculate project progress based on task completion
   const calculateProjectProgress = useCallback((projectId: string): number => {
@@ -609,8 +657,7 @@ export default function WorkspaceContent() {
         },
         (payload: { new: DatabaseProject }) => {
           // Update project data when changes occur
-          const updatedData = payload.new;
-          setSelectedProject(prev => prev ? {
+          const updatedData = payload.new;                  setSelectedProject((prev: Project | null) => prev ? {
             ...prev,
             name: updatedData.name,
             description: updatedData.description,
@@ -660,8 +707,8 @@ export default function WorkspaceContent() {
               projectId: data.project_id
             };
 
-            setTasks(prev => {
-              const index = prev.findIndex(t => t.id === data.id);
+            setTasks((prev: Task[]) => {
+              const index = prev.findIndex((t: Task) => t.id === data.id);
               if (index >= 0) {
                 const newTasks = [...prev];
                 newTasks[index] = formattedTask;
@@ -712,12 +759,12 @@ export default function WorkspaceContent() {
               permission: memberData.permission
             };
 
-            setSelectedProject(prev => prev ? {
+            setSelectedProject((prev: Project | null) => prev ? {
               ...prev,
-              members: prev.members.map(m => 
+              members: prev.members.map((m: ProjectMember) => 
                 m.id === member.id ? member : m
               ).concat(
-                prev.members.some(m => m.id === member.id) ? [] : [member]
+                prev.members.some((m: ProjectMember) => m.id === member.id) ? [] : [member]
               )
             } : prev);
           }
@@ -727,9 +774,9 @@ export default function WorkspaceContent() {
 
     // Clean up subscriptions
     return () => {
-      projectChannel.unsubscribe();
-      taskChannel.unsubscribe();
-      memberChannel.unsubscribe();
+      void projectChannel?.unsubscribe();
+      void taskChannel?.unsubscribe();
+      void memberChannel?.unsubscribe();
     };
   }, [selectedProject, user]);
 
@@ -743,8 +790,327 @@ export default function WorkspaceContent() {
       setTasks,
       loading
     }}>
-      {/* ...existing JSX... */}
-      {/* Place all the existing JSX for the workspace UI here, unchanged */}
+      <div className={styles.workspaceContainer}>
+        <aside className={styles.sidebar}>
+          <div className={styles.projectControls}>
+            <button
+              className={styles.createButton}
+              onClick={() => setIsProjectModalOpen(true)}
+            >
+              New Project
+            </button>
+            <button 
+              className={styles.filterButton}
+              onClick={clearFilters}
+              disabled={!activeFilter}
+            >
+              {activeFilter ? 'Clear Filter' : 'Filter'}
+            </button>
+          </div>
+
+          <div className={styles.projectList}>
+            {(activeFilter ? filteredProjects : projects).map(project => (
+              <div
+                key={project.id}
+                className={`${styles.projectItem} ${
+                  selectedProject?.id === project.id ? styles.active : ''
+                }`}
+                onClick={() => setSelectedProject(project)}
+              >
+                <span className={styles.projectName}>{project.name}</span>
+                {project.isTemplate && <span className={styles.templateBadge}>Template</span>}
+                {project.isFolder && <span className={styles.folderBadge}>Folder</span>}
+                <div className={styles.projectMeta}>
+                  <span className={styles.status}>{project.status}</span>
+                  <span className={styles.progress}>{project.progress}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <main className={styles.mainContent}>
+          {loading ? (
+            <div className={styles.loading}>Loading workspace...</div>
+          ) : selectedProject ? (
+            <>
+              <header className={styles.projectHeader}>
+                <div className={styles.projectInfo}>
+                  <h1>{selectedProject.name}</h1>
+                  <p>{selectedProject.description}</p>
+                </div>
+                <div className={styles.projectActions}>
+                  <div className={styles.viewControls}>
+                    <button
+                      className={`${styles.viewButton} ${viewMode === 'board' ? styles.active : ''}`}
+                      onClick={() => setViewMode('board')}
+                    >
+                      Board
+                    </button>
+                    <button
+                      className={`${styles.viewButton} ${viewMode === 'list' ? styles.active : ''}`}
+                      onClick={() => setViewMode('list')}
+                    >
+                      List
+                    </button>
+                  </div>
+                  <div className={styles.tabControls}>
+                    <button
+                      className={`${styles.tabButton} ${activeTab === 'tasks' ? styles.active : ''}`}
+                      onClick={() => setActiveTab('tasks')}
+                    >
+                      Tasks
+                    </button>
+                    <button
+                      className={`${styles.tabButton} ${activeTab === 'assets' ? styles.active : ''}`}
+                      onClick={() => setActiveTab('assets')}
+                    >
+                      Assets
+                    </button>
+                    <button
+                      className={`${styles.tabButton} ${activeTab === 'communication' ? styles.active : ''}`}
+                      onClick={() => setActiveTab('communication')}
+                    >
+                      Communication
+                    </button>
+                  </div>
+                  {isUserAdmin(selectedProject.id) && (
+                    <div className={styles.adminActions}>
+                      <button
+                        className={styles.teamButton}
+                        onClick={() => openTeamManagementModal(selectedProject.id)}
+                      >
+                        Manage Team
+                      </button>
+                      <button
+                        className={styles.deleteButton}
+                        onClick={() => handleDeleteProject(selectedProject.id)}
+                      >
+                        Delete Project
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </header>
+
+              <div className={styles.projectContent}>
+                {activeTab === 'tasks' && (
+                  <div className={styles.tasksContainer}>
+                    <button
+                      className={styles.addTaskButton}
+                      onClick={openTaskModal}
+                    >
+                      Add Task
+                    </button>
+                    
+                    {viewMode === 'board' ? (
+                      <div className={styles.taskBoard}>
+                        <div className={styles.taskColumn}>
+                          <h3>To Do</h3>
+                          {tasks.filter(task => task.status === 'To Do').map(task => (
+                            <div
+                              key={task.id}
+                              className={`${styles.taskCard} ${styles[task.priority.toLowerCase()]}`}
+                              onClick={() => handleEditTask(task.id)}
+                            >
+                              <h4>{task.title}</h4>
+                              <p>{task.description}</p>
+                              {task.assignee && <span className={styles.assignee}>{task.assignee}</span>}
+                              {task.dueDate && <span className={styles.dueDate}>{task.dueDate}</span>}
+                              <button
+                                className={styles.deleteTaskButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(task.id);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className={styles.taskColumn}>
+                          <h3>In Progress</h3>
+                          {tasks.filter(task => task.status === 'In Progress').map(task => (
+                            <div
+                              key={task.id}
+                              className={`${styles.taskCard} ${styles[task.priority.toLowerCase()]}`}
+                              onClick={() => handleEditTask(task.id)}
+                            >
+                              <h4>{task.title}</h4>
+                              <p>{task.description}</p>
+                              {task.assignee && <span className={styles.assignee}>{task.assignee}</span>}
+                              {task.dueDate && <span className={styles.dueDate}>{task.dueDate}</span>}
+                              <button
+                                className={styles.deleteTaskButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(task.id);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className={styles.taskColumn}>
+                          <h3>Done</h3>
+                          {tasks.filter(task => task.status === 'Done').map(task => (
+                            <div
+                              key={task.id}
+                              className={`${styles.taskCard} ${styles[task.priority.toLowerCase()]}`}
+                              onClick={() => handleEditTask(task.id)}
+                            >
+                              <h4>{task.title}</h4>
+                              <p>{task.description}</p>
+                              {task.assignee && <span className={styles.assignee}>{task.assignee}</span>}
+                              {task.dueDate && <span className={styles.dueDate}>{task.dueDate}</span>}
+                              <button
+                                className={styles.deleteTaskButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(task.id);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.taskList}>
+                        {tasks.map(task => (
+                          <div
+                            key={task.id}
+                            className={`${styles.taskRow} ${styles[task.priority.toLowerCase()]}`}
+                            onClick={() => handleEditTask(task.id)}
+                          >
+                            <span className={styles.taskTitle}>{task.title}</span>
+                            <span className={styles.taskStatus}>{task.status}</span>
+                            {task.assignee && <span className={styles.taskAssignee}>{task.assignee}</span>}
+                            {task.dueDate && <span className={styles.taskDueDate}>{task.dueDate}</span>}
+                            <button
+                              className={styles.deleteTaskButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteTask(task.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'assets' && (
+                  <div className={styles.assetsContainer}>
+                    <AssetManager
+                      assets={Object.values(projectAssets).flat()}
+                      projectId={selectedProject.id}
+                      onUpload={(file, description, tags, category) =>
+                        uploadAsset(selectedProject.id, file, description, tags, category)
+                      }
+                      onDeleteAsset={(assetId) => deleteAsset(selectedProject.id, assetId)}
+                      onEditAsset={(assetId, updates) => editAsset(selectedProject.id, assetId, updates)}
+                      onApproveAsset={(assetId, comment) => approveAsset(selectedProject.id, assetId, comment)}
+                      onRejectAsset={(assetId, comment) => rejectAsset(selectedProject.id, assetId, comment)}
+                      onRequestChanges={(assetId, comment) => 
+                        requestChanges(selectedProject.id, assetId, comment)
+                      }
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'communication' && (
+                  <div className={styles.communicationContainer}>
+                    <CommunicationPanel
+                      projectId={selectedProject.id}
+                      currentUserId={user?.id || ''}
+                      messages={(projectCommunication?.messages || []).map(msg => ({
+                        id: msg.id,
+                        content: msg.content,
+                        sender: {
+                          id: msg.user_id,
+                          name: msg.user?.name || 'Unknown',
+                          avatar: msg.user?.avatar
+                        },
+                        timestamp: msg.created_at,
+                        isAnnouncement: msg.is_announcement
+                      }))}
+                      channels={(projectCommunication?.channels || []).map(ch => ({
+                        id: ch.id,
+                        name: ch.name,
+                        description: ch.description || undefined,
+                        isPrivate: ch.is_private,
+                        unreadCount: 0
+                      }))}
+                      onSendMessage={handleSendMessage}
+                      onCreateChannel={handleCreateChannel}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={styles.noProject}>
+              <h2>No Project Selected</h2>
+              <p>Select a project from the sidebar or create a new one to get started.</p>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {isProjectModalOpen && (
+        <ProjectCreationModal
+          isOpen={isProjectModalOpen}
+          onClose={() => setIsProjectModalOpen(false)}
+          onSubmit={initializeProject}
+          createAsFolder={createAsFolder}
+          createAsTemplate={createAsTemplate}
+          isAdmin={isUserAdmin()}
+          templates={projects.filter(p => p.isTemplate)}
+        />
+      )}
+
+      {isTaskModalOpen && selectedProject && (
+        <TaskCreationModal
+          isOpen={isTaskModalOpen}
+          projectId={selectedProject.id}
+          onClose={() => {
+            setIsTaskModalOpen(false);
+            setTaskToEdit(undefined);
+          }}
+          onSubmit={handleCreateTask}
+          onUpdate={handleUpdateTask}
+          taskToEdit={taskToEdit}
+          projectMembers={selectedProject.members}
+        />
+      )}
+
+      {isTeamManagementModalOpen && selectedProject && (
+        <TeamManagementModal
+          isOpen={isTeamManagementModalOpen}
+          onClose={closeTeamManagementModal}
+          projectId={selectedProject.id}
+          currentMembers={selectedProject.members.map(member => ({
+            ...member,
+            permission: member.permission || 'viewer' // Set a default permission if undefined
+          }))}
+          onAddMember={(email, role, permission) => 
+            inviteMember(selectedProject.id, email, role, permission)
+          }
+          onUpdateMember={(memberId, updates) => 
+            updateMember(selectedProject.id, memberId, updates)
+          }
+          onRemoveMember={(memberId) => 
+            removeMember(selectedProject.id, memberId)
+          }
+        />
+      )}
     </WorkspaceDataContext.Provider>
   );
 }

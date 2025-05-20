@@ -8,7 +8,7 @@ import { Asset } from '@/types/asset';
 interface AssetManagerProps {
   assets: Asset[];
   projectId: string;
-  onAssetUpload: (file: File, description: string, tags: string[], category?: 'concept' | 'schematic' | 'documentation-ready') => void;
+  onUpload: (file: File, description: string, tags: string[], category?: 'concept' | 'schematic' | 'documentation-ready') => void;
   onDeleteAsset: (assetId: string) => void;
   onEditAsset: (assetId: string, updates: Partial<Asset>) => void;
   onApproveAsset?: (assetId: string, comment?: string) => void;
@@ -22,7 +22,7 @@ interface AssetManagerProps {
 const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps>(({
   assets,
   projectId,
-  onAssetUpload,
+  onUpload,
   onDeleteAsset,
   onEditAsset,
   onApproveAsset,
@@ -102,7 +102,7 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
   
   const handleUpload = () => {
     if (uploadFile) {
-      onAssetUpload(uploadFile, uploadDescription, uploadTags, uploadCategory);
+      onUpload(uploadFile, uploadDescription, uploadTags, uploadCategory);
       closeUploadModal();
     }
   };
