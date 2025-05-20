@@ -54,7 +54,7 @@ export function AssetManagerIntegration({
       currentUserRole={isAdmin ? 'admin' : 'contributor'}
       initialUploadModalOpen={showUploadModal}
       onCloseUploadModal={() => setShowUploadModal(false)}
-      onAssetUpload={async (file, description, tags, category) => {
+      onUpload={async (file, description, tags, category) => {
         try {
           await uploadAsset(projectId, file, description, tags, category);
           
