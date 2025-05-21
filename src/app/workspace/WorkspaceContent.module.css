@@ -180,11 +180,26 @@
 
 .loading {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100%;
   font-size: 1.2rem;
   color: var(--muted-text);
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  border: 3px solid rgba(79, 172, 254, 0.2);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .noProject {
@@ -203,6 +218,25 @@
   border: 1px solid rgba(0, 0, 0, 0.03);
   max-width: 800px;
   margin: 2rem auto;
+}
+
+.createProjectButton {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+  font-size: 1rem;
+}
+
+.createProjectButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(79, 172, 254, 0.4);
 }
 
 .projectHeader {

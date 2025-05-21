@@ -10,11 +10,8 @@ import WorkspacePage from "./page";
 export default function WorkspaceWrapper() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
   
-  // In a real app, we'd get the selected project from URL or local storage
-  useEffect(() => {
-    // Default to first project for now
-    setSelectedProjectId('proj-1');
-  }, []);
+  // We'll let the WorkspaceContent component handle project selection naturally
+  // based on available projects rather than hardcoding a non-existent project ID
   
   return (
     <TeamProvider initialProjectId={selectedProjectId}>

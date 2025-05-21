@@ -73,7 +73,14 @@ export default function WorkspaceContent() {
   // Load projects from database
   useEffect(() => {
     const loadProjects = async () => {
-      if (!isSignedIn || !organization) return;
+      if (!isSignedIn || !organization) {
+        console.log("Not signed in or no organization available yet");
+        setLoading(false);
+        return;
+      }
+      
+      // Set loading state while we fetch projects
+      setLoading(true);
 
       try {
         const { data: projectsData, error } = await supabase
@@ -130,9 +137,13 @@ export default function WorkspaceContent() {
 
         setProjects(formattedProjects);
         
-        // Select first project by default if none selected
+        // Only select a project automatically if one exists and none is selected
         if (!selectedProject && formattedProjects.length > 0) {
           setSelectedProject(formattedProjects[0]);
+          console.log("Automatically selected first project:", formattedProjects[0].name);
+        } else if (formattedProjects.length === 0) {
+          console.log("No projects found - displaying empty state");
+          setSelectedProject(null);
         }
       } catch (error) {
         console.error('Error loading projects:', error);
@@ -167,10 +178,19 @@ export default function WorkspaceContent() {
   // Load initial data when component mounts
   useEffect(() => {
     if (isLoaded) {
-      setLoading(false);
-      // Organization and projects are loaded in their own effects
+      // Start with loading state true until data is fully loaded
+      setLoading(true);
+      
+      // If organization data is available, the projects effect will handle the loading state
+      if (organization) {
+        console.log("Organization data available:", organization.name);
+      } else {
+        // If no organization data, set loading false to show empty state
+        console.log("No organization data available yet");
+        setLoading(false);
+      }
     }
-  }, [isLoaded]);
+  }, [isLoaded, organization]);
 
   // Ensure useNotifications is declared before any use
   const { 
@@ -310,6 +330,13 @@ export default function WorkspaceContent() {
     
     // If checking for general permissions (no specific project)
     if (!projectId) {
+      // If there are no projects yet and the user belongs to the organization, treat them as admin
+      if (projects.length === 0 && organization) {
+        // User belongs to the organization and no projects exist yet - first user is considered admin
+        console.log("No projects exist yet - granting admin privileges to create first project");
+        return true;
+      }
+      
       // Check if the user is an admin in any project
       return Object.values(projectMembers).some(members => 
         members.some(member => 
@@ -630,9 +657,15 @@ export default function WorkspaceContent() {
 
       setIsProjectModalOpen(false);
       
+      const projectType = projectData.isFolder 
+        ? "Folder" 
+        : projectData.isTemplate 
+          ? "Template" 
+          : "Project";
+      
       addNotification(
         'success',
-        'Project Created',
+        `${projectType} Created`,
         `"${projectData.name}" has been created successfully.`
       );
 
@@ -862,7 +895,10 @@ export default function WorkspaceContent() {
 
         <main className={styles.mainContent}>
           {loading ? (
-            <div className={styles.loading}>Loading workspace...</div>
+            <div className={styles.loading}>
+              <div className={styles.loadingSpinner}></div>
+              <p>Loading workspace...</p>
+            </div>
           ) : selectedProject ? (
             <>
               <header className={styles.projectHeader}>
@@ -1088,8 +1124,20 @@ export default function WorkspaceContent() {
             </>
           ) : (
             <div className={styles.noProject}>
-              <h2>No Project Selected</h2>
-              <p>Select a project from the sidebar or create a new one to get started.</p>
+              <h2>{projects.length === 0 ? "No Projects Available" : "No Project Selected"}</h2>
+              {projects.length === 0 ? (
+                <div>
+                  <p>You don't have any projects yet. Create your first project to get started.</p>
+                  <button 
+                    className={styles.createProjectButton}
+                    onClick={() => setIsProjectModalOpen(true)}
+                  >
+                    Create First Project
+                  </button>
+                </div>
+              ) : (
+                <p>Select a project from the sidebar or create a new one to get started.</p>
+              )}
             </div>
           )}
         </main>

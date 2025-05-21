@@ -138,7 +138,15 @@ export default function ProjectCreationModal({
         {showAdminWarning && (
           <div className={styles.adminNotice}>
             <i className="fas fa-shield-alt"></i>
-            <span>Admin privileges required for project creation</span>
+            <span>
+              Admin privileges required for project creation. 
+              {isFolder 
+                ? " You need admin access to create folders." 
+                : isTemplate 
+                  ? " You need admin access to create templates."
+                  : " Only organization administrators can create projects."
+              }
+            </span>
           </div>
         )}
         
@@ -337,8 +345,9 @@ export default function ProjectCreationModal({
               type="submit" 
               className={`${styles.primaryButton} ${!isAdmin ? styles.disabledButton : ''}`}
               disabled={!isAdmin}
+              title={!isAdmin ? "You need admin privileges to create projects" : ""}
             >
-              {isAdmin ? 'Create Project' : 'Admin Access Required'}
+              {isAdmin ? (isFolder ? 'Create Folder' : isTemplate ? 'Create Template' : 'Create Project') : 'Admin Access Required'}
             </button>
           </div>
         </form>

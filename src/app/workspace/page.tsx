@@ -8,11 +8,8 @@ import WorkspaceContent from "./WorkspaceContent";
 export default function WorkspacePage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
   
-  // Initialize with default project
-  useEffect(() => {
-    // Default to first project for the demo
-    setSelectedProjectId('proj-1');
-  }, []);
+  // Initialize without hardcoded project ID
+  // We'll let WorkspaceContent handle selecting the first available project naturally
   
   return (
     <TeamProvider initialProjectId={selectedProjectId}>
