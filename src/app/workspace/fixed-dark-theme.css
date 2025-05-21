@@ -1,6 +1,7 @@
 /* Dark mode styles using data-theme attribute */
 [data-theme='dark'] .workspaceContainer {
-  background-color: #121212;
+  background: linear-gradient(135deg, #1a1a1a, #121212);
+  color: #e0e0e0;
 }
   
 [data-theme='dark'] .header {

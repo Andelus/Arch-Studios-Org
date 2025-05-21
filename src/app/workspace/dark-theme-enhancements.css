@@ -1,0 +1,190 @@
+/* Enhanced dark mode styles */
+
+/* Sidebar */
+[data-theme='dark'] .sidebar {
+  background-color: rgba(24, 24, 27, 0.95);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .projectControls {
+  background: linear-gradient(to bottom, rgba(30, 30, 35, 0.8), rgba(24, 24, 27, 0.6));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='dark'] .createButton {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(79, 172, 254, 0.4);
+}
+
+[data-theme='dark'] .createButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 172, 254, 0.5);
+}
+
+[data-theme='dark'] .filterButton {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .filterButton:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] .projectItem {
+  background-color: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .projectItem:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .projectItem.active {
+  background-color: rgba(255, 255, 255, 0.07);
+  border-left: 3px solid #4facfe;
+}
+
+[data-theme='dark'] .projectName {
+  color: #e0e0e0;
+}
+
+[data-theme='dark'] .projectMeta {
+  color: #a0aec0;
+}
+
+/* Main content */
+[data-theme='dark'] .mainContent {
+  background: linear-gradient(135deg, rgba(26, 26, 30, 0.8), rgba(18, 18, 22, 0.5));
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .projectHeader {
+  background: linear-gradient(to right, rgba(30, 30, 35, 0.9), rgba(24, 24, 27, 0.7));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] .projectInfo h1 {
+  background: linear-gradient(135deg, #e0e0e0, #a0aec0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme='dark'] .projectInfo p {
+  color: #a0aec0;
+}
+
+/* Task sections */
+[data-theme='dark'] .taskBoard {
+  filter: brightness(0.95);
+}
+
+[data-theme='dark'] .taskColumn {
+  background-image: linear-gradient(to bottom, rgba(30, 30, 35, 0.8), rgba(26, 26, 30, 0.6));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] .taskColumn h3 {
+  color: #e0e0e0;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .taskCard {
+  background-color: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+[data-theme='dark'] .taskCard h4 {
+  color: #e0e0e0;
+}
+
+[data-theme='dark'] .taskCard p {
+  color: #a0aec0;
+}
+
+[data-theme='dark'] .taskCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] .assignee, 
+[data-theme='dark'] .dueDate {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #cbd5e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] .assignee:hover, 
+[data-theme='dark'] .dueDate:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Priority styles for dark theme */
+[data-theme='dark'] .low::before {
+  background: linear-gradient(to right, rgba(0, 184, 148, 0.1), transparent);
+}
+
+[data-theme='dark'] .medium::before {
+  background: linear-gradient(to right, rgba(253, 203, 110, 0.1), transparent);
+}
+
+[data-theme='dark'] .high::before {
+  background: linear-gradient(to right, rgba(255, 118, 117, 0.1), transparent);
+}
+
+/* Container styles */
+[data-theme='dark'] .assetsContainer,
+[data-theme='dark'] .communicationContainer {
+  background: linear-gradient(135deg, rgba(30, 30, 35, 0.8), rgba(26, 26, 30, 0.6));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Button styles */
+[data-theme='dark'] .addTaskButton {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #1a1a1a;
+  box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+}
+
+[data-theme='dark'] .addTaskButton:hover {
+  box-shadow: 0 6px 16px rgba(79, 172, 254, 0.4);
+}
+
+[data-theme='dark'] .teamButton {
+  background-color: rgba(104, 211, 145, 0.2);
+  color: #68d391;
+  border: 1px solid rgba(104, 211, 145, 0.3);
+}
+
+[data-theme='dark'] .teamButton:hover {
+  background-color: rgba(104, 211, 145, 0.3);
+  box-shadow: 0 4px 8px rgba(104, 211, 145, 0.2);
+}
+
+[data-theme='dark'] .deleteButton {
+  background-color: rgba(245, 101, 101, 0.2);
+  color: #fc8181;
+  border: 1px solid rgba(245, 101, 101, 0.3);
+}
+
+[data-theme='dark'] .deleteButton:hover {
+  background-color: rgba(245, 101, 101, 0.3);
+  box-shadow: 0 4px 8px rgba(245, 101, 101, 0.25);
+}
+
+/* No project message */
+[data-theme='dark'] .noProject {
+  color: #a0aec0;
+  background: linear-gradient(135deg, rgba(30, 30, 35, 0.8), rgba(26, 26, 30, 0.6));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}

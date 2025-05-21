@@ -1,0 +1,108 @@
+/* Variable and root settings for workspace */
+
+:root {
+  /* Base colors */
+  --primary-color: #4facfe;
+  --primary-hover: #00f2fe;
+  --primary-gradient: linear-gradient(135deg, #4facfe, #00f2fe);
+  
+  /* Text colors */
+  --text-color: #2d3436;
+  --muted-text: #718096;
+  --inverse-text: #ffffff;
+  
+  /* Background colors */
+  --bg-light: #ffffff;
+  --bg-off-white: #f8f9fa;
+  --bg-gradient: linear-gradient(135deg, #ffffff, #f0f4f8);
+  --hover-color: rgba(0, 0, 0, 0.03);
+  --selected-bg: var(--primary-color);
+  --selected-text: white;
+  
+  /* Border colors */
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.04);
+  
+  /* Badge colors */
+  --status-badge-bg: rgba(0, 0, 0, 0.06);
+  --status-badge-text: #4a5568;
+  --template-badge-bg: rgba(255, 154, 158, 0.2);
+  --template-badge-text: #e53e3e;
+  --folder-badge-bg: rgba(253, 203, 110, 0.2);
+  --folder-badge-text: #dd6b20;
+  
+  /* Sidebar colors */
+  --sidebar-bg: #f8f9fa;
+  --sidebar-text: #2d3436;
+  
+  /* Button colors */
+  --team-button-bg: rgba(104, 211, 145, 0.1);
+  --team-button-text: #38a169;
+  --team-button-hover: rgba(104, 211, 145, 0.2);
+  --delete-button-bg: rgba(245, 101, 101, 0.1);
+  --delete-button-text: #e53e3e;
+  --delete-button-hover: rgba(245, 101, 101, 0.2);
+  --secondary-bg: #f1f1f1;
+  
+  /* Task priority colors */
+  --priority-low: #00b894;
+  --priority-medium: #fdcb6e;
+  --priority-high: #ff7675;
+  
+  /* Shadow values */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-focus: 0 0 0 3px rgba(79, 172, 254, 0.4);
+  
+  /* Spacing values */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  /* Transitions */
+  --transition-fast: 0.2s;
+  --transition-normal: 0.3s;
+  --transition-slow: 0.5s;
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Dark theme variables */
+[data-theme='dark'] {
+  --text-color: #e0e0e0;
+  --muted-text: #a0aec0;
+  --inverse-text: #1a1a1a;
+  
+  --bg-light: #1a1a1a;
+  --bg-off-white: #242424;
+  --bg-gradient: linear-gradient(135deg, #1a1a1a, #121212);
+  --hover-color: rgba(255, 255, 255, 0.05);
+  --selected-bg: #4facfe;
+  --selected-text: #1a1a1a;
+  
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.04);
+  
+  --status-badge-bg: rgba(255, 255, 255, 0.1);
+  --status-badge-text: #e0e0e0;
+  
+  --sidebar-bg: #1a1a1a;
+  --sidebar-text: #e0e0e0;
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.35);
+}

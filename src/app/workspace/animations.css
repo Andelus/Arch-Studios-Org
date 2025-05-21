@@ -1,0 +1,152 @@
+/* Animation and micro-interactions for Workspace UI */
+
+/* Project item hover animation */
+.projectItem {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.3s ease, 
+              background-color 0.3s ease;
+}
+
+/* Task card animations */
+.taskCard {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.3s ease, 
+              background-color 0.3s ease;
+}
+
+/* Button press animation */
+.createButton, 
+.filterButton,
+.viewButton,
+.tabButton,
+.addTaskButton,
+.teamButton,
+.deleteButton {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.3s ease, 
+              background-color 0.2s ease;
+}
+
+.createButton:active, 
+.filterButton:active,
+.viewButton:active,
+.tabButton:active,
+.addTaskButton:active,
+.teamButton:active,
+.deleteButton:active {
+  transform: scale(0.95);
+}
+
+/* Button hover effect */
+.createButton:before,
+.addTaskButton:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+                              rgba(255,255,255,0), 
+                              rgba(255,255,255,0.3), 
+                              rgba(255,255,255,0));
+  transition: left 0.6s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.createButton:hover:before,
+.addTaskButton:hover:before {
+  left: 100%;
+}
+
+/* Badge animations */
+.templateBadge, 
+.folderBadge,
+.status {
+  transition: all 0.25s ease;
+}
+
+.templateBadge:hover, 
+.folderBadge:hover,
+.status:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* Task column hover effects */
+.taskColumn {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.taskColumn:hover {
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.08);
+}
+
+/* Smooth scrolling for containers */
+.projectList,
+.taskColumn,
+.assetsContainer,
+.communicationContainer,
+.mainContent {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles for better accessibility */
+button:focus-visible,
+.projectItem:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Loading animation */
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.loading {
+  animation: pulse 1.5s infinite;
+}
+
+/* Project item appear animation - can be applied dynamically with JavaScript */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.projectItem {
+  animation: slideInUp 0.3s ease forwards;
+}
+
+/* Stagger child animations */
+.projectItem:nth-child(1) { animation-delay: 0.05s; }
+.projectItem:nth-child(2) { animation-delay: 0.10s; }
+.projectItem:nth-child(3) { animation-delay: 0.15s; }
+.projectItem:nth-child(4) { animation-delay: 0.20s; }
+.projectItem:nth-child(5) { animation-delay: 0.25s; }
+.projectItem:nth-child(6) { animation-delay: 0.30s; }
+.projectItem:nth-child(7) { animation-delay: 0.35s; }
+
+/* Tab transition */
+.tabButton::after {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Task organization animations */
+.taskColumn h3 {
+  transition: all 0.3s ease;
+}

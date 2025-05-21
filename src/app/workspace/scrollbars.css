@@ -1,0 +1,80 @@
+/* Custom scrollbar styling for the workspace */
+
+/* WebKit browsers (Chrome, Safari, Edge) */
+.projectList::-webkit-scrollbar,
+.taskColumn::-webkit-scrollbar,
+.assetsContainer::-webkit-scrollbar,
+.communicationContainer::-webkit-scrollbar,
+.mainContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.projectList::-webkit-scrollbar-track,
+.taskColumn::-webkit-scrollbar-track,
+.assetsContainer::-webkit-scrollbar-track,
+.communicationContainer::-webkit-scrollbar-track,
+.mainContent::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+}
+
+.projectList::-webkit-scrollbar-thumb,
+.taskColumn::-webkit-scrollbar-thumb,
+.assetsContainer::-webkit-scrollbar-thumb,
+.communicationContainer::-webkit-scrollbar-thumb,
+.mainContent::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.projectList::-webkit-scrollbar-thumb:hover,
+.taskColumn::-webkit-scrollbar-thumb:hover,
+.assetsContainer::-webkit-scrollbar-thumb:hover,
+.communicationContainer::-webkit-scrollbar-thumb:hover,
+.mainContent::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Dark theme scrollbar */
+[data-theme='dark'] .projectList::-webkit-scrollbar-track,
+[data-theme='dark'] .taskColumn::-webkit-scrollbar-track,
+[data-theme='dark'] .assetsContainer::-webkit-scrollbar-track,
+[data-theme='dark'] .communicationContainer::-webkit-scrollbar-track,
+[data-theme='dark'] .mainContent::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] .projectList::-webkit-scrollbar-thumb,
+[data-theme='dark'] .taskColumn::-webkit-scrollbar-thumb,
+[data-theme='dark'] .assetsContainer::-webkit-scrollbar-thumb,
+[data-theme='dark'] .communicationContainer::-webkit-scrollbar-thumb,
+[data-theme='dark'] .mainContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .projectList::-webkit-scrollbar-thumb:hover,
+[data-theme='dark'] .taskColumn::-webkit-scrollbar-thumb:hover,
+[data-theme='dark'] .assetsContainer::-webkit-scrollbar-thumb:hover,
+[data-theme='dark'] .communicationContainer::-webkit-scrollbar-thumb:hover,
+[data-theme='dark'] .mainContent::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Firefox scrollbar */
+.projectList,
+.taskColumn,
+.assetsContainer,
+.communicationContainer,
+.mainContent {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='dark'] .projectList,
+[data-theme='dark'] .taskColumn,
+[data-theme='dark'] .assetsContainer,
+[data-theme='dark'] .communicationContainer,
+[data-theme='dark'] .mainContent {
+  scrollbar-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.03);
+}
