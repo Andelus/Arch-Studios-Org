@@ -37,23 +37,45 @@ export function useNotifications() {
     
     try {
       setIsLoading(true);
-      // Get token and create authenticated client
-      const token = getToken ? await getToken({ template: 'supabase' }) : null;
-      const authenticatedClient = token ? 
-        createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-          {
-            global: {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      
+      // Get Supabase JWT from Clerk
+      let client = supabase;
+      
+      try {
+        // Only get token if getToken is available
+        if (getToken) {
+          const token = await getToken({ 
+            template: 'supabase',
+            skipCache: false // Use cached token when possible
+          });
+          
+          if (token) {
+            // Create a new Supabase client with auth header
+            client = createClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+              {
+                auth: {
+                  autoRefreshToken: false,
+                  persistSession: false,
+                  detectSessionInUrl: false
+                },
+                global: {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                  }
+                }
               }
-            }
+            );
           }
-        ) : supabase;
+        }
+      } catch (tokenError) {
+        console.error('Error getting token:', tokenError);
+        // Continue with default supabase client
+      }
         
-      const { data, error } = await authenticatedClient
+      const { data, error } = await client
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
@@ -131,23 +153,44 @@ export function useNotifications() {
     // If user is signed in, also save to database
     if (isSignedIn && userId) {
       try {
-        // Get token for authentication
-        const token = getToken ? await getToken({ template: 'supabase' }) : null;
-        const authenticatedClient = token ? 
-          createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            {
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        // Get Supabase JWT from Clerk
+        let client = supabase;
+        
+        try {
+          // Only get token if getToken is available
+          if (getToken) {
+            const token = await getToken({ 
+              template: 'supabase',
+              skipCache: false // Use cached token when possible
+            });
+            
+            if (token) {
+              // Create a new Supabase client with auth header
+              client = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false
+                  },
+                  global: {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    }
+                  }
                 }
-              }
+              );
             }
-          ) : supabase;
+          }
+        } catch (tokenError) {
+          console.error('Error getting token:', tokenError);
+          // Continue with default supabase client
+        }
           
-        await authenticatedClient.from('notifications').insert({
+        await client.from('notifications').insert({
           id: newNotification.id,
           user_id: userId,
           type,
@@ -189,23 +232,44 @@ export function useNotifications() {
     // If user is signed in, update in database
     if (isSignedIn && userId) {
       try {
-        // Get token for authentication
-        const token = getToken ? await getToken({ template: 'supabase' }) : null;
-        const authenticatedClient = token ? 
-          createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            {
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        // Get Supabase JWT from Clerk
+        let client = supabase;
+        
+        try {
+          // Only get token if getToken is available
+          if (getToken) {
+            const token = await getToken({ 
+              template: 'supabase',
+              skipCache: false // Use cached token when possible
+            });
+            
+            if (token) {
+              // Create a new Supabase client with auth header
+              client = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false
+                  },
+                  global: {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    }
+                  }
                 }
-              }
+              );
             }
-          ) : supabase;
+          }
+        } catch (tokenError) {
+          console.error('Error getting token:', tokenError);
+          // Continue with default supabase client
+        }
           
-        await authenticatedClient
+        await client
           .from('notifications')
           .update({ is_read: true })
           .eq('id', id)
@@ -231,23 +295,44 @@ export function useNotifications() {
     // If user is signed in, update all in database
     if (isSignedIn && userId) {
       try {
-        // Get token for authentication
-        const token = getToken ? await getToken({ template: 'supabase' }) : null;
-        const authenticatedClient = token ? 
-          createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            {
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        // Get Supabase JWT from Clerk
+        let client = supabase;
+        
+        try {
+          // Only get token if getToken is available
+          if (getToken) {
+            const token = await getToken({ 
+              template: 'supabase',
+              skipCache: false // Use cached token when possible
+            });
+            
+            if (token) {
+              // Create a new Supabase client with auth header
+              client = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false
+                  },
+                  global: {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    }
+                  }
                 }
-              }
+              );
             }
-          ) : supabase;
+          }
+        } catch (tokenError) {
+          console.error('Error getting token:', tokenError);
+          // Continue with default supabase client
+        }
           
-        await authenticatedClient
+        await client
           .from('notifications')
           .update({ is_read: true })
           .eq('user_id', userId)
@@ -271,23 +356,44 @@ export function useNotifications() {
     // If user is signed in, delete from database
     if (isSignedIn && userId) {
       try {
-        // Get token for authentication
-        const token = getToken ? await getToken({ template: 'supabase' }) : null;
-        const authenticatedClient = token ? 
-          createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            {
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        // Get Supabase JWT from Clerk
+        let client = supabase;
+        
+        try {
+          // Only get token if getToken is available
+          if (getToken) {
+            const token = await getToken({ 
+              template: 'supabase',
+              skipCache: false // Use cached token when possible
+            });
+            
+            if (token) {
+              // Create a new Supabase client with auth header
+              client = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false
+                  },
+                  global: {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    }
+                  }
                 }
-              }
+              );
             }
-          ) : supabase;
+          }
+        } catch (tokenError) {
+          console.error('Error getting token:', tokenError);
+          // Continue with default supabase client
+        }
           
-        await authenticatedClient
+        await client
           .from('notifications')
           .delete()
           .eq('id', id)
@@ -308,23 +414,44 @@ export function useNotifications() {
     // If user is signed in, delete all from database
     if (isSignedIn && userId) {
       try {
-        // Get token for authentication
-        const token = getToken ? await getToken({ template: 'supabase' }) : null;
-        const authenticatedClient = token ? 
-          createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            {
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        // Get Supabase JWT from Clerk
+        let client = supabase;
+        
+        try {
+          // Only get token if getToken is available
+          if (getToken) {
+            const token = await getToken({ 
+              template: 'supabase',
+              skipCache: false // Use cached token when possible
+            });
+            
+            if (token) {
+              // Create a new Supabase client with auth header
+              client = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false
+                  },
+                  global: {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    }
+                  }
                 }
-              }
+              );
             }
-          ) : supabase;
+          }
+        } catch (tokenError) {
+          console.error('Error getting token:', tokenError);
+          // Continue with default supabase client
+        }
           
-        await authenticatedClient
+        await client
           .from('notifications')
           .delete()
           .eq('user_id', userId);

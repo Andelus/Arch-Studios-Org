@@ -75,12 +75,7 @@ export function useProjectRealtime({
           const { data } = await supabase
             .from('tasks')
             .select(`
-              *,
-              profiles(
-                email,
-                display_name,
-                avatar_url
-              )
+              *
             `)
             .eq('project_id', projectId);
 
@@ -90,7 +85,7 @@ export function useProjectRealtime({
               title: task.title,
               description: task.description,
               status: task.status,
-              assignee: task.profiles?.display_name,
+              assignee: task.assignee_email ? task.assignee_email.split('@')[0] : 'Unassigned',
               dueDate: task.due_date,
               priority: task.priority,
               projectId: task.project_id
@@ -118,20 +113,15 @@ export function useProjectRealtime({
           const { data } = await supabase
             .from('project_members')
             .select(`
-              *,
-              profiles(
-                email,
-                display_name,
-                avatar_url
-              )
+              *
             `)
             .eq('project_id', projectId);
 
           if (data) {
             const members: ProjectMember[] = data.map(member => ({
               id: member.user_id,
-              name: member.profiles?.display_name || 'Unknown',
-              avatar: member.profiles?.avatar_url || '/avatars/default.jpg',
+              name: member.email ? member.email.split('@')[0] : 'Unknown',
+              avatar: '/avatars/default.jpg',
               role: member.role,
               status: member.status,
               permission: member.permission

@@ -210,6 +210,83 @@ CREATE POLICY \\\"Users can view members of their projects\\\"
   );
 \"}" > /dev/null
 
+echo "Running SQL fix for profile relationships..."
+curl -s -X POST "https://api.supabase.com/v1/sql" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"ref\": \"$PROJECT_REF\", \"query\": \"
+-- Add the necessary columns to project_members table if they don't exist
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS sender_name TEXT;
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS sender_email TEXT;
+
+-- Add similar columns to messages table if they don't exist
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_name TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_email TEXT;
+
+-- Add similar columns to tasks table if it exists
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_name TEXT;
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_email TEXT;
+  END IF;
+END
+\$\$;
+
+-- Update project_members table to store user email
+UPDATE project_members
+SET sender_email = email
+WHERE sender_email IS NULL;
+
+-- Check if we need to migrate any data from profiles to project_members
+DO \$\$
+BEGIN
+  -- Instead of trying to join on a possibly non-existent column,
+  -- let's be more cautious about profile data
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'profiles'
+  ) AND EXISTS (
+    SELECT FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'profiles'
+    AND column_name = 'display_name'
+  ) THEN
+    -- Update existing records if display_name column exists
+    EXECUTE '
+      UPDATE project_members
+      SET sender_name = p.display_name
+      FROM profiles p
+      WHERE p.email = project_members.email
+      AND project_members.sender_name IS NULL
+    ';
+  ELSE
+    -- If profiles table doesn't exist or doesn't have display_name column,
+    -- use email as fallback for sender_name
+    UPDATE project_members
+    SET sender_name = email
+    WHERE sender_email IS NOT NULL 
+    AND sender_name IS NULL;
+  END IF;
+END
+\$\$;
+
+-- Create indexes for project_members
+CREATE INDEX IF NOT EXISTS idx_project_members_sender_email ON project_members(sender_email);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_email ON messages(sender_email);
+
+-- Create index on tasks table if it exists
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_tasks_assignee_email ON tasks(assignee_email)';
+  END IF;
+END
+\$\$;
+\"}" > /dev/null
+
 echo "Database fixes completed successfully!"
 echo "The following issues have been resolved:"
 echo "1. Notifications authorization (401 error)"
