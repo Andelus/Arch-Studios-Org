@@ -162,8 +162,57 @@ CREATE POLICY \\\"Project admins can delete their projects\\\"
 GRANT SELECT, INSERT, UPDATE, DELETE ON projects TO authenticated;
 \"}" > /dev/null
 
+echo "Running SQL fix for profiles table..."
+curl -s -X POST "https://api.supabase.com/v1/sql" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"ref\": \"$PROJECT_REF\", \"query\": \"
+-- Create profiles table for user profile information if it doesn't exist
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT UNIQUE,
+  display_name TEXT,
+  avatar_url TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add Row Level Security to profiles table
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS \\\"Users can view their own profile\\\" ON profiles;
+DROP POLICY IF EXISTS \\\"Users can update their own profile\\\" ON profiles;
+
+-- Policy to allow users to view their own profile
+CREATE POLICY \\\"Users can view their own profile\\\"
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
+
+-- Policy to allow users to update their own profile
+CREATE POLICY \\\"Users can update their own profile\\\"
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+-- Create user_id index on project_members for faster lookups
+CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON project_members(user_id);
+
+-- Update RLS policy for project_members to include proper email joins
+DROP POLICY IF EXISTS \\\"Users can view members of their projects\\\" ON project_members;
+CREATE POLICY \\\"Users can view members of their projects\\\"
+  ON project_members FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM project_members AS pm
+      WHERE pm.project_id = project_members.project_id
+      AND pm.user_id = auth.uid()::TEXT
+    )
+  );
+\"}" > /dev/null
+
 echo "Database fixes completed successfully!"
 echo "The following issues have been resolved:"
 echo "1. Notifications authorization (401 error)"
 echo "2. Project foreign key constraint (400 PGRST200 error)"
 echo "3. Row Level Security policies for projects table"
+echo "4. Profiles table creation and permissions"

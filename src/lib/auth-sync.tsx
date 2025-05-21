@@ -25,10 +25,10 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           return; // Exit early if env vars are missing
         }
         
-        // Get token from Clerk using the Supabase template with refreshOptions
+        // Get token from Clerk using the Supabase template
         const token = await getToken({ 
           template: 'supabase',
-          skipCache: true // Always get a fresh token to avoid expiry issues
+          skipCache: false // Use cached token if available to prevent generating too many tokens
         });
         
         // Log token details for debugging (only in development)
@@ -60,11 +60,16 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
                 const decoded = JSON.parse(atob(payload));
                 console.log('Auth token contains user ID:', decoded.sub);
                 
-                // Make a test request to validate the token works with Supabase
+                // Create a single client for testing token auth
                 const testClient = createClient(
                   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
                   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
                   {
+                    auth: {
+                      autoRefreshToken: false,
+                      persistSession: false,
+                      detectSessionInUrl: false
+                    },
                     global: {
                       headers: {
                         Authorization: `Bearer ${token}`,
@@ -78,6 +83,8 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
                 testClient.auth.getUser().then(result => {
                   if (result.error) {
                     console.error('Auth verification failed:', result.error);
+                    // If token verification fails, clear the stored token
+                    sessionStorage.removeItem('supabase_auth_token');
                   } else {
                     console.log('Auth token verified successfully with Supabase');
                   }
