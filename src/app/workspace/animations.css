@@ -21,7 +21,8 @@
 .tabButton,
 .addTaskButton,
 .teamButton,
-.deleteButton {
+.deleteButton,
+.createProjectButton {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
               box-shadow 0.3s ease, 
               background-color 0.2s ease;
@@ -33,7 +34,8 @@
 .tabButton:active,
 .addTaskButton:active,
 .teamButton:active,
-.deleteButton:active {
+.deleteButton:active,
+.createProjectButton:active {
   transform: scale(0.95);
 }
 

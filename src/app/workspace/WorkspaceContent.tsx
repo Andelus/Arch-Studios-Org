@@ -103,8 +103,12 @@ export default function WorkspaceContent() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
+        
+        // If we got null or undefined projectsData, treat it as an empty array
+        const safeProjectsData = projectsData || [];
+        console.log(`Found ${safeProjectsData.length} projects for organization ${organization.id}`);
 
-        const formattedProjects: Project[] = projectsData.map((proj: any) => ({
+        const formattedProjects: Project[] = safeProjectsData.map((proj: any) => ({
           id: proj.id,
           name: proj.name,
           description: proj.description,
@@ -145,50 +149,68 @@ export default function WorkspaceContent() {
           console.log("No projects found - displaying empty state");
           setSelectedProject(null);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading projects:', error);
-        addNotification(
-          'error',
-          'Failed to load projects',
-          'There was an error loading your projects. Please try again.'
-        );
+        
+        // Only show error notification if this is an actual error, not just empty projects
+        if (error.code !== 'PGRST116') { // This is not a "no rows returned" error
+          addNotification(
+            'error',
+            'Failed to load projects',
+            'There was an error loading your projects. Please try again.'
+          );
+        } else {
+          console.log('No projects found, but this is not an error condition');
+        }
+        
+        // Always make sure to set loading to false even when there's an error
+        setLoading(false);
       }
     };
 
     loadProjects();
 
-    // Set up real-time subscription for projects
-    const projectsSubscription = (supabase
-      .channel('projects-channel') as any)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'projects',
-        filter: `organization_id=eq.${organization?.id}`
-      }, (payload: any) => {
-        loadProjects();
-      })
-      .subscribe();
+    // Set up real-time subscription for projects (only if organization exists)
+    let projectsSubscription: { unsubscribe: () => void } | undefined;
+    if (organization?.id) {
+      projectsSubscription = (supabase
+        .channel('projects-channel'))
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `organization_id=eq.${organization.id}`
+        }, (payload: any) => {
+          console.log('Project change detected:', payload.eventType);
+          loadProjects();
+        })
+        .subscribe();
+    }
 
     return () => {
-      projectsSubscription.unsubscribe();
+      if (projectsSubscription) {
+        projectsSubscription.unsubscribe();
+      }
     };
   }, [isSignedIn, organization, addNotification, selectedProject]);
 
   // Load initial data when component mounts
   useEffect(() => {
-    if (isLoaded) {
-      // Start with loading state true until data is fully loaded
+    // Set initial loading state
+    if (!isLoaded) {
       setLoading(true);
-      
-      // If organization data is available, the projects effect will handle the loading state
-      if (organization) {
-        console.log("Organization data available:", organization.name);
-      } else {
-        // If no organization data, set loading false to show empty state
-        console.log("No organization data available yet");
-        setLoading(false);
-      }
+      return;
+    }
+    
+    // Once auth is loaded, determine if we have org data
+    if (organization) {
+      // Organization data is available, the projects effect will handle loading state
+      console.log("Organization data available:", organization.name);
+      // Loading will be set to false after projects are loaded (or if there's an error)
+    } else {
+      // No organization data, show empty state
+      console.log("No organization data available yet");
+      setLoading(false);
     }
   }, [isLoaded, organization]);
 
@@ -331,7 +353,7 @@ export default function WorkspaceContent() {
     // If checking for general permissions (no specific project)
     if (!projectId) {
       // If there are no projects yet and the user belongs to the organization, treat them as admin
-      if (projects.length === 0 && organization) {
+      if ((projects || []).length === 0 && organization) {
         // User belongs to the organization and no projects exist yet - first user is considered admin
         console.log("No projects exist yet - granting admin privileges to create first project");
         return true;
@@ -552,10 +574,16 @@ export default function WorkspaceContent() {
     }
 
     try {
-      // Simplified organization check - allow creation if user is signed in
+      // Check for organization context
       const orgId = organization?.id;
       if (!orgId) {
-        console.warn('No organization ID found, creating project without organization context');
+        console.warn('No organization ID found - cannot create project');
+        addNotification(
+          'error',
+          'Organization Required',
+          'You need to be part of an organization to create projects. Please set up your organization first.'
+        );
+        return;
       }
 
       // Skip subscription check for admin users
@@ -873,23 +901,29 @@ export default function WorkspaceContent() {
           </div>
 
           <div className={styles.projectList}>
-            {(activeFilter ? filteredProjects : projects).map(project => (
-              <div
-                key={project.id}
-                className={`${styles.projectItem} ${
-                  selectedProject?.id === project.id ? styles.active : ''
-                }`}
-                onClick={() => setSelectedProject(project)}
-              >
-                <span className={styles.projectName}>{project.name}</span>
-                {project.isTemplate && <span className={styles.templateBadge}>Template</span>}
-                {project.isFolder && <span className={styles.folderBadge}>Folder</span>}
-                <div className={styles.projectMeta}>
-                  <span className={styles.status}>{project.status}</span>
-                  <span className={styles.progress}>{project.progress}%</span>
+            {projects && projects.length > 0 ? (
+              (activeFilter ? filteredProjects : projects).map(project => (
+                <div
+                  key={project.id}
+                  className={`${styles.projectItem} ${
+                    selectedProject?.id === project.id ? styles.active : ''
+                  }`}
+                  onClick={() => setSelectedProject(project)}
+                >
+                  <span className={styles.projectName}>{project.name}</span>
+                  {project.isTemplate && <span className={styles.templateBadge}>Template</span>}
+                  {project.isFolder && <span className={styles.folderBadge}>Folder</span>}
+                  <div className={styles.projectMeta}>
+                    <span className={styles.status}>{project.status}</span>
+                    <span className={styles.progress}>{project.progress}%</span>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className={styles.emptyProjectList}>
+                <p>No projects found</p>
               </div>
-            ))}
+            )}
           </div>
         </aside>
 
@@ -1151,7 +1185,7 @@ export default function WorkspaceContent() {
           createAsFolder={createAsFolder}
           createAsTemplate={createAsTemplate}
           isAdmin={isUserAdmin()}
-          templates={projects.filter(p => p.isTemplate)}
+          templates={(projects || []).filter(p => p && p.isTemplate)}
         />
       )}
 
