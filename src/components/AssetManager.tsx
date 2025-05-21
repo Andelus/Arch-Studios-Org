@@ -248,6 +248,8 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
       <div className={styles.assetActions}>
         <label className={styles.selectAllCheckbox}>
           <input 
+            id="select-all-assets"
+            name="select-all-assets"
             type="checkbox" 
             checked={selectedAssets.length > 0 && selectedAssets.length === filteredAssets.length}
             onChange={handleSelectAll}
@@ -313,6 +315,8 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
             )}
             <div className={styles.assetItemHeader}>
               <input 
+                id={`asset-select-${asset.id}`}
+                name={`asset-select-${asset.id}`}
                 type="checkbox" 
                 checked={selectedAssets.includes(asset.id)}
                 onChange={() => handleSelectAsset(asset.id)}
@@ -398,12 +402,13 @@ const AssetManager = forwardRef<{openUploadModal: () => void}, AssetManagerProps
                 {!uploadFile ? (
                   <div className={styles.dropZoneInner}>
                     <i className="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & drop file here, or click to select</p>              <input 
-                type="file"
-                id="file-upload"
-                name="file-upload"
-                onChange={handleFileChange}
-              />
+                    <p>Drag & drop file here, or click to select</p>
+                    <input 
+                      type="file"
+                      id="file-upload"
+                      name="file-upload"
+                      onChange={handleFileChange}
+                    />
                   </div>
                 ) : (
                   <div className={styles.selectedFile}>

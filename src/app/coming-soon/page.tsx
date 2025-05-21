@@ -343,6 +343,8 @@ function ImageEditorContent() {
                     <p>Upload a reference image to start</p>
                     <label className={styles.uploadButton}>
                       <input 
+                        id="reference-image-upload"
+                        name="reference-image-upload"
                         type="file" 
                         accept="image/*" 
                         onChange={handleImageUpload}
@@ -479,6 +481,8 @@ function ImageEditorContent() {
                     <p>Upload an image to edit</p>
                     <label className={styles.uploadButton}>
                       <input 
+                        id="edit-image-upload"
+                        name="edit-image-upload"
                         type="file" 
                         accept="image/*" 
                         onChange={handleImageUpload}

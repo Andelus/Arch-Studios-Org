@@ -260,6 +260,8 @@ export default function ProjectCreationModal({
               <div className={`${styles.formGroup} ${styles.checkboxGroup}`}>
                 <label className={styles.checkboxLabel}>
                   <input
+                    id="folder-checkbox"
+                    name="folder-checkbox"
                     type="checkbox"
                     checked={isFolder}
                     onChange={(e) => setIsFolder(e.target.checked)}
@@ -277,6 +279,8 @@ export default function ProjectCreationModal({
             <div className={`${styles.formGroup} ${styles.checkboxGroup}`}>
               <label className={styles.checkboxLabel}>
                 <input
+                  id="private-checkbox"
+                  name="private-checkbox"
                   type="checkbox"
                   checked={isPrivate}
                   onChange={(e) => setIsPrivate(e.target.checked)}
@@ -293,6 +297,8 @@ export default function ProjectCreationModal({
               <div className={`${styles.formGroup} ${styles.checkboxGroup}`}>
                 <label className={styles.checkboxLabel}>
                   <input
+                    id="template-checkbox"
+                    name="template-checkbox"
                     type="checkbox"
                     checked={isTemplate}
                     onChange={(e) => setIsTemplate(e.target.checked)}

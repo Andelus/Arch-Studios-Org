@@ -137,6 +137,8 @@ export default function TeamManagementModal({
                         <td>
                           {editingMemberId === member.id ? (
                             <input 
+                              id={`member-role-${member.id}`}
+                              name={`member-role-${member.id}`}
                               type="text" 
                               value={member.role}
                               onChange={(e) => onUpdateMember(member.id, { role: e.target.value })}
