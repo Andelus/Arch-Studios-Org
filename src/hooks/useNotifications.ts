@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Notification } from '@/components/NotificationCenter';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@clerk/nextjs';
+import { createClient } from '@supabase/supabase-js';
 
 // Helper function to generate a unique ID
 const generateId = () => {
@@ -28,7 +29,7 @@ export function useNotifications() {
   // Initialize from localStorage for immediate state, and then fill from database
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { userId, isSignedIn, isLoaded } = useAuth();
+  const { userId, isSignedIn, isLoaded, getToken } = useAuth();
   
   // Function to fetch notifications from the database
   const fetchNotifications = useCallback(async () => {
@@ -36,7 +37,23 @@ export function useNotifications() {
     
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      // Get token and create authenticated client
+      const token = getToken ? await getToken({ template: 'supabase' }) : null;
+      const authenticatedClient = token ? 
+        createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+              }
+            }
+          }
+        ) : supabase;
+        
+      const { data, error } = await authenticatedClient
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
@@ -114,7 +131,23 @@ export function useNotifications() {
     // If user is signed in, also save to database
     if (isSignedIn && userId) {
       try {
-        await supabase.from('notifications').insert({
+        // Get token for authentication
+        const token = getToken ? await getToken({ template: 'supabase' }) : null;
+        const authenticatedClient = token ? 
+          createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                }
+              }
+            }
+          ) : supabase;
+          
+        await authenticatedClient.from('notifications').insert({
           id: newNotification.id,
           user_id: userId,
           type,
@@ -156,7 +189,23 @@ export function useNotifications() {
     // If user is signed in, update in database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get token for authentication
+        const token = getToken ? await getToken({ template: 'supabase' }) : null;
+        const authenticatedClient = token ? 
+          createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                }
+              }
+            }
+          ) : supabase;
+          
+        await authenticatedClient
           .from('notifications')
           .update({ is_read: true })
           .eq('id', id)
@@ -182,7 +231,23 @@ export function useNotifications() {
     // If user is signed in, update all in database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get token for authentication
+        const token = getToken ? await getToken({ template: 'supabase' }) : null;
+        const authenticatedClient = token ? 
+          createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                }
+              }
+            }
+          ) : supabase;
+          
+        await authenticatedClient
           .from('notifications')
           .update({ is_read: true })
           .eq('user_id', userId)
@@ -206,7 +271,23 @@ export function useNotifications() {
     // If user is signed in, delete from database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get token for authentication
+        const token = getToken ? await getToken({ template: 'supabase' }) : null;
+        const authenticatedClient = token ? 
+          createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                }
+              }
+            }
+          ) : supabase;
+          
+        await authenticatedClient
           .from('notifications')
           .delete()
           .eq('id', id)
@@ -227,7 +308,23 @@ export function useNotifications() {
     // If user is signed in, delete all from database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get token for authentication
+        const token = getToken ? await getToken({ template: 'supabase' }) : null;
+        const authenticatedClient = token ? 
+          createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                }
+              }
+            }
+          ) : supabase;
+          
+        await authenticatedClient
           .from('notifications')
           .delete()
           .eq('user_id', userId);

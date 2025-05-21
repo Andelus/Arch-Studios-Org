@@ -3,13 +3,14 @@
 import { useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { supabaseClientAnon } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * This component syncs Clerk authentication with Supabase.
  * It should be placed high in the component tree where authentication is needed.
  */
 export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
 
   useEffect(() => {
     // Function to set the auth cookie for Supabase based on Clerk token
@@ -24,14 +25,21 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           return; // Exit early if env vars are missing
         }
         
-        // Get token from Clerk using the Supabase template
-        const token = await getToken({ template: 'supabase' });
+        // Get token from Clerk using the Supabase template with refreshOptions
+        const token = await getToken({ 
+          template: 'supabase',
+          skipCache: true // Always get a fresh token to avoid expiry issues
+        });
         
         // Log token details for debugging (only in development)
         if (process.env.NODE_ENV === 'development' && token) {
           const [header, payload] = token.split('.').slice(0, 2);
-          console.log('JWT Header:', JSON.parse(atob(header)));
-          console.log('JWT Payload:', JSON.parse(atob(payload)));
+          try {
+            console.log('JWT Header:', JSON.parse(atob(header)));
+            console.log('JWT Payload:', JSON.parse(atob(payload)));
+          } catch (e) {
+            console.error('Error parsing JWT:', e);
+          }
         }
         
         if (token) {
@@ -47,9 +55,36 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
               console.log('Successfully stored auth token for header-based authentication');
               
               // Test authentication is working by logging JWT payload
-              const [header, payload] = token.split('.').slice(0, 2);
-              const decoded = JSON.parse(atob(payload));
-              console.log('Auth token contains user ID:', decoded.sub);
+              try {
+                const [header, payload] = token.split('.').slice(0, 2);
+                const decoded = JSON.parse(atob(payload));
+                console.log('Auth token contains user ID:', decoded.sub);
+                
+                // Make a test request to validate the token works with Supabase
+                const testClient = createClient(
+                  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                  {
+                    global: {
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                      }
+                    }
+                  }
+                );
+                
+                // Make a simple authenticated request to verify token works
+                testClient.auth.getUser().then(result => {
+                  if (result.error) {
+                    console.error('Auth verification failed:', result.error);
+                  } else {
+                    console.log('Auth token verified successfully with Supabase');
+                  }
+                });
+              } catch (e) {
+                console.error('Error decoding token:', e);
+              }
             } catch (e) {
               console.error('Error storing token:', e);
             }
