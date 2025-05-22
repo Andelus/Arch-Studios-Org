@@ -11,8 +11,14 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "sync-uuids": "npx tsx scripts/sync-auth-uuids.ts",
+    "db:fix": "npx tsx scripts/run-db-fix.ts",
+    "db:run-sql": "npx tsx scripts/run-sql-script.ts",
+    "db:fix-rls-only": "npx tsx scripts/run-sql-script.ts fix-rls-policies-only.sql",
+    "db:direct": "./scripts/run-sql-direct.sh",
+    "db:fix-direct-only": "./scripts/run-sql-direct.sh scripts/fix-rls-policies-only.sql",
     "test:invitation-notification": "node scripts/test-invitation-notification.mjs",
-    "test:invitation-flow": "node scripts/test-invitation-flow.mjs"
+    "test:invitation-flow": "node scripts/test-invitation-flow.mjs",
+    "test:auth": "curl -X GET http://localhost:3000/api/debug/supabase-check"
   },
   "dependencies": {
     "@clerk/backend": "^1.32.2",

@@ -2,10 +2,11 @@
 
 ## Problem Overview
 
-Clerk user IDs are string-based (e.g., "user_2Xabcd123"), but Supabase's `profiles` table requires valid UUIDs (e.g., "123e4567-e89b-12d3-a456-426614174000") for its primary key. This mismatch causes two major issues:
+We encountered two related but distinct UUID compatibility issues:
 
-1. When trying to insert a new profile with a Clerk ID directly, Supabase rejects it as an invalid UUID
-2. Foreign key relationships to `profiles` fail when trying to use Clerk IDs
+1. **Clerk and Supabase ID Mismatch**: Clerk user IDs are string-based (e.g., "user_2Xabcd123"), but Supabase's `profiles` table requires valid UUIDs (e.g., "123e4567-e89b-12d3-a456-426614174000") for its primary key.
+
+2. **RLS Policy Type Mismatch**: PostgreSQL Row Level Security (RLS) policies were failing with errors like `operator does not exist: uuid = text` when comparing IDs without explicit type casting.
 
 ## Solution Implemented
 
@@ -90,8 +91,40 @@ To test the UUID compatibility fix:
 2. Monitor Clerk webhook events in the logs when new users sign up
 3. Verify UUID mapping in Clerk by using the Clerk dashboard to inspect user metadata
 
+## RLS Policy Fix Implementation
+
+We encountered persistent issues with altering database columns due to RLS policy dependencies. After multiple approaches, we implemented a solution that focuses on explicit type casting in RLS policies:
+
+### Problem
+- SQL errors: `operator does not exist: uuid = text` in RLS policies
+- Authentication failures when accessing protected endpoints
+- Policies failing to match Clerk JWT claims with database UUIDs
+
+### Solution
+We updated all RLS policies to include proper type casting:
+
+```sql
+-- Example of fixed policy with type casting
+CREATE POLICY "Users can view their own notifications"
+  ON notifications FOR SELECT
+  USING (
+    (auth.uid() = user_id::UUID) OR 
+    (user_id::TEXT = current_setting('request.jwt.claims', true)::json->>'sub') OR
+    (email IS NOT NULL AND email = current_setting('request.jwt.claims', true)::json->>'email')
+  );
+```
+
+### Applied Fix
+To apply the RLS policy fixes, run:
+```bash
+npm run db:fix-rls-only
+```
+
+This script only updates policies, avoiding schema changes that were causing errors.
+
 ## Security Considerations
 
 - The service role key is only used server-side in webhooks and protected API routes
 - The UUID mapping is stored in Clerk's metadata, which is secured by Clerk's authentication
 - All database operations validate the current user's access rights regardless of UUID mapping
+- RLS policies now properly handle both UUID and text format IDs

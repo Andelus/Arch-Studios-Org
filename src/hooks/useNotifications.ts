@@ -28,7 +28,7 @@ export function useNotifications() {
   // Initialize from localStorage for immediate state, and then fill from database
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { userId, isSignedIn, isLoaded } = useAuth();
+  const { userId, isSignedIn, isLoaded, getToken } = useAuth();
   
   // Function to fetch notifications from the database
   const fetchNotifications = useCallback(async () => {
@@ -36,7 +36,30 @@ export function useNotifications() {
     
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Get a fresh token directly
+      const token = await getToken({ template: 'supabase' });
+      
+      // If we got a fresh token, store it
+      if (token && typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('supabase_auth_token', token);
+          localStorage.setItem('supabase_auth_token', token);
+          console.log('Updated auth token from useNotifications');
+        } catch (e) {
+          console.error('Error storing token:', e);
+        }
+      }
+      
+      // Get the authenticated client with latest token
+      const client = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+        return getAuthenticatedClient(token || undefined);
+      });
+      
+      // Add request logging for debugging
+      console.log('Fetching notifications for user:', userId);
+      
+      const { data, error } = await client
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
@@ -44,6 +67,55 @@ export function useNotifications() {
         .limit(50);
       
       if (error) {
+        // Check for auth errors specifically
+        if (error.code === 'PGRST301' || error.message?.includes('JWT') || error.code === '401') {
+          console.warn('Authentication error fetching notifications:', error);
+          console.log('Attempting token refresh and retry...');
+          
+          // Get a fresh token directly 
+          const newToken = await getToken({ template: 'supabase' });
+          
+          if (newToken && typeof window !== 'undefined') {
+            try {
+              // Store the refreshed token in both storage mechanisms
+              sessionStorage.setItem('supabase_auth_token', newToken);
+              localStorage.setItem('supabase_auth_token', newToken);
+              console.log('Stored refreshed auth token');
+            } catch (e) {
+              console.error('Error storing refreshed token:', e);
+            }
+          }
+          
+          // Create a fresh client with the new token
+          const freshClient = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+            return getAuthenticatedClient(newToken || undefined);
+          });
+          
+          // Make the request with the fresh token
+          console.log('Retrying notification fetch with fresh token');
+          const retryResult = await freshClient
+            .from('notifications')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+            
+          if (retryResult.error) {
+            console.error('Retry failed:', retryResult.error);
+            throw retryResult.error;
+          }
+          
+          if (retryResult.data) {
+            console.log('Retry succeeded with', retryResult.data.length, 'notifications');
+            const uiNotifications = retryResult.data.map(mapDatabaseNotificationToUI);
+            setNotifications(uiNotifications);
+            
+            // Also save to localStorage as a backup
+            localStorage.setItem('workspace-notifications', JSON.stringify(uiNotifications));
+            return;
+          }
+        }
+        
         throw error;
       }
       
@@ -68,7 +140,7 @@ export function useNotifications() {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, isSignedIn]);
+  }, [userId, isSignedIn, getToken]);
   
   // Load notifications when user is authenticated
   useEffect(() => {
@@ -114,7 +186,13 @@ export function useNotifications() {
     // If user is signed in, also save to database
     if (isSignedIn && userId) {
       try {
-        await supabase.from('notifications').insert({
+        // Get authenticated client using stored token
+        const token = await getToken({ template: 'supabase' });
+        const client = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+          return getAuthenticatedClient(token || undefined);
+        });
+        
+        await client.from('notifications').insert({
           id: newNotification.id,
           user_id: userId,
           type,
@@ -156,7 +234,13 @@ export function useNotifications() {
     // If user is signed in, update in database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get authenticated client using stored token
+        const token = await getToken({ template: 'supabase' });
+        const client = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+          return getAuthenticatedClient(token || undefined);
+        });
+        
+        await client
           .from('notifications')
           .update({ is_read: true })
           .eq('id', id)
@@ -182,7 +266,13 @@ export function useNotifications() {
     // If user is signed in, update all in database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get authenticated client using stored token
+        const token = await getToken({ template: 'supabase' });
+        const client = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+          return getAuthenticatedClient(token || undefined);
+        });
+        
+        await client
           .from('notifications')
           .update({ is_read: true })
           .eq('user_id', userId)
@@ -206,7 +296,13 @@ export function useNotifications() {
     // If user is signed in, delete from database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get authenticated client using stored token
+        const token = await getToken({ template: 'supabase' });
+        const client = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+          return getAuthenticatedClient(token || undefined);
+        });
+        
+        await client
           .from('notifications')
           .delete()
           .eq('id', id)
@@ -227,7 +323,13 @@ export function useNotifications() {
     // If user is signed in, delete all from database
     if (isSignedIn && userId) {
       try {
-        await supabase
+        // Get authenticated client using stored token
+        const token = await getToken({ template: 'supabase' });
+        const client = await import('@/lib/supabase').then(({ getAuthenticatedClient }) => {
+          return getAuthenticatedClient(token || undefined);
+        });
+        
+        await client
           .from('notifications')
           .delete()
           .eq('user_id', userId);

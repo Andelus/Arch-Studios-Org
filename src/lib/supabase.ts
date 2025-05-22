@@ -60,12 +60,34 @@ export const supabase = supabaseClient;
  * @returns Supabase client with authentication headers
  */
 export function getAuthenticatedClient(token?: string) {
-  // If no token is provided and we're in browser context, try to get from sessionStorage
+  // If no token is provided and we're in browser context, try to get from sessionStorage or localStorage
   if (!token && typeof window !== 'undefined') {
     try {
-      token = sessionStorage.getItem('supabase_auth_token') || undefined;
+      // Try sessionStorage first, then localStorage as fallback
+      token = sessionStorage.getItem('supabase_auth_token') || 
+              localStorage.getItem('supabase_auth_token') || 
+              undefined;
+      
+      if (token) {
+        console.log('Retrieved auth token from browser storage');
+        
+        // Validate token expiration if possible
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const expiryTime = payload.exp * 1000; // Convert to milliseconds
+          
+          if (expiryTime && expiryTime < Date.now()) {
+            console.warn('Token has expired, removing from storage');
+            sessionStorage.removeItem('supabase_auth_token');
+            localStorage.removeItem('supabase_auth_token');
+            token = undefined;
+          }
+        } catch (err) {
+          console.warn('Could not validate token expiration', err);
+        }
+      }
     } catch (e) {
-      console.error('Error reading token from sessionStorage:', e);
+      console.error('Error reading token from browser storage:', e);
     }
   }
   
@@ -84,6 +106,7 @@ export function getAuthenticatedClient(token?: string) {
         auth: {
           persistSession: false,
           autoRefreshToken: false,
+          detectSessionInUrl: false
         }
       }
     );

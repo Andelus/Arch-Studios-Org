@@ -9,7 +9,7 @@ import { supabaseClientAnon } from './supabase';
  * It should be placed high in the component tree where authentication is needed.
  */
 export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
 
   useEffect(() => {
     // Function to set the auth cookie for Supabase based on Clerk token
@@ -24,32 +24,76 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           return; // Exit early if env vars are missing
         }
         
-        // Get token from Clerk using the Supabase template
+        if (!userId) {
+          console.log('No authenticated user, clearing any existing tokens');
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('supabase_auth_token');
+            localStorage.removeItem('supabase_auth_token');
+          }
+          return;
+        }
+        
+        // Get token from Clerk using the native Supabase integration
+        // Note: Don't use 'supabase' template, just get the token directly
         const token = await getToken({ template: 'supabase' });
         
         // Log token details for debugging (only in development)
         if (process.env.NODE_ENV === 'development' && token) {
-          const [header, payload] = token.split('.').slice(0, 2);
-          console.log('JWT Header:', JSON.parse(atob(header)));
-          console.log('JWT Payload:', JSON.parse(atob(payload)));
+          try {
+            const [header, payload] = token.split('.').slice(0, 2);
+            const decodedHeader = JSON.parse(atob(header));
+            const decodedPayload = JSON.parse(atob(payload));
+            console.log('JWT Header:', decodedHeader);
+            console.log('JWT Payload:', decodedPayload);
+            
+            // Extract and store the email separately as a more reliable identifier
+            if (decodedPayload.email) {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('user_email', decodedPayload.email);
+              }
+            }
+          } catch (e) {
+            console.error('Error decoding token:', e);
+          }
         }
         
         if (token) {
           console.log('Received token from Clerk for Supabase auth');
           
-          // Instead of setting a session, we'll store the token for use in the headers
-          // This avoids creating multiple GoTrueClient instances
-          
-          // Store token in sessionStorage for use across the app
+          // Store token in both sessionStorage and localStorage for redundancy
           if (typeof window !== 'undefined') {
             try {
               sessionStorage.setItem('supabase_auth_token', token);
+              localStorage.setItem('supabase_auth_token', token); 
               console.log('Successfully stored auth token for header-based authentication');
               
-              // Test authentication is working by logging JWT payload
-              const [header, payload] = token.split('.').slice(0, 2);
-              const decoded = JSON.parse(atob(payload));
-              console.log('Auth token contains user ID:', decoded.sub);
+              // Validate token immediately with Supabase to ensure it works
+              console.log('Validating token with Supabase...');
+              fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=id&limit=1`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                }
+              })
+              .then(response => {
+                if (response.ok) {
+                  console.log('✅ Token validation successful');
+                } else {
+                  console.error('❌ Token validation failed:', response.status, response.statusText);
+                  // Clear tokens if validation fails
+                  sessionStorage.removeItem('supabase_auth_token');
+                  localStorage.removeItem('supabase_auth_token');
+                }
+                return response.json();
+              })
+              .then(data => {
+                if (data) {
+                  console.log('API response data available');
+                }
+              })
+              .catch(err => {
+                console.error('❌ Token validation error:', err);
+              });
             } catch (e) {
               console.error('Error storing token:', e);
             }
@@ -69,7 +113,7 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
     const intervalId = setInterval(setupSupabaseAuth, 1000 * 60 * 58); // Refresh nearly every hour
 
     return () => clearInterval(intervalId);
-  }, [getToken]);
+  }, [getToken, userId]);
 
   return <>{children}</>;
 }

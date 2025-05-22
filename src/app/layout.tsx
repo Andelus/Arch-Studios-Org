@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { GeistSans, GeistMono } from 'geist/font';
 import "./globals.css";
 import ThemeProvider from "../components/ThemeProvider";
+import { SupabaseAuthSync } from "../lib/auth-sync";
+import { DebugProvider } from "./debug-provider";
 
 export const metadata: Metadata = {
   title: "Chateaux AI",
@@ -28,7 +30,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="w-full">
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased min-h-screen w-full flex flex-col`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <SupabaseAuthSync>
+          <ThemeProvider>{children}</ThemeProvider>
+          <DebugProvider />
+        </SupabaseAuthSync>
       </body>
     </html>
   );
