@@ -1,8 +1,7 @@
 // @ts-nocheck - Disable TypeScript checking for this file due to Clerk types mismatch
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseProfileIdFromClerk } from '@/utils/clerk-supabase';
-import type { NextRequest } from 'next/server';
 
 // Function to decode JWT without a library
 function decodeJwt(token: string): any {
@@ -30,8 +29,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks/clerk',
   '/api/webhooks/flutterwave',
   '/api/payment/verify/callback',
-  '/api/payment/verify', 
-  '/api/organization/subscription/verify',
+  '/api/payment/verify', // Payment verification endpoint
+  '/api/organization/subscription/verify', // Organization subscription verification endpoint
   '/privacy',
   '/terms',
   '/about',
@@ -40,6 +39,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up',
   '/coming-soon',
   '/organization-billing',
+  // Organization setup is now handled through the dashboard
+  // with Clerk's native UI components
   // Static paths
   '/_next/static/(.*)',
   '/_next/image/(.*)',
@@ -53,8 +54,10 @@ const isPublicRoute = createRouteMatcher([
   '/window.svg'
 ]);
 
-// @ts-ignore - Clerk types don't match actual runtime structure
-export default clerkMiddleware(async (auth, req) => {
+// Enhanced middleware with improved JWT handling
+// Using any here to bypass TypeScript errors due to mismatch between actual runtime structure and type definitions
+// @ts-expect-error - Clerk types don't match actual runtime structure
+export default clerkMiddleware(async (auth: any, req: any) => {
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
@@ -113,6 +116,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   
   // Allow users to access the dashboard without an organization
+  // Organization setup is now optional and can be done from the dashboard
   return NextResponse.next();
 });
 
