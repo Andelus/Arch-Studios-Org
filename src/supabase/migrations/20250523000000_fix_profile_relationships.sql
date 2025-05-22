@@ -13,8 +13,11 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_email TEXT;
 DO $$
 BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
-    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_name TEXT;
-    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_email TEXT;
+    EXECUTE 'ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_name TEXT';
+    EXECUTE 'ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_email TEXT';
+  ELSE
+    -- Log that we're skipping tasks table modifications as it doesn't exist
+    RAISE NOTICE 'Skipping tasks table modifications as it does not exist';
   END IF;
 END
 $$;
@@ -62,11 +65,21 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_project_members_sender_email ON project_members(sender_email);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_email ON messages(sender_email);
 
--- Create index on tasks table if it exists
+-- Create index on tasks table if it exists and if it has the assignee_email column
 DO $$
 BEGIN
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'tasks'
+  ) AND EXISTS (
+    SELECT FROM information_schema.columns
+    WHERE table_schema = 'public' 
+    AND table_name = 'tasks' 
+    AND column_name = 'assignee_email'
+  ) THEN
     EXECUTE 'CREATE INDEX IF NOT EXISTS idx_tasks_assignee_email ON tasks(assignee_email)';
+  ELSE
+    RAISE NOTICE 'Skipping creating index on tasks.assignee_email as either the table or column does not exist';
   END IF;
 END
 $$;

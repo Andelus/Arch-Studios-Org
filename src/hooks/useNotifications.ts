@@ -42,48 +42,94 @@ export function useNotifications() {
       let client = supabase;
       
       try {
-        // Only get token if getToken is available
-        if (getToken) {
-          const token = await getToken({ 
+        // First try to use token from sessionStorage (set by auth-sync.tsx) for consistency
+        let token = null;
+        
+        if (typeof window !== 'undefined') {
+          token = sessionStorage.getItem('supabase_auth_token');
+        }
+        
+        // If no token in sessionStorage, get a fresh one from Clerk
+        if (!token && getToken) {
+          token = await getToken({ 
             template: 'supabase',
-            skipCache: false // Use cached token when possible
+            skipCache: true // Get fresh token to avoid cached invalid tokens
           });
           
-          if (token) {
-            // Create a new Supabase client with auth header
-            client = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-              {
-                auth: {
-                  autoRefreshToken: false,
-                  persistSession: false,
-                  detectSessionInUrl: false
-                },
-                global: {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                  }
-                }
-              }
-            );
+          // Save this token to sessionStorage for future use
+          if (token && typeof window !== 'undefined') {
+            sessionStorage.setItem('supabase_auth_token', token);
           }
         }
+        
+        if (token) {
+          // Create a new Supabase client with auth header
+          client = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            {
+              auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+                detectSessionInUrl: false
+              },
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                }
+              }
+            }
+          );
+        }
       } catch (tokenError) {
-        console.error('Error getting token:', tokenError);
+        console.error('Error getting or using token:', tokenError);
         // Continue with default supabase client
       }
         
-      const { data, error } = await client
+      // First try using user_id
+      let { data, error } = await client
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50);
       
+      // If that fails, try with email as fallback (if we have clerk metadata)
       if (error) {
-        throw error;
+        console.log('Error fetching notifications by user_id:', error.message);
+        console.log('Attempting to fetch by email instead...');
+        
+        try {
+          // Get user object to find email
+          const userResult = await client.auth.getUser();
+          
+          if (userResult.data?.user?.email) {
+            const email = userResult.data.user.email;
+            
+            // Try again with email
+            const emailResult = await client
+              .from('notifications')
+              .select('*')
+              .eq('email', email)
+              .order('created_at', { ascending: false })
+              .limit(50);
+              
+            if (emailResult.error) {
+              console.error('Error fetching notifications by email:', emailResult.error);
+              throw emailResult.error;
+            }
+            
+            data = emailResult.data;
+            error = null;
+          } else {
+            console.error('Could not retrieve email for fallback query');
+            throw error; // Re-throw the original error
+          }
+        } catch (userError) {
+          console.error('Failed to get user data for email lookup:', userError);
+          throw error; // Re-throw the original error if we can't get the email
+        }
       }
       
       if (data) {

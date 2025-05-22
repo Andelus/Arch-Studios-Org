@@ -228,8 +228,8 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_email TEXT;
 DO \$\$
 BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tasks') THEN
-    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_name TEXT;
-    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_email TEXT;
+    EXECUTE 'ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_name TEXT';
+    EXECUTE 'ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignee_email TEXT';
   END IF;
 END
 \$\$;
