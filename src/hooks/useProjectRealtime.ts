@@ -120,7 +120,7 @@ export function useProjectRealtime({
           if (data) {
             const members: ProjectMember[] = data.map(member => ({
               id: member.user_id,
-              name: member.email ? member.email.split('@')[0] : 'Unknown',
+              name: member.sender_name || (member.sender_email || member.email)?.split('@')[0] || 'Unknown',
               avatar: '/avatars/default.jpg',
               role: member.role,
               status: member.status,
