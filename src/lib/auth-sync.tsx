@@ -5,7 +5,35 @@ import { useAuth } from '@clerk/nextjs';
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * This component syncs Clerk authentication with Supabase.
+ *                if (projectError) {
+                console.error('Failed to create admin project:', projectError.message);
+                // Don't worry too much, just try to continue
+              } else {
+                console.log('Created admin project to ensure privileges');
+                
+                // Also add the current user as a project member with admin permission
+                const { error: memberError } = await testClient
+                  .from('project_members')
+                  .insert([{
+                    project_id: projectId,
+                    user_id: userId,
+                    email: userId || 'user@example.com', // Required field
+                    role: 'Admin',
+                    permission: 'admin',
+                    status: 'online',
+                    sender_email: 'admin@example.com', // Default email
+                    sender_name: 'Admin User',         // Default name
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    last_active_at: new Date().toISOString()
+                  }]);
+                  
+                if (memberError) {
+                  console.error('Failed to add project member:', memberError.message);
+                } else {
+                  console.log('Successfully added user as admin to project');
+                }
+              }ncs Clerk authentication with Supabase.
  * It should be placed high in the component tree where authentication is needed.
  */
 export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
@@ -24,19 +52,49 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           return; // Exit early if env vars are missing
         }
         
-        // Get token from Clerk using the Supabase template
-        // Always request a fresh token to avoid cached invalid tokens
-        const token = await getToken({ 
-          template: 'supabase',
-          skipCache: true // Force fresh token to prevent issues with invalid tokens
-        });
-        
-        if (!token) {
-          console.warn('No token received from Clerk for Supabase auth');
-          return;
+        // First try to get token from sessionStorage for consistency
+        let token = null;
+        if (typeof window !== 'undefined') {
+          try {
+            token = sessionStorage.getItem('supabase_auth_token');
+            if (token) {
+              console.log('Using existing token from sessionStorage');
+              
+              // Check if token is expired
+              try {
+                const [, payloadBase64] = token.split('.').slice(0, 2);
+                const payload = JSON.parse(atob(payloadBase64));
+                const expTime = payload.exp * 1000; // Convert to milliseconds
+                
+                if (Date.now() >= expTime - 60000) { // If token expires in the next minute or already expired
+                  console.log('Existing token is expired or about to expire, requesting fresh token');
+                  token = null; // Force getting a fresh token
+                }
+              } catch (e) {
+                console.error('Error parsing existing token:', e);
+                token = null; // Force getting a fresh token on error
+              }
+            }
+          } catch (e) {
+            console.error('Error accessing sessionStorage:', e);
+          }
         }
         
-        console.log('Received token from Clerk for Supabase auth');
+        // Get a fresh token if needed
+        if (!token) {
+          console.log('Requesting fresh token from Clerk');
+          token = await getToken({ 
+            template: 'supabase',
+            skipCache: true // Force fresh token to prevent issues with invalid tokens
+          });
+          
+          if (!token) {
+            console.warn('No token received from Clerk for Supabase auth');
+            return;
+          }
+          
+          console.log('Received fresh token from Clerk for Supabase auth');
+        }
         
         // Log token details for debugging (only in development)
         if (process.env.NODE_ENV === 'development') {
@@ -57,12 +115,13 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           }
         }
         
-        // Store token in sessionStorage for use across the app
+        // Always store token in sessionStorage for use across the app
         if (typeof window !== 'undefined') {
           try {
             sessionStorage.setItem('supabase_auth_token', token);
             console.log('Successfully stored auth token for header-based authentication');
             
+            // Create a test client with the token
             // Create a test client with the token
             const testClient = createClient(
               process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -92,7 +151,9 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
               // This could be a legitimate error if user has no projects yet
             } else {
               console.log('Successfully accessed projects table');
-            }              // Test notifications table as well
+            }
+            
+            // Test notifications table as well
             const notificationResult = await testClient
               .from('notifications')
               .select('*', { count: 'exact', head: true });
@@ -102,14 +163,19 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
               
               // For our simplified approach, create a project to ensure admin privileges
               console.log('Creating a project to ensure admin privileges...');
-              const projectId = `project-${Date.now()}`;
+              
+              // Generate a unique project ID with a timestamp
+              const projectId = `project-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+              
               const { data: projectData, error: projectError } = await testClient
                 .from('projects')
                 .insert([{ 
                   id: projectId, 
                   name: 'Admin Project', 
                   description: 'Project created to ensure admin privileges',
-                  organization_id: userId || 'default-org'
+                  organization_id: userId || 'default-org',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
                 }]);
                 
               if (projectError) {

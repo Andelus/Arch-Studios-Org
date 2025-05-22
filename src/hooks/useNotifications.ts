@@ -47,9 +47,26 @@ export function useNotifications() {
         
         if (typeof window !== 'undefined') {
           token = sessionStorage.getItem('supabase_auth_token');
+          
+          // Validate token expiration
+          if (token) {
+            try {
+              const [, payloadBase64] = token.split('.').slice(0, 2);
+              const payload = JSON.parse(atob(payloadBase64));
+              const expTime = payload.exp * 1000; // Convert to milliseconds
+              
+              if (Date.now() >= expTime - 60000) { // If token expires within a minute
+                console.log('Token in sessionStorage is expired, will get fresh one');
+                token = null; // Force getting a fresh token
+              }
+            } catch (e) {
+              console.error('Error checking token expiration:', e);
+              token = null; // Force getting a fresh token on error
+            }
+          }
         }
         
-        // If no token in sessionStorage, get a fresh one from Clerk
+        // If no valid token in sessionStorage, get a fresh one from Clerk
         if (!token && getToken) {
           token = await getToken({ 
             template: 'supabase',
