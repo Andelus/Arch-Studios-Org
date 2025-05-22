@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fal } from "@fal-ai/client";
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 
 fal.config({
