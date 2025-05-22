@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { supabase, getAuthenticatedClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       .limit(1);
     
     if (req.headers.get('Authorization')) {
-      token = req.headers.get('Authorization')?.replace('Bearer ', '');
+      token = req.headers.get('Authorization')?.replace('Bearer ', '') || null;
     } else {
       // For browser requests, check storage
       const cookies = req.cookies;
