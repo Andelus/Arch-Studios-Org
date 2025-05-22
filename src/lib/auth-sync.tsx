@@ -2,42 +2,14 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseClientAnon } from './supabase';
 
 /**
- *                if (projectError) {
-                console.error('Failed to create admin project:', projectError.message);
-                // Don't worry too much, just try to continue
-              } else {
-                console.log('Created admin project to ensure privileges');
-                
-                // Also add the current user as a project member with admin permission
-                const { error: memberError } = await testClient
-                  .from('project_members')
-                  .insert([{
-                    project_id: projectId,
-                    user_id: userId,
-                    email: userId || 'user@example.com', // Required field
-                    role: 'Admin',
-                    permission: 'admin',
-                    status: 'online',
-                    sender_email: 'admin@example.com', // Default email
-                    sender_name: 'Admin User',         // Default name
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    last_active_at: new Date().toISOString()
-                  }]);
-                  
-                if (memberError) {
-                  console.error('Failed to add project member:', memberError.message);
-                } else {
-                  console.log('Successfully added user as admin to project');
-                }
-              }ncs Clerk authentication with Supabase.
+ * This component syncs Clerk authentication with Supabase.
  * It should be placed high in the component tree where authentication is needed.
  */
 export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
-  const { getToken, userId } = useAuth();
+  const { getToken } = useAuth();
 
   useEffect(() => {
     // Function to set the auth cookie for Supabase based on Clerk token
@@ -52,157 +24,38 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           return; // Exit early if env vars are missing
         }
         
-        // First try to get token from sessionStorage for consistency
-        let token = null;
-        if (typeof window !== 'undefined') {
-          try {
-            token = sessionStorage.getItem('supabase_auth_token');
-            if (token) {
-              console.log('Using existing token from sessionStorage');
-              
-              // Check if token is expired
-              try {
-                const [, payloadBase64] = token.split('.').slice(0, 2);
-                const payload = JSON.parse(atob(payloadBase64));
-                const expTime = payload.exp * 1000; // Convert to milliseconds
-                
-                if (Date.now() >= expTime - 60000) { // If token expires in the next minute or already expired
-                  console.log('Existing token is expired or about to expire, requesting fresh token');
-                  token = null; // Force getting a fresh token
-                }
-              } catch (e) {
-                console.error('Error parsing existing token:', e);
-                token = null; // Force getting a fresh token on error
-              }
-            }
-          } catch (e) {
-            console.error('Error accessing sessionStorage:', e);
-          }
-        }
-        
-        // Get a fresh token if needed
-        if (!token) {
-          console.log('Requesting fresh token from Clerk');
-          token = await getToken({ 
-            template: 'supabase',
-            skipCache: true // Force fresh token to prevent issues with invalid tokens
-          });
-          
-          if (!token) {
-            console.warn('No token received from Clerk for Supabase auth');
-            return;
-          }
-          
-          console.log('Received fresh token from Clerk for Supabase auth');
-        }
+        // Get token from Clerk using the Supabase template
+        const token = await getToken({ template: 'supabase' });
         
         // Log token details for debugging (only in development)
-        if (process.env.NODE_ENV === 'development') {
-          try {
-            const [headerBase64, payloadBase64] = token.split('.').slice(0, 2);
-            const header = JSON.parse(atob(headerBase64));
-            const payload = JSON.parse(atob(payloadBase64));
-            
-            console.log('JWT Header:', header);
-            console.log('JWT Payload:', {
-              ...payload,
-              exp: new Date(payload.exp * 1000).toISOString(),
-              iat: new Date(payload.iat * 1000).toISOString()
-            });
-            console.log('User ID from token:', payload.sub);
-          } catch (e) {
-            console.error('Error parsing JWT:', e);
-          }
+        if (process.env.NODE_ENV === 'development' && token) {
+          const [header, payload] = token.split('.').slice(0, 2);
+          console.log('JWT Header:', JSON.parse(atob(header)));
+          console.log('JWT Payload:', JSON.parse(atob(payload)));
         }
         
-        // Always store token in sessionStorage for use across the app
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.setItem('supabase_auth_token', token);
-            console.log('Successfully stored auth token for header-based authentication');
-            
-            // Create a test client with the token
-            // Create a test client with the token
-            const testClient = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-              {
-                auth: {
-                  autoRefreshToken: false,
-                  persistSession: false,
-                  detectSessionInUrl: false
-                },
-                global: {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                  }
-                }
-              }
-            );
-            
-            // Test if we can access the projects table
-            const projectsResult = await testClient
-              .from('projects')
-              .select('*', { count: 'exact', head: true });
+        if (token) {
+          console.log('Received token from Clerk for Supabase auth');
+          
+          // Instead of setting a session, we'll store the token for use in the headers
+          // This avoids creating multiple GoTrueClient instances
+          
+          // Store token in sessionStorage for use across the app
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.setItem('supabase_auth_token', token);
+              console.log('Successfully stored auth token for header-based authentication');
               
-            if (projectsResult.error) {
-              console.log('No projects found or access denied:', projectsResult.error.message);
-              // This could be a legitimate error if user has no projects yet
-            } else {
-              console.log('Successfully accessed projects table');
+              // Test authentication is working by logging JWT payload
+              const [header, payload] = token.split('.').slice(0, 2);
+              const decoded = JSON.parse(atob(payload));
+              console.log('Auth token contains user ID:', decoded.sub);
+            } catch (e) {
+              console.error('Error storing token:', e);
             }
-            
-            // Test notifications table as well
-            const notificationResult = await testClient
-              .from('notifications')
-              .select('*', { count: 'exact', head: true });
-              
-            if (notificationResult.error) {
-              console.error('Failed to access notifications table:', notificationResult.error.message);
-              
-              // For our simplified approach, create a project to ensure admin privileges
-              console.log('Creating a project to ensure admin privileges...');
-              
-              // Generate a unique project ID with a timestamp
-              const projectId = `project-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-              
-              const { data: projectData, error: projectError } = await testClient
-                .from('projects')
-                .insert([{ 
-                  id: projectId, 
-                  name: 'Admin Project', 
-                  description: 'Project created to ensure admin privileges',
-                  organization_id: userId || 'default-org',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }]);
-                
-              if (projectError) {
-                console.error('Failed to create admin project:', projectError.message);
-                // Don't worry too much, just try to continue
-              } else {
-                console.log('Created admin project to ensure privileges');
-                
-                // Also add the current user as a project member with admin permission
-                await testClient
-                  .from('project_members')
-                  .insert([{
-                    project_id: projectId,
-                    user_id: userId,
-                    permission: 'admin',
-                    status: 'active',
-                    sender_email: 'admin@example.com', // Default email
-                    sender_name: 'Admin User'          // Default name
-                  }]);
-              }
-            } else {
-              console.log('Successfully accessed notifications table:', 
-                notificationResult.count !== undefined ? `${notificationResult.count} notifications found` : 'No notifications found');
-            }
-          } catch (e) {
-            console.error('Error in token verification process:', e);
           }
+        } else {
+          console.warn('No token received from Clerk for Supabase auth');
         }
       } catch (error) {
         console.error('Failed to sync Clerk authentication with Supabase:', error);
@@ -212,8 +65,8 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
     // Initial setup
     setupSupabaseAuth();
 
-    // Add listener for auth changes - refresh token every 30 minutes
-    const intervalId = setInterval(setupSupabaseAuth, 1000 * 60 * 30);
+    // Add listener for auth changes
+    const intervalId = setInterval(setupSupabaseAuth, 1000 * 60 * 58); // Refresh nearly every hour
 
     return () => clearInterval(intervalId);
   }, [getToken]);

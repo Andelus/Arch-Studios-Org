@@ -77,8 +77,10 @@ export function useCommunication(projectId?: string) {
           is_announcement,
           created_at,
           updated_at,
-          sender_email,
-          sender_name
+          profiles(
+            display_name,
+            avatar_url
+          )
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
@@ -86,11 +88,12 @@ export function useCommunication(projectId?: string) {
       if (error) throw error;
 
       const formattedMessages = data?.map(message => {
-        // Use sender_name or email if available, otherwise fallback to default
-        let displayName = message.sender_name || 
-                         (message.sender_email ? message.sender_email.split('@')[0] : 'Unknown');
+        let displayName = 'Unknown';
         let avatarUrl = '/avatars/default.jpg';
-        
+        if (Array.isArray(message.profiles) && message.profiles.length > 0) {
+          displayName = message.profiles[0].display_name || 'Unknown';
+          avatarUrl = message.profiles[0].avatar_url || '/avatars/default.jpg';
+        }
         return {
           id: message.id,
           content: message.content,
@@ -99,10 +102,10 @@ export function useCommunication(projectId?: string) {
           is_announcement: message.is_announcement,
           created_at: message.created_at,
           updated_at: message.updated_at,
-          user: {
+          user: message.profiles ? {
             name: displayName,
             avatar: avatarUrl
-          }
+          } : undefined
         };
       }) || [];
 

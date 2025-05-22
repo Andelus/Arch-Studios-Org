@@ -1,28 +1,5 @@
-// @ts-nocheck - Disable TypeScript checking for this file due to Clerk types mismatch
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { getSupabaseProfileIdFromClerk } from '@/utils/clerk-supabase';
-import type { NextRequest } from 'next/server';
-
-// Function to decode JWT without a library
-function decodeJwt(token: string): any {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        })
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    console.error('Error decoding JWT:', e);
-    return null;
-  }
-}
 
 // Create a matcher for public routes
 const isPublicRoute = createRouteMatcher([
@@ -30,8 +7,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks/clerk',
   '/api/webhooks/flutterwave',
   '/api/payment/verify/callback',
-  '/api/payment/verify', 
-  '/api/organization/subscription/verify',
+  '/api/payment/verify', // Payment verification endpoint
+  '/api/organization/subscription/verify', // Organization subscription verification endpoint
   '/privacy',
   '/terms',
   '/about',
@@ -40,6 +17,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up',
   '/coming-soon',
   '/organization-billing',
+  // Organization setup is now handled through the dashboard
+  // with Clerk's native UI components
   // Static paths
   '/_next/static/(.*)',
   '/_next/image/(.*)',
@@ -53,8 +32,7 @@ const isPublicRoute = createRouteMatcher([
   '/window.svg'
 ]);
 
-// @ts-ignore - Clerk types don't match actual runtime structure
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware((auth, req) => {
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
@@ -64,55 +42,17 @@ export default clerkMiddleware(async (auth, req) => {
   
   const path = req.nextUrl.pathname;
   
-  // Enhanced JWT handling for API routes to fix authentication issues
+  // Skip organization check for API routes
   if (path.startsWith('/api/')) {
-    try {
-      if (!auth.userId) {
-        return NextResponse.next();
-      }
-      
-      // Get the Supabase UUID for this user
-      const supabaseId = await getSupabaseProfileIdFromClerk(auth.userId);
-      
-      // Get the Supabase JWT with correct claims
-      const token = await auth.getToken({ 
-        template: 'supabase',
-        skipCache: false // Use cached token when possible
-      });
-      
-      if (token) {
-        // Verify the token has correct claims
-        const decoded = decodeJwt(token);
-        
-        // Check if the custom supabase_user_id claim matches the expected Supabase ID
-        // We're using a custom claim since Clerk doesn't allow overriding 'sub'
-        if (decoded && decoded.supabase_user_id !== supabaseId) {
-          console.error('JWT claim mismatch. Expected supabase_user_id:', supabaseId, 'Got:', 
-            decoded.supabase_user_id || 'undefined');
-          
-          // Force refresh the token to fix claims
-          const freshToken = await auth.getToken({ 
-            template: 'supabase',
-            skipCache: true // Force fresh token
-          });
-          
-          // Create a new response with updated headers
-          const response = NextResponse.next();
-          response.headers.set('x-supabase-auth', freshToken || '');
-          return response;
-        }
-        
-        // If claims are correct, add the token to the request
-        const response = NextResponse.next();
-        response.headers.set('x-supabase-auth', token);
-        return response;
-      }
-    } catch (error) {
-      console.error('Error handling JWT for API route:', error);
-    }
+    return NextResponse.next();
   }
   
+  // In Clerk v6, the structure is different - we should check auth differently
+  // No need to explicitly get userId and orgId here as we're just allowing users
+  // to access the dashboard whether they have an organization or not
+  
   // Allow users to access the dashboard without an organization
+  // Organization setup is now optional and can be done from the dashboard
   return NextResponse.next();
 });
 

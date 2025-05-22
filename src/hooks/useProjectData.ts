@@ -39,10 +39,11 @@ export function useProjectData() {
             role,
             permission,
             status,
-            email,
-            role,
-            sender_name,
-            sender_email
+            profiles(
+              email,
+              display_name,
+              avatar_url
+            )
           )
         `)
         .eq('organization_id', organization.id)
@@ -64,10 +65,12 @@ export function useProjectData() {
         createdFromTemplate: proj.created_from_template,
         organization_id: proj.organization_id,
         members: proj.project_members.map(member => {
-          // Use sender_name if available, else email as display name or default
-          const displayName = member.sender_name || (member.sender_email || member.email)?.split('@')[0] || 'Unknown';
-          const avatarUrl = '/avatars/default.jpg'; // Use default avatar
-          
+          let displayName = 'Unknown';
+          let avatarUrl = '/avatars/default.jpg';
+          if (Array.isArray(member.profiles) && member.profiles.length > 0) {
+            displayName = member.profiles[0].display_name || 'Unknown';
+            avatarUrl = member.profiles[0].avatar_url || '/avatars/default.jpg';
+          }
           return {
             id: member.user_id,
             name: displayName,

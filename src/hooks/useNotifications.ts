@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Notification } from '@/components/NotificationCenter';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@clerk/nextjs';
-import { createClient } from '@supabase/supabase-js';
 
 // Helper function to generate a unique ID
 const generateId = () => {
@@ -29,7 +28,7 @@ export function useNotifications() {
   // Initialize from localStorage for immediate state, and then fill from database
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { userId, isSignedIn, isLoaded, getToken } = useAuth();
+  const { userId, isSignedIn, isLoaded } = useAuth();
   
   // Function to fetch notifications from the database
   const fetchNotifications = useCallback(async () => {
@@ -37,116 +36,15 @@ export function useNotifications() {
     
     try {
       setIsLoading(true);
-      
-      // Get Supabase JWT from Clerk
-      let client = supabase;
-      
-      try {
-        // First try to use token from sessionStorage (set by auth-sync.tsx) for consistency
-        let token = null;
-        
-        if (typeof window !== 'undefined') {
-          token = sessionStorage.getItem('supabase_auth_token');
-          
-          // Validate token expiration
-          if (token) {
-            try {
-              const [, payloadBase64] = token.split('.').slice(0, 2);
-              const payload = JSON.parse(atob(payloadBase64));
-              const expTime = payload.exp * 1000; // Convert to milliseconds
-              
-              if (Date.now() >= expTime - 60000) { // If token expires within a minute
-                console.log('Token in sessionStorage is expired, will get fresh one');
-                token = null; // Force getting a fresh token
-              }
-            } catch (e) {
-              console.error('Error checking token expiration:', e);
-              token = null; // Force getting a fresh token on error
-            }
-          }
-        }
-        
-        // If no valid token in sessionStorage, get a fresh one from Clerk
-        if (!token && getToken) {
-          token = await getToken({ 
-            template: 'supabase',
-            skipCache: true // Get fresh token to avoid cached invalid tokens
-          });
-          
-          // Save this token to sessionStorage for future use
-          if (token && typeof window !== 'undefined') {
-            sessionStorage.setItem('supabase_auth_token', token);
-          }
-        }
-        
-        if (token) {
-          // Create a new Supabase client with auth header
-          client = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            {
-              auth: {
-                autoRefreshToken: false,
-                persistSession: false,
-                detectSessionInUrl: false
-              },
-              global: {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                }
-              }
-            }
-          );
-        }
-      } catch (tokenError) {
-        console.error('Error getting or using token:', tokenError);
-        // Continue with default supabase client
-      }
-        
-      // First try using user_id
-      let { data, error } = await client
+      const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50);
       
-      // If that fails, try with email as fallback (if we have clerk metadata)
       if (error) {
-        console.log('Error fetching notifications by user_id:', error.message);
-        console.log('Attempting to fetch by email instead...');
-        
-        try {
-          // Get user object to find email
-          const userResult = await client.auth.getUser();
-          
-          if (userResult.data?.user?.email) {
-            const email = userResult.data.user.email;
-            
-            // Try again with email
-            const emailResult = await client
-              .from('notifications')
-              .select('*')
-              .eq('email', email)
-              .order('created_at', { ascending: false })
-              .limit(50);
-              
-            if (emailResult.error) {
-              console.error('Error fetching notifications by email:', emailResult.error);
-              throw emailResult.error;
-            }
-            
-            data = emailResult.data;
-            error = null;
-          } else {
-            console.error('Could not retrieve email for fallback query');
-            throw error; // Re-throw the original error
-          }
-        } catch (userError) {
-          console.error('Failed to get user data for email lookup:', userError);
-          throw error; // Re-throw the original error if we can't get the email
-        }
+        throw error;
       }
       
       if (data) {
@@ -216,44 +114,7 @@ export function useNotifications() {
     // If user is signed in, also save to database
     if (isSignedIn && userId) {
       try {
-        // Get Supabase JWT from Clerk
-        let client = supabase;
-        
-        try {
-          // Only get token if getToken is available
-          if (getToken) {
-            const token = await getToken({ 
-              template: 'supabase',
-              skipCache: false // Use cached token when possible
-            });
-            
-            if (token) {
-              // Create a new Supabase client with auth header
-              client = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-                {
-                  auth: {
-                    autoRefreshToken: false,
-                    persistSession: false,
-                    detectSessionInUrl: false
-                  },
-                  global: {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                    }
-                  }
-                }
-              );
-            }
-          }
-        } catch (tokenError) {
-          console.error('Error getting token:', tokenError);
-          // Continue with default supabase client
-        }
-          
-        await client.from('notifications').insert({
+        await supabase.from('notifications').insert({
           id: newNotification.id,
           user_id: userId,
           type,
@@ -295,44 +156,7 @@ export function useNotifications() {
     // If user is signed in, update in database
     if (isSignedIn && userId) {
       try {
-        // Get Supabase JWT from Clerk
-        let client = supabase;
-        
-        try {
-          // Only get token if getToken is available
-          if (getToken) {
-            const token = await getToken({ 
-              template: 'supabase',
-              skipCache: false // Use cached token when possible
-            });
-            
-            if (token) {
-              // Create a new Supabase client with auth header
-              client = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-                {
-                  auth: {
-                    autoRefreshToken: false,
-                    persistSession: false,
-                    detectSessionInUrl: false
-                  },
-                  global: {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                    }
-                  }
-                }
-              );
-            }
-          }
-        } catch (tokenError) {
-          console.error('Error getting token:', tokenError);
-          // Continue with default supabase client
-        }
-          
-        await client
+        await supabase
           .from('notifications')
           .update({ is_read: true })
           .eq('id', id)
@@ -358,44 +182,7 @@ export function useNotifications() {
     // If user is signed in, update all in database
     if (isSignedIn && userId) {
       try {
-        // Get Supabase JWT from Clerk
-        let client = supabase;
-        
-        try {
-          // Only get token if getToken is available
-          if (getToken) {
-            const token = await getToken({ 
-              template: 'supabase',
-              skipCache: false // Use cached token when possible
-            });
-            
-            if (token) {
-              // Create a new Supabase client with auth header
-              client = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-                {
-                  auth: {
-                    autoRefreshToken: false,
-                    persistSession: false,
-                    detectSessionInUrl: false
-                  },
-                  global: {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                    }
-                  }
-                }
-              );
-            }
-          }
-        } catch (tokenError) {
-          console.error('Error getting token:', tokenError);
-          // Continue with default supabase client
-        }
-          
-        await client
+        await supabase
           .from('notifications')
           .update({ is_read: true })
           .eq('user_id', userId)
@@ -419,44 +206,7 @@ export function useNotifications() {
     // If user is signed in, delete from database
     if (isSignedIn && userId) {
       try {
-        // Get Supabase JWT from Clerk
-        let client = supabase;
-        
-        try {
-          // Only get token if getToken is available
-          if (getToken) {
-            const token = await getToken({ 
-              template: 'supabase',
-              skipCache: false // Use cached token when possible
-            });
-            
-            if (token) {
-              // Create a new Supabase client with auth header
-              client = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-                {
-                  auth: {
-                    autoRefreshToken: false,
-                    persistSession: false,
-                    detectSessionInUrl: false
-                  },
-                  global: {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                    }
-                  }
-                }
-              );
-            }
-          }
-        } catch (tokenError) {
-          console.error('Error getting token:', tokenError);
-          // Continue with default supabase client
-        }
-          
-        await client
+        await supabase
           .from('notifications')
           .delete()
           .eq('id', id)
@@ -477,44 +227,7 @@ export function useNotifications() {
     // If user is signed in, delete all from database
     if (isSignedIn && userId) {
       try {
-        // Get Supabase JWT from Clerk
-        let client = supabase;
-        
-        try {
-          // Only get token if getToken is available
-          if (getToken) {
-            const token = await getToken({ 
-              template: 'supabase',
-              skipCache: false // Use cached token when possible
-            });
-            
-            if (token) {
-              // Create a new Supabase client with auth header
-              client = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-                {
-                  auth: {
-                    autoRefreshToken: false,
-                    persistSession: false,
-                    detectSessionInUrl: false
-                  },
-                  global: {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-                    }
-                  }
-                }
-              );
-            }
-          }
-        } catch (tokenError) {
-          console.error('Error getting token:', tokenError);
-          // Continue with default supabase client
-        }
-          
-        await client
+        await supabase
           .from('notifications')
           .delete()
           .eq('user_id', userId);
