@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Notification } from '@/components/NotificationCenter';
-import { supabase, getAuthenticatedClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@clerk/nextjs';
 
 // Helper function to generate a unique ID
@@ -36,11 +36,7 @@ export function useNotifications() {
     
     try {
       setIsLoading(true);
-      
-      // Get authenticated client with token from storage
-      const client = getAuthenticatedClient();
-      
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)

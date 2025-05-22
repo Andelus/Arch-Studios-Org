@@ -3,8 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { createInvitation } from '@/lib/invitation-service';
-import { supabase, getAuthenticatedClient } from '@/lib/supabase';
-import { fetchProjectMembersWithProfiles } from '@/utils/db-helpers';
+import { supabase } from '@/lib/supabase';
 
 export interface TeamMember {
   id: string;
