@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run fix-db && next build",
+    "build": "npm run simplify-auth && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
@@ -13,7 +13,8 @@
     "sync-uuids": "npx tsx scripts/sync-auth-uuids.ts",
     "test:invitation-notification": "node scripts/test-invitation-notification.mjs",
     "test:invitation-flow": "node scripts/test-invitation-flow.mjs",
-    "fix-db": "chmod +x ./scripts/fix-project-creation.sh && ./scripts/fix-project-creation.sh || echo 'Database fixes already applied or skipped'"
+    "fix-db": "chmod +x ./scripts/fix-project-creation.sh && ./scripts/fix-project-creation.sh || echo 'Database fixes already applied or skipped'",
+    "simplify-auth": "chmod +x ./scripts/simplify-auth.sh && ./scripts/simplify-auth.sh"
   },
   "dependencies": {
     "@clerk/backend": "^1.32.2",
