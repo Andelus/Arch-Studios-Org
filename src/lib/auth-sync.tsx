@@ -43,13 +43,32 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           // Store token in sessionStorage for use across the app
           if (typeof window !== 'undefined') {
             try {
+              // Store in both sessionStorage and localStorage for redundancy
               sessionStorage.setItem('supabase_auth_token', token);
+              localStorage.setItem('supabase_auth_token', token);
               console.log('Successfully stored auth token for header-based authentication');
               
               // Test authentication is working by logging JWT payload
               const [header, payload] = token.split('.').slice(0, 2);
               const decoded = JSON.parse(atob(payload));
               console.log('Auth token contains user ID:', decoded.sub);
+              
+              // Test the token immediately with a simple fetch to verify it works
+              fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=id&limit=1`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                }
+              })
+              .then(response => {
+                console.log('Auth test response status:', response.status);
+                if (!response.ok) {
+                  console.error('Auth token validation failed');
+                } else {
+                  console.log('Auth token validated successfully');
+                }
+              })
+              .catch(err => console.error('Auth token validation error:', err));
             } catch (e) {
               console.error('Error storing token:', e);
             }

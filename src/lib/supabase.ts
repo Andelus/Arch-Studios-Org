@@ -60,12 +60,21 @@ export const supabase = supabaseClient;
  * @returns Supabase client with authentication headers
  */
 export function getAuthenticatedClient(token?: string) {
-  // If no token is provided and we're in browser context, try to get from sessionStorage
+  // If no token is provided and we're in browser context, try to get from storage
   if (!token && typeof window !== 'undefined') {
     try {
-      token = sessionStorage.getItem('supabase_auth_token') || undefined;
+      // Try sessionStorage first, then localStorage as fallback
+      token = sessionStorage.getItem('supabase_auth_token') || 
+              localStorage.getItem('supabase_auth_token') || 
+              undefined;
+      
+      if (token) {
+        console.log('Retrieved auth token from storage');
+      } else {
+        console.warn('No auth token found in storage');
+      }
     } catch (e) {
-      console.error('Error reading token from sessionStorage:', e);
+      console.error('Error reading token from storage:', e);
     }
   }
   

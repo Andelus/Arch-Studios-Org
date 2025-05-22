@@ -16,6 +16,7 @@ import CommunicationPanel from '@/components/CommunicationPanel';
 import ProjectCreationModal from '@/components/ProjectCreationModal';
 import TaskCreationModal from '@/components/TaskCreationModal';
 import TeamManagementModal from '@/components/TeamManagementModal';
+import { fetchProjectMembersWithProfiles } from '@/utils/db-helpers';
 import type { 
   Project, 
   Task, 
@@ -85,20 +86,7 @@ export default function WorkspaceContent() {
       try {
         const { data: projectsData, error } = await supabase
           .from('projects')
-          .select(`
-            *,
-            project_members(
-              user_id,
-              role,
-              permission,
-              status,
-              profiles(
-                email,
-                avatar_url,
-                display_name
-              )
-            )
-          `)
+          .select('*')
           .eq('organization_id', organization.id)
           .order('created_at', { ascending: false });
 
@@ -108,38 +96,41 @@ export default function WorkspaceContent() {
         const safeProjectsData = projectsData || [];
         console.log(`Found ${safeProjectsData.length} projects for organization ${organization.id}`);
 
-        const formattedProjects: Project[] = safeProjectsData.map((proj: any) => ({
-          id: proj.id,
-          name: proj.name,
-          description: proj.description,
-          status: proj.status,
-          lastUpdated: proj.updated_at,
-          dueDate: proj.due_date,
-          progress: proj.progress,
-          isFolder: proj.is_folder,
-          parentId: proj.parent_id,
-          isTemplate: proj.is_template,
-          createdFromTemplate: proj.created_from_template,
-          organization_id: proj.organization_id,
-          members: proj.project_members.map((member: any) => {
-            let displayName = 'Unknown';
-            let avatarUrl = '/avatars/default.jpg';
-            if (Array.isArray(member.profiles) && member.profiles.length > 0) {
-              displayName = member.profiles[0].display_name || 'Unknown';
-              avatarUrl = member.profiles[0].avatar_url || '/avatars/default.jpg';
-            }
-            return {
-              id: member.user_id,
-              name: displayName,
-              avatar: avatarUrl,
-              role: member.role,
-              status: member.status,
-              permission: member.permission
-            };
-          })
-        }));
+        const formattedProjects: Project[] = [];
+        
+        // Process each project and fetch members separately to avoid relationship issues
+        for (const proj of safeProjectsData) {
+          const members = await fetchProjectMembersWithProfiles(proj.id);
+          
+          formattedProjects.push({
+            id: proj.id,
+            name: proj.name,
+            description: proj.description,
+            status: proj.status,
+            lastUpdated: proj.updated_at,
+            dueDate: proj.due_date,
+            progress: proj.progress,
+            isFolder: proj.is_folder,
+            parentId: proj.parent_id,
+            isTemplate: proj.is_template,
+            createdFromTemplate: proj.created_from_template,
+            organization_id: proj.organization_id,
+            members: members.map((member: any) => {
+              const profile = member.profile || {};
+              return {
+                id: member.user_id,
+                name: profile.display_name || 'Unknown',
+                avatar: profile.avatar_url || '/avatars/default.jpg',
+                role: member.role,
+                status: member.status,
+                permission: member.permission
+              };
+            })
+          });
+        }
 
         setProjects(formattedProjects);
+        setLoading(false);
         
         // Only select a project automatically if one exists and none is selected
         if (!selectedProject && formattedProjects.length > 0) {
