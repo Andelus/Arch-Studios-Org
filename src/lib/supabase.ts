@@ -28,10 +28,18 @@ export const supabaseClientAnon = createClient(
       persistSession: false,  // Disable session persistence - we'll handle auth via headers
       autoRefreshToken: false, // Disable token refresh - Clerk handles this
       detectSessionInUrl: false, // Disable URL detection
-      flowType: 'pkce'
+      flowType: 'pkce',
+      storage: {
+        // Prevent any session storage since we're using Clerk
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {}
+      }
     },
     global: {
-      headers: {}
+      headers: {
+        'Content-Type': 'application/json'
+      }
     }
   }
 );

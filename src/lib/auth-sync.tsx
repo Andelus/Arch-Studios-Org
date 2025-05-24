@@ -33,9 +33,10 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
           return;
         }
         
-        // Get token from Clerk using the native Supabase integration
-        // Note: Don't use 'supabase' template, just get the token directly
-        const token = await getToken({ template: 'supabase' });
+        // Get token with specific claims required by Supabase
+        const token = await getToken({
+          template: 'supabase',
+        });
         
         // Log token details for debugging (only in development)
         if (process.env.NODE_ENV === 'development' && token) {
@@ -43,6 +44,21 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
             const [header, payload] = token.split('.').slice(0, 2);
             const decodedHeader = JSON.parse(atob(header));
             const decodedPayload = JSON.parse(atob(payload));
+            
+            // Validate essential claims
+            const hasRequiredClaims = 
+              decodedPayload.role === 'authenticated' &&
+              decodedPayload.sub &&
+              decodedPayload.aud === 'authenticated';
+              
+            if (!hasRequiredClaims) {
+              console.warn('JWT missing required claims:', {
+                role: decodedPayload.role,
+                sub: decodedPayload.sub,
+                aud: decodedPayload.aud
+              });
+            }
+            
             console.log('JWT Header:', decodedHeader);
             console.log('JWT Payload:', decodedPayload);
             
@@ -73,6 +89,8 @@ export function SupabaseAuthSync({ children }: { children: React.ReactNode }) {
                 headers: {
                   'Authorization': `Bearer ${token}`,
                   'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
                 }
               })
               .then(response => {
